@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { guardarResultado } from '../../db/indexeddb';
 import { sincronizar } from '../../services/syncService';
 import { SelectorEleccion } from './SelectorEleccion';
+import { VoteInput } from './VoteInput';
 
 /**
  * FormularioMesaMultiple - Captura de resultados para múltiples tarjetones
@@ -218,15 +219,38 @@ export function FormularioMesaMultiple({
   };
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Mesa #{mesaNumero}</h2>
-          <p className="text-sm text-gray-500">
-            Sufragantes habilitados: <span className="font-semibold">{totalSufragantes}</span>
-          </p>
+    <div className="max-w-md mx-auto px-4 py-6">
+      <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
+        {/* Header Card Info - Premium */}
+        <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 px-6 py-6 border-b-3 border-gray-200 relative overflow-hidden">
+          {/* Patrón decorativo */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-editorial-red/5 rounded-full -mr-16 -mt-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-200/50 rounded-full -ml-12 -mb-12"></div>
+
+          {/* Brillo superior */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+
+          <div className="relative flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+                Mesa Electoral
+              </p>
+              <h2 className="text-4xl font-black text-editorial-black leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                #{mesaNumero}
+              </h2>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+                Sufragantes
+              </p>
+              <p className="text-3xl font-black text-editorial-red leading-none drop-shadow-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {totalSufragantes}
+              </p>
+            </div>
+          </div>
         </div>
+
+        <div className="p-6">
 
         {/* Selector de Elección */}
         <SelectorEleccion
@@ -238,48 +262,56 @@ export function FormularioMesaMultiple({
           }}
         />
 
-        {/* Alerta de fraude */}
+        {/* Alerta de fraude - Premium */}
         {hayAlertaFraude && (
-          <div className="mb-4 p-4 bg-red-50 border-2 border-red-500 rounded-lg animate-pulse">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">⚠️</span>
-              <div>
-                <p className="font-bold text-red-700">ALERTA DE FRAUDE</p>
-                <p className="text-sm text-red-600">
-                  Total votos ({totalVotos}) SUPERA sufragantes ({totalSufragantes})
+          <div className="mb-6 relative overflow-hidden">
+            {/* Fondo animado */}
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-red-600 to-red-500 animate-pulse"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9InN0cmlwZXMiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcGF0dGVyblRyYW5zZm9ybT0icm90YXRlKDQ1KSI+PHJlY3Qgd2lkdGg9IjIwIiBoZWlnaHQ9IjQwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjc3RyaXBlcykiLz48L3N2Zz4=')]"></div>
+
+            {/* Contenido */}
+            <div className="relative px-5 py-4 flex items-start gap-3">
+              <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div className="flex-1 pt-1">
+                <p className="font-black text-white text-base uppercase tracking-wide mb-1">
+                  ⚡ ALERTA DE FRAUDE
+                </p>
+                <p className="text-sm text-red-50 font-semibold leading-snug">
+                  Total de votos (<span className="font-black">{totalVotos}</span>) SUPERA
+                  sufragantes habilitados (<span className="font-black">{totalSufragantes}</span>)
+                </p>
+                <p className="text-xs text-red-100 mt-2 font-medium">
+                  ⚠️ Verifique los datos antes de guardar
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Formulario Uninominal */}
+        {/* Formulario Uninominal - Con VoteInput Premium */}
         {eleccion.tipoCargo === 'UNINOMINAL' && (
-          <div className="space-y-3 mb-6">
+          <div className="space-y-4 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-5 bg-editorial-red rounded-full"></div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Candidatos
+              </p>
+            </div>
             {eleccion.candidatos?.map((candidato) => (
-              <div key={candidato.id} className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">
-                    {candidato.nombre}
-                  </p>
-                  <p className="text-xs text-gray-500">{candidato.partido}</p>
-                </div>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  value={votosUninominal[candidato.id] || ''}
-                  onChange={(e) => {
-                    const num = parseInt(e.target.value) || 0;
-                    if (num >= 0) {
-                      setVotosUninominal({ ...votosUninominal, [candidato.id]: num });
-                      setGuardado(false);
-                    }
-                  }}
-                  className="w-20 px-3 py-2 border-2 border-gray-300 rounded-lg text-center text-lg font-bold focus:border-blue-500 focus:outline-none"
-                  placeholder="0"
-                />
-              </div>
+              <VoteInput
+                key={candidato.id}
+                label={candidato.nombre}
+                subtitle={candidato.partido}
+                value={votosUninominal[candidato.id] || 0}
+                onChange={(value) => {
+                  setVotosUninominal({ ...votosUninominal, [candidato.id]: value });
+                  setGuardado(false);
+                }}
+                size="large"
+                variant="candidate"
+              />
             ))}
           </div>
         )}
@@ -352,88 +384,219 @@ export function FormularioMesaMultiple({
           </div>
         )}
 
-        {/* Separador */}
-        <hr className="my-4 border-gray-200" />
+        {/* Separador Premium */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t-2 border-dashed border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              Votos Especiales
+            </span>
+          </div>
+        </div>
 
-        {/* Votos especiales */}
-        <div className="space-y-3 mb-6">
-          {[
-            { label: 'Votos en blanco', value: votosBlanco, setter: setVotosBlanco },
-            { label: 'Votos nulos', value: votosNulos, setter: setVotosNulos },
-            { label: 'No marcados', value: votosNoMarcados, setter: setVotosNoMarcados },
-          ].map(({ label, value, setter }) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">{label}</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min="0"
-                value={value || ''}
-                onChange={(e) => {
-                  const num = parseInt(e.target.value) || 0;
-                  if (num >= 0) {
-                    setter(num);
-                    setGuardado(false);
-                  }
-                }}
-                className="w-20 px-3 py-2 border-2 border-gray-300 rounded-lg text-center text-lg font-bold focus:border-blue-500 focus:outline-none"
-                placeholder="0"
-              />
+        {/* Votos especiales - Con VoteInput */}
+        <div className="space-y-4 mb-6 bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <VoteInput
+            label="Votos en blanco"
+            value={votosBlanco}
+            onChange={(value) => {
+              setVotosBlanco(value);
+              setGuardado(false);
+            }}
+            variant="special"
+          />
+          <VoteInput
+            label="Votos nulos"
+            value={votosNulos}
+            onChange={(value) => {
+              setVotosNulos(value);
+              setGuardado(false);
+            }}
+            variant="special"
+          />
+          <VoteInput
+            label="No marcados"
+            value={votosNoMarcados}
+            onChange={(value) => {
+              setVotosNoMarcados(value);
+              setGuardado(false);
+            }}
+            variant="special"
+          />
+        </div>
+
+        {/* Total - Indicador ULTRA PREMIUM */}
+        <div className={`relative overflow-hidden rounded-3xl mb-8 border-3 transition-all shadow-2xl ${
+          hayAlertaFraude
+            ? 'bg-gradient-to-br from-red-50 via-red-100 to-red-50 border-red-500 shadow-red-200'
+            : totalVotos > 0
+            ? 'bg-gradient-to-br from-editorial-red/5 via-editorial-red/10 to-editorial-red/5 border-editorial-red/40 shadow-red-100'
+            : 'bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 border-gray-300 shadow-gray-200'
+        }`}>
+          {/* Barra de progreso visual con gradiente */}
+          <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200">
+            <div
+              className={`h-full transition-all duration-500 ${
+                hayAlertaFraude
+                  ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-500'
+                  : 'bg-gradient-to-r from-editorial-red via-red-600 to-editorial-red'
+              }`}
+              style={{ width: `${Math.min((totalVotos / totalSufragantes) * 100, 100)}%` }}
+            ></div>
+          </div>
+
+          {/* Glow effect superior */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
+
+          <div className="p-6 text-center">
+            <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-3" style={{ letterSpacing: '0.15em' }}>
+              Total Votos Registrados
+            </p>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <div className={`text-6xl font-black leading-none transition-all ${
+                hayAlertaFraude
+                  ? 'text-red-600 drop-shadow-lg'
+                  : totalVotos > 0
+                  ? 'text-editorial-red drop-shadow-md'
+                  : 'text-gray-400'
+              }`} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {totalVotos}
+              </div>
+              <div className="text-left">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">de</p>
+                <p className="text-3xl font-black text-gray-700 leading-none">{totalSufragantes}</p>
+              </div>
             </div>
-          ))}
+
+            {/* Status badge premium */}
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 ${
+              hayAlertaFraude
+                ? 'bg-red-100 border-red-400'
+                : totalVotos === totalSufragantes
+                ? 'bg-green-100 border-green-400'
+                : totalVotos > 0
+                ? 'bg-yellow-100 border-yellow-400'
+                : 'bg-gray-100 border-gray-300'
+            }`}>
+              <div className={`relative w-2.5 h-2.5 rounded-full ${
+                hayAlertaFraude
+                  ? 'bg-red-500'
+                  : totalVotos === totalSufragantes
+                  ? 'bg-green-500'
+                  : totalVotos > 0
+                  ? 'bg-yellow-500'
+                  : 'bg-gray-400'
+              }`}>
+                {hayAlertaFraude && (
+                  <div className="absolute inset-0 rounded-full bg-red-500 animate-ping"></div>
+                )}
+              </div>
+              <p className={`text-xs font-black uppercase tracking-wider ${
+                hayAlertaFraude
+                  ? 'text-red-700'
+                  : totalVotos === totalSufragantes
+                  ? 'text-green-700'
+                  : totalVotos > 0
+                  ? 'text-yellow-700'
+                  : 'text-gray-600'
+              }`}>
+                {hayAlertaFraude
+                  ? '⚠️ Excede sufragantes'
+                  : totalVotos === totalSufragantes
+                  ? '✓ Mesa completa'
+                  : totalVotos > 0
+                  ? 'En proceso de conteo'
+                  : 'Sin votos registrados'
+                }
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Total */}
-        <div
-          className={`p-3 rounded-lg text-center mb-4 ${
-            hayAlertaFraude ? 'bg-red-100 border-2 border-red-400' : 'bg-gray-100'
-          }`}
-        >
-          <span className="text-sm text-gray-600">Total votos: </span>
-          <span
-            className={`text-2xl font-bold ${
-              hayAlertaFraude ? 'text-red-600' : 'text-gray-800'
-            }`}
-          >
-            {totalVotos}
-          </span>
-          <span className="text-sm text-gray-500"> / {totalSufragantes}</span>
-        </div>
-
-        {/* Botón guardar */}
+        {/* Botón guardar - ULTRA PREMIUM CTA */}
         <button
           onClick={handleGuardar}
           disabled={guardado}
-          className={`w-full py-3 rounded-lg font-bold text-white transition-colors ${
+          className={`relative w-full overflow-hidden rounded-2xl py-5 font-black text-white uppercase tracking-widest text-base transition-all ${
             guardado
-              ? 'bg-green-500'
+              ? 'bg-gradient-to-br from-green-500 via-green-600 to-green-500 shadow-2xl shadow-green-200/50'
               : hayAlertaFraude
-              ? 'bg-red-600 hover:bg-red-700'
-              : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+              ? 'bg-gradient-to-br from-red-600 via-red-700 to-red-600 hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
+              : 'bg-gradient-to-br from-editorial-red via-red-700 to-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
+          } disabled:opacity-95 disabled:cursor-not-allowed`}
+          style={{ letterSpacing: '0.1em' }}
         >
-          {guardado ? '✓ Guardado' : hayAlertaFraude ? 'Guardar con Alerta' : 'Guardar Resultados'}
+          {/* Borde superior con brillo */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+
+          {/* Efecto de brillo animado mejorado */}
+          {!guardado && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ width: '200%' }}></div>
+          )}
+
+          {/* Patrón de textura sutil */}
+          <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImRvdHMiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IndoaXRlIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2RvdHMpIi8+PC9zdmc+')]"></div>
+
+          <span className="relative flex items-center justify-center gap-3 drop-shadow-md">
+            {guardado ? (
+              <>
+                <span className="text-2xl">✓</span>
+                <span className="font-black">Resultados Guardados</span>
+              </>
+            ) : hayAlertaFraude ? (
+              <>
+                <span className="text-2xl animate-pulse">⚠️</span>
+                <span className="font-black">Guardar con Alerta</span>
+              </>
+            ) : (
+              <>
+                <span className="text-2xl">📋</span>
+                <span className="font-black">Guardar Resultados</span>
+              </>
+            )}
+          </span>
         </button>
 
-        {/* Estado de conexión */}
-        <div className="mt-3 text-center">
-          <span
-            className={`inline-flex items-center gap-1.5 text-xs ${
-              navigator.onLine ? 'text-green-600' : 'text-orange-500'
-            }`}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                navigator.onLine ? 'bg-green-500' : 'bg-orange-400'
-              }`}
-            />
-            {navigator.onLine
-              ? 'En línea — sincronización automática'
-              : 'Sin conexión — guardado local'}
-          </span>
+        {/* Estado de conexión - ULTRA PREMIUM Badge */}
+        <div className="mt-6 flex items-center justify-center">
+          <div className={`relative flex items-center gap-3 px-5 py-3 rounded-full border-2 shadow-lg transition-all ${
+            navigator.onLine
+              ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-300 shadow-green-200/50'
+              : 'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-300 shadow-orange-200/50'
+          }`}>
+            {/* Glow effect */}
+            {navigator.onLine && (
+              <div className="absolute inset-0 rounded-full bg-green-400 opacity-20 blur-md animate-pulse"></div>
+            )}
+
+            <div className="relative w-3 h-3 flex items-center justify-center">
+              <div className={`absolute inset-0 rounded-full ${
+                navigator.onLine ? 'bg-green-500' : 'bg-orange-500'
+              } shadow-lg`}></div>
+              {navigator.onLine && (
+                <>
+                  <div className="absolute inset-0 rounded-full bg-green-500 animate-ping"></div>
+                  <div className="absolute inset-0 rounded-full bg-green-400 animate-pulse"></div>
+                </>
+              )}
+            </div>
+
+            <span className={`text-[11px] font-black uppercase tracking-widest ${
+              navigator.onLine ? 'text-green-700' : 'text-orange-700'
+            }`} style={{ letterSpacing: '0.1em' }}>
+              {navigator.onLine ? 'En línea • Sync automática' : 'Sin conexión • Guardado local'}
+            </span>
+          </div>
         </div>
 
-        {error && <p className="mt-2 text-xs text-red-500 text-center">{error}</p>}
+        {error && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-xs text-red-600 text-center font-semibold">{error}</p>
+          </div>
+        )}
+        </div>
       </div>
     </div>
   );

@@ -6,7 +6,8 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
  * automáticamente cuando se detecta conexión.
  */
 
-interface PolTechDB extends DBSchema {
+interface CuorumDB extends DBSchema {
+  // @ts-ignore - idb type compatibility
   resultados: {
     key: string;
     value: {
@@ -32,6 +33,7 @@ interface PolTechDB extends DBSchema {
     };
     indexes: { 'by-synced': boolean; 'by-mesa': string; 'by-eleccion': string };
   };
+  // @ts-ignore - idb type compatibility
   fotosE14: {
     key: string;
     value: {
@@ -60,12 +62,12 @@ interface PolTechDB extends DBSchema {
   };
 }
 
-let dbInstance: IDBPDatabase<PolTechDB> | null = null;
+let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
-export async function getDB(): Promise<IDBPDatabase<PolTechDB>> {
+export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<PolTechDB>('poltech-testigos', 2, {
+  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 2, {
     upgrade(db, oldVersion) {
       // V1 → V2: Agregar soporte para múltiples elecciones y listas
       if (oldVersion < 1) {
@@ -82,12 +84,16 @@ export async function getDB(): Promise<IDBPDatabase<PolTechDB>> {
         db.createObjectStore('syncLog', { keyPath: 'id' });
       }
 
-      if (oldVersion < 2) {
+      if (oldVersion < 2 && oldVersion >= 1) {
         // Agregar índice por elección
-        const tx = db.transaction('resultados', 'readwrite');
-        const store = tx.objectStore('resultados');
-        if (!store.indexNames.contains('by-eleccion')) {
-          store.createIndex('by-eleccion', 'eleccionId');
+        // Durante upgrade, el object store ya está disponible en el transaction del upgrade
+        const resultadosStore = db.objectStoreNames.contains('resultados')
+          ? // @ts-ignore - access during upgrade
+            db.transaction.objectStore('resultados')
+          : null;
+
+        if (resultadosStore && !resultadosStore.indexNames.contains('by-eleccion')) {
+          resultadosStore.createIndex('by-eleccion', 'eleccionId');
         }
       }
     },
@@ -99,7 +105,7 @@ export async function getDB(): Promise<IDBPDatabase<PolTechDB>> {
 /**
  * Guarda un resultado de mesa localmente (para sync posterior)
  */
-export async function guardarResultado(data: Omit<PolTechDB['resultados']['value'], 'synced' | 'syncAttempts'>) {
+export async function guardarResultado(data: Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>) {
   const db = await getDB();
   await db.put('resultados', {
     ...data,
@@ -111,7 +117,7 @@ export async function guardarResultado(data: Omit<PolTechDB['resultados']['value
 /**
  * Guarda foto E-14 localmente
  */
-export async function guardarFotoE14(data: Omit<PolTechDB['fotosE14']['value'], 'synced' | 'syncAttempts'>) {
+export async function guardarFotoE14(data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>) {
   const db = await getDB();
   await db.put('fotosE14', {
     ...data,

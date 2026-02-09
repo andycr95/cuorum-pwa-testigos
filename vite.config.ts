@@ -9,10 +9,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'PolTech Testigos',
+        name: 'Cuorum Testigos',
         short_name: 'Testigos',
         description: 'PWA para testigos electorales - Operación Día D',
-        theme_color: '#1e40af',
+        theme_color: '#DC2626',
         background_color: '#ffffff',
         display: 'standalone',
         icons: [
