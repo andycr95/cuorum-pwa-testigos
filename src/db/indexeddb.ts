@@ -6,15 +6,20 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
  * automáticamente cuando se detecta conexión.
  */
 
-interface PolTechDB extends DBSchema {
+interface CuorumDB extends DBSchema {
+  // @ts-ignore - idb type compatibility
   resultados: {
     key: string;
     value: {
       id: string;
       mesaId: string;
       testigoId: string;
-      candidato: string;
-      partido: string;
+      eleccionId: string; // Nueva: múltiples elecciones por mesa
+      candidato: string; // Legacy: mantener por compatibilidad
+      partido: string; // Legacy: mantener por compatibilidad
+      candidatoId?: string; // Nueva: referencia a candidato real
+      listaId?: string; // Nueva: para elecciones colegiadas
+      tipoVoto: 'CANDIDATO' | 'LISTA' | 'BLANCO' | 'NULO' | 'NO_MARCADO'; // Nueva
       votos: number;
       votosBlanco: number;
       votosNulos: number;
@@ -26,8 +31,9 @@ interface PolTechDB extends DBSchema {
       syncAttempts: number;
       lastSyncError?: string;
     };
-    indexes: { 'by-synced': boolean; 'by-mesa': string };
+    indexes: { 'by-synced': boolean; 'by-mesa': string; 'by-eleccion': string };
   };
+  // @ts-ignore - idb type compatibility
   fotosE14: {
     key: string;
     value: {
@@ -56,24 +62,40 @@ interface PolTechDB extends DBSchema {
   };
 }
 
-let dbInstance: IDBPDatabase<PolTechDB> | null = null;
+let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
-export async function getDB(): Promise<IDBPDatabase<PolTechDB>> {
+export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<PolTechDB>('poltech-testigos', 1, {
-    upgrade(db) {
-      // Store de resultados de mesa
-      const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
-      resultadosStore.createIndex('by-synced', 'synced');
-      resultadosStore.createIndex('by-mesa', 'mesaId');
+  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 2, {
+    upgrade(db, oldVersion) {
+      // V1 → V2: Agregar soporte para múltiples elecciones y listas
+      if (oldVersion < 1) {
+        // Store de resultados de mesa
+        const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
+        resultadosStore.createIndex('by-synced', 'synced');
+        resultadosStore.createIndex('by-mesa', 'mesaId');
 
-      // Store de fotos E-14
-      const fotosStore = db.createObjectStore('fotosE14', { keyPath: 'id' });
-      fotosStore.createIndex('by-synced', 'synced');
+        // Store de fotos E-14
+        const fotosStore = db.createObjectStore('fotosE14', { keyPath: 'id' });
+        fotosStore.createIndex('by-synced', 'synced');
 
-      // Log de sincronización
-      db.createObjectStore('syncLog', { keyPath: 'id' });
+        // Log de sincronización
+        db.createObjectStore('syncLog', { keyPath: 'id' });
+      }
+
+      if (oldVersion < 2 && oldVersion >= 1) {
+        // Agregar índice por elección
+        // Durante upgrade, el object store ya está disponible en el transaction del upgrade
+        const resultadosStore = db.objectStoreNames.contains('resultados')
+          ? // @ts-ignore - access during upgrade
+            db.transaction.objectStore('resultados')
+          : null;
+
+        if (resultadosStore && !resultadosStore.indexNames.contains('by-eleccion')) {
+          resultadosStore.createIndex('by-eleccion', 'eleccionId');
+        }
+      }
     },
   });
 
@@ -83,7 +105,7 @@ export async function getDB(): Promise<IDBPDatabase<PolTechDB>> {
 /**
  * Guarda un resultado de mesa localmente (para sync posterior)
  */
-export async function guardarResultado(data: Omit<PolTechDB['resultados']['value'], 'synced' | 'syncAttempts'>) {
+export async function guardarResultado(data: Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>) {
   const db = await getDB();
   await db.put('resultados', {
     ...data,
@@ -95,7 +117,7 @@ export async function guardarResultado(data: Omit<PolTechDB['resultados']['value
 /**
  * Guarda foto E-14 localmente
  */
-export async function guardarFotoE14(data: Omit<PolTechDB['fotosE14']['value'], 'synced' | 'syncAttempts'>) {
+export async function guardarFotoE14(data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>) {
   const db = await getDB();
   await db.put('fotosE14', {
     ...data,
