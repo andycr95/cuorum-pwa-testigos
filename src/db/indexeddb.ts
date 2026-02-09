@@ -13,8 +13,12 @@ interface PolTechDB extends DBSchema {
       id: string;
       mesaId: string;
       testigoId: string;
-      candidato: string;
-      partido: string;
+      eleccionId: string; // Nueva: múltiples elecciones por mesa
+      candidato: string; // Legacy: mantener por compatibilidad
+      partido: string; // Legacy: mantener por compatibilidad
+      candidatoId?: string; // Nueva: referencia a candidato real
+      listaId?: string; // Nueva: para elecciones colegiadas
+      tipoVoto: 'CANDIDATO' | 'LISTA' | 'BLANCO' | 'NULO' | 'NO_MARCADO'; // Nueva
       votos: number;
       votosBlanco: number;
       votosNulos: number;
@@ -26,7 +30,7 @@ interface PolTechDB extends DBSchema {
       syncAttempts: number;
       lastSyncError?: string;
     };
-    indexes: { 'by-synced': boolean; 'by-mesa': string };
+    indexes: { 'by-synced': boolean; 'by-mesa': string; 'by-eleccion': string };
   };
   fotosE14: {
     key: string;
@@ -61,19 +65,31 @@ let dbInstance: IDBPDatabase<PolTechDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<PolTechDB>> {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<PolTechDB>('poltech-testigos', 1, {
-    upgrade(db) {
-      // Store de resultados de mesa
-      const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
-      resultadosStore.createIndex('by-synced', 'synced');
-      resultadosStore.createIndex('by-mesa', 'mesaId');
+  dbInstance = await openDB<PolTechDB>('poltech-testigos', 2, {
+    upgrade(db, oldVersion) {
+      // V1 → V2: Agregar soporte para múltiples elecciones y listas
+      if (oldVersion < 1) {
+        // Store de resultados de mesa
+        const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
+        resultadosStore.createIndex('by-synced', 'synced');
+        resultadosStore.createIndex('by-mesa', 'mesaId');
 
-      // Store de fotos E-14
-      const fotosStore = db.createObjectStore('fotosE14', { keyPath: 'id' });
-      fotosStore.createIndex('by-synced', 'synced');
+        // Store de fotos E-14
+        const fotosStore = db.createObjectStore('fotosE14', { keyPath: 'id' });
+        fotosStore.createIndex('by-synced', 'synced');
 
-      // Log de sincronización
-      db.createObjectStore('syncLog', { keyPath: 'id' });
+        // Log de sincronización
+        db.createObjectStore('syncLog', { keyPath: 'id' });
+      }
+
+      if (oldVersion < 2) {
+        // Agregar índice por elección
+        const tx = db.transaction('resultados', 'readwrite');
+        const store = tx.objectStore('resultados');
+        if (!store.indexNames.contains('by-eleccion')) {
+          store.createIndex('by-eleccion', 'eleccionId');
+        }
+      }
     },
   });
 
