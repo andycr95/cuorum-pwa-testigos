@@ -1,6 +1,6 @@
 import { getPendientes, marcarSincronizados, logSync } from '../db/indexeddb';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.app.cuorum.co/api';
 
 /**
  * Servicio de Sincronización Offline-First
