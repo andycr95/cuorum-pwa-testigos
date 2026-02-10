@@ -1,0 +1,36 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g pnpm
+        - pnpm install
+    build:
+      commands:
+        - pnpm build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .pnpm-store/**/*
+  # PWA Configuration
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'Cache-Control'
+          value: 'public, max-age=31536000, immutable'
+    - pattern: 'index.html'
+      headers:
+        - key: 'Cache-Control'
+          value: 'no-cache'
+    - pattern: 'service-worker.js'
+      headers:
+        - key: 'Cache-Control'
+          value: 'no-cache'
+    - pattern: 'manifest.json'
+      headers:
+        - key: 'Content-Type'
+          value: 'application/manifest+json'
