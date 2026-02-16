@@ -1,6 +1,7 @@
 import { getPendientes, marcarSincronizados, logSync } from '../db/indexeddb';
+import { authService } from './authService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.app.cuorum.co/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 /**
  * Servicio de Sincronización Offline-First
@@ -80,7 +81,11 @@ export async function sincronizar(): Promise<{
     formData.append('fotosMetadata', JSON.stringify(fotosMetadata));
 
     // Enviar al backend
-    const token = localStorage.getItem('auth_token');
+    const token = authService.getToken();
+    if (!token) {
+      throw new Error('No hay sesión activa. Inicia sesión nuevamente.');
+    }
+
     const response = await fetch(`${API_URL}/testigos/sync`, {
       method: 'POST',
       headers: {

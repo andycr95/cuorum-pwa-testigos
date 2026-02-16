@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FormularioMesaMultiple } from './components/formulario/FormularioMesaMultiple';
+import { LoginPage } from './components/auth/LoginPage';
+import { authService, TestigoData } from './services/authService';
 
 /**
  * PWA Testigos Electorales
@@ -8,59 +10,68 @@ import { FormularioMesaMultiple } from './components/formulario/FormularioMesaMu
  */
 
 export function App() {
-  const [testigoData, setTestigoData] = useState<any>(null);
+  const [testigoData, setTestigoData] = useState<TestigoData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Verificar autenticación al cargar la app
   useEffect(() => {
-    // TODO: Implementar autenticación y carga de datos del testigo
-    // Por ahora, datos de demo
-    const mockData = {
-      testigo: {
-        id: 'testigo-demo-001',
-        nombres: 'Juan',
-        apellidos: 'Pérez',
-        cedula: '123456789'
-      },
-      mesa: {
-        id: 'mesa-demo-001',
-        numero: 101,
-        totalSufragantes: 300
-      },
-      elecciones: [
-        {
-          id: 'eleccion-demo-2026',
-          nombre: 'Alcaldía Bogotá 2026',
-          tipoEleccion: 'ALCALDIA',
-          tipoCargo: 'UNINOMINAL' as const,
-          votoPreferente: false,
-          candidatos: [
-            {
-              id: 'cand-001',
-              nombre: 'Carlos Ramírez',
-              partido: 'Partido Verde'
-            },
-            {
-              id: 'cand-002',
-              nombre: 'María González',
-              partido: 'Alianza Centro'
-            },
-            {
-              id: 'cand-003',
-              nombre: 'José López',
-              partido: 'Coalición Esperanza'
-            }
-          ]
-        }
-      ],
-      deviceId: `device-${Date.now()}`
+    const checkAuth = async () => {
+      setLoading(true);
+
+      // Verificar si hay sesión guardada
+      if (!authService.isAuthenticated()) {
+        setLoading(false);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Verificar si el token sigue siendo válido
+      const isValid = await authService.verifyToken();
+
+      if (!isValid) {
+        // Token expirado, limpiar sesión
+        authService.logout();
+        setLoading(false);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Cargar datos del testigo
+      const data = authService.getTestigoData();
+      if (data) {
+        setTestigoData(data);
+        setIsAuthenticated(true);
+      } else {
+        authService.logout();
+        setIsAuthenticated(false);
+      }
+
+      setLoading(false);
     };
 
-    setTimeout(() => {
-      setTestigoData(mockData);
-      setLoading(false);
-    }, 500);
+    checkAuth();
   }, []);
 
+  // Manejar login exitoso
+  const handleLoginSuccess = () => {
+    const data = authService.getTestigoData();
+    if (data) {
+      setTestigoData(data);
+      setIsAuthenticated(true);
+    }
+  };
+
+  // Manejar logout
+  const handleLogout = () => {
+    if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+      authService.logout();
+      setTestigoData(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center">
@@ -69,7 +80,7 @@ export function App() {
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red border-t-transparent animate-spin"></div>
           </div>
-          <p className="text-sm font-semibold text-gray-700 tracking-wide">CARGANDO DATOS</p>
+          <p className="text-sm font-semibold text-gray-700 tracking-wide">VERIFICANDO SESIÓN</p>
           <div className="mt-2 flex items-center justify-center gap-1">
             <div className="w-1.5 h-1.5 bg-editorial-red rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-1.5 h-1.5 bg-editorial-red rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -80,24 +91,12 @@ export function App() {
     );
   }
 
-  if (!testigoData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl shadow-red-100 p-8 max-w-md border-t-4 border-editorial-red">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <h1 className="text-xl font-bold text-editorial-black text-center mb-3">
-            ERROR DE AUTENTICACIÓN
-          </h1>
-          <p className="text-gray-600 text-center text-sm leading-relaxed">
-            No se pudo cargar la información del testigo. Por favor, inicia sesión nuevamente para continuar.
-          </p>
-        </div>
-      </div>
-    );
+  // Mostrar login si no está autenticado
+  if (!isAuthenticated || !testigoData) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
+  // Mostrar app principal si está autenticado
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       {/* Header Premium - Refinado */}
@@ -122,6 +121,16 @@ export function App() {
                 Sistema Oficial de Reporte
               </p>
             </div>
+            {/* Botón Logout */}
+            <button
+              onClick={handleLogout}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              title="Cerrar sesión"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
           </div>
 
           {/* Info del Testigo - Badge Premium */}
