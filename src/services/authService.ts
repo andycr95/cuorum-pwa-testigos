@@ -4,7 +4,7 @@
  * Maneja login, logout, verificación de token y persistencia de sesión
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://app.cuorum.co/api-v1';
 
 export interface TestigoData {
   testigo: {
