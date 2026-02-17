@@ -2,7 +2,7 @@ interface Eleccion {
   id: string;
   nombre: string;
   tipoEleccion: string;
-  tipoCargo: 'UNINOMINAL' | 'COLEGIADO';
+  tipoCargo: 'UNINOMINAL' | 'LISTA' | 'LISTA_CON_PREFERENTE';
 }
 
 interface SelectorEleccionProps {

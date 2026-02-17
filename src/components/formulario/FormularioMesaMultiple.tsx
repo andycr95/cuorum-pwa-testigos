@@ -19,7 +19,7 @@ interface Eleccion {
   id: string;
   nombre: string;
   tipoEleccion: string;
-  tipoCargo: 'UNINOMINAL' | 'COLEGIADO';
+  tipoCargo: 'UNINOMINAL' | 'LISTA' | 'LISTA_CON_PREFERENTE';
   votoPreferente: boolean;
   candidatos?: Candidato[];
   listas?: Lista[];
@@ -317,7 +317,7 @@ export function FormularioMesaMultiple({
         )}
 
         {/* Formulario Colegiado (Listas) */}
-        {eleccion.tipoCargo === 'COLEGIADO' && (
+        {(eleccion.tipoCargo === 'LISTA' || eleccion.tipoCargo === 'LISTA_CON_PREFERENTE') && (
           <div className="space-y-4 mb-6">
             {eleccion.listas?.map((lista) => (
               <div key={lista.id} className="border border-gray-200 rounded-lg p-3">
