@@ -1,7 +1,6 @@
+import axios from 'axios';
 import { getPendientes, marcarSincronizados, logSync } from '../db/indexeddb';
 import { authService } from './authService';
-
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 /**
  * Servicio de Sincronización Offline-First
@@ -86,17 +85,11 @@ export async function sincronizar(): Promise<{
       throw new Error('No hay sesión activa. Inicia sesión nuevamente.');
     }
 
-    const response = await fetch(`${API_URL}/testigos/sync`, {
-      method: 'POST',
+    await axios.post(`/api-v1/testigos/sync`, formData, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
-      body: formData,
     });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
 
     // Marcar como sincronizados
     await marcarSincronizados(

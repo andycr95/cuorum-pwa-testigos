@@ -4,7 +4,8 @@
  * Maneja login, logout, verificación de token y persistencia de sesión
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://app.cuorum.co/api-v1';
+import axios from 'axios';
+
 
 export interface TestigoData {
   testigo: {
@@ -58,20 +59,17 @@ class AuthService {
    */
   async login(cedula: string, pin: string): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/testigos/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cedula, pin }),
-      });
+      const response = await axios.post<LoginResponse>(
+        `/api-v1/auth/testigos/login`,
+        { cedula, pin },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Error al iniciar sesión');
-      }
-
-      const data: LoginResponse = await response.json();
+      const data = response.data;
 
       // Guardar token y datos en localStorage
       localStorage.setItem(this.TOKEN_KEY, data.token);
@@ -84,6 +82,9 @@ class AuthService {
 
       return data;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
       if (error instanceof Error) {
         throw error;
       }
@@ -99,14 +100,13 @@ class AuthService {
     if (!token) return false;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/testigos/verify`, {
-        method: 'GET',
+      await axios.get(`/api-v1/auth/testigos/verify`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      return response.ok;
+      return true;
     } catch (error) {
       // Si no hay internet, asumir que el token es válido (modo offline)
       console.warn('[Auth] Error al verificar token, asumiendo válido para modo offline:', error);
