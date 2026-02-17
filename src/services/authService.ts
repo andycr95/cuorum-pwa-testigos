@@ -6,6 +6,7 @@
 
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api-v1';
 
 export interface TestigoData {
   testigo: {
@@ -60,7 +61,7 @@ class AuthService {
   async login(cedula: string, pin: string): Promise<LoginResponse> {
     try {
       const response = await axios.post<LoginResponse>(
-        `/api-v1/auth/testigos/login`,
+        `${API_BASE_URL}/auth/testigos/login`,
         { cedula, pin },
         {
           headers: {
@@ -100,7 +101,7 @@ class AuthService {
     if (!token) return false;
 
     try {
-      await axios.get(`/api-v1/auth/testigos/verify`, {
+      await axios.get(`${API_BASE_URL}/auth/testigos/verify`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

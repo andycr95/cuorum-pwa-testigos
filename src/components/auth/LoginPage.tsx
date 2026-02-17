@@ -47,7 +47,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       <div className="w-full max-w-md">
         {/* Logo y Header */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-editorial-red to-red-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-red-900/30">
+          <div className="w-20 h-20 bg-gradient-to-br from-editorial-red-50 to-red-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-red-900/30">
             <img src="/logo.svg" alt="Cuorum" className="w-12 h-12" />
           </div>
           <h1 className="text-3xl font-black text-editorial-black tracking-tight uppercase" style={{ letterSpacing: '0.05em' }}>
