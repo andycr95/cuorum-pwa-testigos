@@ -25,6 +25,7 @@ interface CuorumDB extends DBSchema {
       votosNulos: number;
       votosNoMarcados: number;
       totalVotosMesa: number;
+      observaciones?: string; // Observaciones del testigo sobre el conteo
       capturedAt: string;
       deviceId: string;
       synced: boolean;

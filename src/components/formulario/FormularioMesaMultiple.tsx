@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { guardarResultado } from '../../db/indexeddb';
+import { guardarResultado, guardarFotoE14 } from '../../db/indexeddb';
 import { sincronizar } from '../../services/syncService';
 import { SelectorEleccion } from './SelectorEleccion';
 import { VoteInput } from './VoteInput';
+import { CapturaFoto } from './CapturaFoto';
+import { ObservacionesInput } from './ObservacionesInput';
 
 /**
  * FormularioMesaMultiple - Captura de resultados para múltiples tarjetones
@@ -63,6 +65,9 @@ export function FormularioMesaMultiple({
   const [votosBlanco, setVotosBlanco] = useState(0);
   const [votosNulos, setVotosNulos] = useState(0);
   const [votosNoMarcados, setVotosNoMarcados] = useState(0);
+  const [observaciones, setObservaciones] = useState('');
+  const [fotoBlob, setFotoBlob] = useState<Blob | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [guardado, setGuardado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +119,7 @@ export function FormularioMesaMultiple({
             votosNulos,
             votosNoMarcados,
             totalVotosMesa: totalVotos,
+            observaciones: observaciones || undefined,
             capturedAt: new Date().toISOString(),
             deviceId,
           });
@@ -136,6 +142,7 @@ export function FormularioMesaMultiple({
             votosNulos,
             votosNoMarcados,
             totalVotosMesa: totalVotos,
+            observaciones: observaciones || undefined,
             capturedAt: new Date().toISOString(),
             deviceId,
           });
@@ -160,6 +167,7 @@ export function FormularioMesaMultiple({
                   votosNulos,
                   votosNoMarcados,
                   totalVotosMesa: totalVotos,
+                  observaciones: observaciones || undefined,
                   capturedAt: new Date().toISOString(),
                   deviceId,
                 });
@@ -190,10 +198,23 @@ export function FormularioMesaMultiple({
             votosNulos,
             votosNoMarcados,
             totalVotosMesa: totalVotos,
+            observaciones: observaciones || undefined,
             capturedAt: new Date().toISOString(),
             deviceId,
           });
         }
+      }
+
+      // Guardar foto E-14 si existe
+      if (fotoBlob) {
+        await guardarFotoE14({
+          id: `foto_${mesaId}_${Date.now()}`,
+          mesaId,
+          testigoId,
+          blob: fotoBlob,
+          capturedAt: new Date().toISOString(),
+          deviceId,
+        });
       }
 
       setGuardado(true);
@@ -214,6 +235,12 @@ export function FormularioMesaMultiple({
     setVotosBlanco(0);
     setVotosNulos(0);
     setVotosNoMarcados(0);
+    setObservaciones('');
+    setFotoBlob(null);
+    if (fotoPreview) {
+      URL.revokeObjectURL(fotoPreview);
+    }
+    setFotoPreview(null);
     setGuardado(false);
     setError(null);
   };
@@ -424,6 +451,51 @@ export function FormularioMesaMultiple({
               setGuardado(false);
             }}
             variant="special"
+          />
+        </div>
+
+        {/* Separador Premium */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t-2 border-dashed border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              Evidencia y Observaciones
+            </span>
+          </div>
+        </div>
+
+        {/* Captura de Foto E-14 */}
+        <div className="mb-6">
+          <CapturaFoto
+            onFotoCapturada={(blob, preview) => {
+              setFotoBlob(blob);
+              setFotoPreview(preview);
+              setGuardado(false);
+            }}
+            onEliminar={() => {
+              setFotoBlob(null);
+              if (fotoPreview) {
+                URL.revokeObjectURL(fotoPreview);
+              }
+              setFotoPreview(null);
+              setGuardado(false);
+            }}
+            fotoPreview={fotoPreview}
+            disabled={guardado}
+          />
+        </div>
+
+        {/* Observaciones */}
+        <div className="mb-6">
+          <ObservacionesInput
+            value={observaciones}
+            onChange={(value) => {
+              setObservaciones(value);
+              setGuardado(false);
+            }}
+            disabled={guardado}
           />
         </div>
 
