@@ -8,6 +8,17 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api-v1';
 
+export interface MesaData {
+  id: string;
+  numero: number;
+  totalSufragantes: number;
+  puesto: {
+    id: string;
+    nombre: string;
+    direccion: string;
+  } | null;
+}
+
 export interface TestigoData {
   testigo: {
     id: string;
@@ -17,16 +28,8 @@ export interface TestigoData {
     telefono: string;
     email: string | null;
   };
-  mesa: {
-    id: string;
-    numero: number;
-    totalSufragantes: number;
-    puesto: {
-      id: string;
-      nombre: string;
-      direccion: string;
-    } | null;
-  };
+  mesa: MesaData; // Mesa actual (para compatibilidad)
+  mesas?: MesaData[]; // Array de mesas (para el selector)
   elecciones: Array<{
     id: string;
     nombre: string;

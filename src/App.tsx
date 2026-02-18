@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FormularioMesaMultiple } from './components/formulario/FormularioMesaMultiple';
 import { LoginPage } from './components/auth/LoginPage';
+import { SelectorMesa } from './components/auth/SelectorMesa';
 import { authService, TestigoData } from './services/authService';
 
 /**
@@ -13,6 +14,7 @@ export function App() {
   const [testigoData, setTestigoData] = useState<TestigoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedMesaId, setSelectedMesaId] = useState<string | null>(null);
 
   // Verificar autenticación al cargar la app
   useEffect(() => {
@@ -42,6 +44,12 @@ export function App() {
       if (data) {
         setTestigoData(data);
         setIsAuthenticated(true);
+        
+        // Autoseleccionar si solo hay una mesa
+        const listaMesas = data.mesas || [data.mesa];
+        if (listaMesas.length === 1) {
+          setSelectedMesaId(listaMesas[0].id);
+        }
       } else {
         authService.logout();
         setIsAuthenticated(false);
@@ -59,6 +67,11 @@ export function App() {
     if (data) {
       setTestigoData(data);
       setIsAuthenticated(true);
+      
+      const listaMesas = data.mesas || [data.mesa];
+      if (listaMesas.length === 1) {
+        setSelectedMesaId(listaMesas[0].id);
+      }
     }
   };
 
@@ -68,7 +81,13 @@ export function App() {
       authService.logout();
       setTestigoData(null);
       setIsAuthenticated(false);
+      setSelectedMesaId(null);
     }
+  };
+
+  // Volver al selector de mesa
+  const handleBackToSelector = () => {
+    setSelectedMesaId(null);
   };
 
   // Loading state
@@ -96,7 +115,32 @@ export function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Mostrar app principal si está autenticado
+  // Obtener mesa seleccionada
+  const listaMesas = testigoData.mesas || [testigoData.mesa];
+  const mesaSeleccionada = listaMesas.find(m => m.id === selectedMesaId);
+
+  // Si no hay mesa seleccionada, mostrar el selector
+  if (!selectedMesaId || !mesaSeleccionada) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="bg-editorial-red px-4 py-6 flex items-center justify-between">
+          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+          </div>
+          <button onClick={handleLogout} className="text-white/80 text-xs font-bold uppercase tracking-wider">
+            Cerrar Sesión
+          </button>
+        </div>
+        <SelectorMesa 
+          mesas={listaMesas} 
+          onSelect={setSelectedMesaId} 
+          testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
+        />
+      </div>
+    );
+  }
+
+  // Mostrar app principal si está autenticado y tiene mesa seleccionada
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       {/* Header Premium - Refinado */}
@@ -121,6 +165,19 @@ export function App() {
                 Sistema Oficial de Reporte
               </p>
             </div>
+            {/* Botón Volver al Selector (solo si hay más de una mesa) */}
+            {(testigoData.mesas?.length || 0) > 1 && (
+              <button
+                onClick={handleBackToSelector}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors mr-1"
+                title="Cambiar de mesa"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="ArrowLeftIcon" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </button>
+            )}
             {/* Botón Logout */}
             <button
               onClick={handleLogout}
@@ -152,7 +209,7 @@ export function App() {
                   Mesa
                 </p>
                 <p className="text-3xl font-black text-white leading-none" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-                  #{testigoData.mesa.numero}
+                  #{mesaSeleccionada.numero}
                 </p>
               </div>
             </div>
@@ -162,10 +219,10 @@ export function App() {
 
       {/* Formulario */}
       <FormularioMesaMultiple
-        mesaId={testigoData.mesa.id}
+        mesaId={mesaSeleccionada.id}
         testigoId={testigoData.testigo.id}
-        mesaNumero={testigoData.mesa.numero}
-        totalSufragantes={testigoData.mesa.totalSufragantes}
+        mesaNumero={mesaSeleccionada.numero}
+        totalSufragantes={mesaSeleccionada.totalSufragantes}
         elecciones={testigoData.elecciones}
         deviceId={testigoData.deviceId}
       />
