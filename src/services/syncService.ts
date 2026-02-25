@@ -187,11 +187,16 @@ export async function sincronizar(): Promise<SyncResultado> {
         );
         incFormData.append('incidencias', JSON.stringify(incMetadata));
 
-        incidencias.forEach((inc, idx) => {
+        // Mapeo foto↔incidencia: el backend necesita saber qué ID corresponde
+        // a cada archivo subido (por orden de inserción en el FormData)
+        const fotosIds: string[] = [];
+        incidencias.forEach((inc) => {
           if (inc.fotoBlob) {
-            incFormData.append('fotosIncidencias', inc.fotoBlob, `inc_${inc.id}_${idx}.jpg`);
+            incFormData.append('fotosIncidencias', inc.fotoBlob, `inc_${inc.id}.jpg`);
+            fotosIds.push(inc.id);
           }
         });
+        incFormData.append('fotosIncidenciasIds', JSON.stringify(fotosIds));
 
         await axios.post(`${API_BASE_URL}/testigos/incidencias`, incFormData, {
           headers: { Authorization: `Bearer ${token}` },
@@ -201,8 +206,7 @@ export async function sincronizar(): Promise<SyncResultado> {
         incidenciasSinc = incidencias.length;
         console.log(`[Sync] Incidencias: ${incidenciasSinc} enviadas`);
       } catch (incError) {
-        // Endpoint pendiente de implementar en backend — no bloquear sync principal
-        console.warn('[Sync] Endpoint /testigos/incidencias no disponible aún:', incError);
+        console.warn('[Sync] Error sincronizando incidencias:', incError);
       }
     }
 

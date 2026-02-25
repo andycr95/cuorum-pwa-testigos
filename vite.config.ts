@@ -53,11 +53,12 @@ export default defineConfig({
     port: 5175,
     host: true,
     proxy: {
-      '/api-v1': {
-        target: 'https://app.cuorum.co/api-v1',
+      '/api': {
+        target: 'https://api.app.cuorum.co',
+        // target: 'http://localhost:3000',
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api-v1/, ''),
+        secure: true, // Disable SSL certificate validation for local development
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   }
