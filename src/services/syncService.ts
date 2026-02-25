@@ -37,10 +37,12 @@ export async function verificarConectividadReal(): Promise<boolean> {
   if (!navigator.onLine) return false; // Corte rápido si el browser sabe que está offline
 
   try {
-    await fetch(`${API_BASE_URL}/health`, {
-      method: 'HEAD',
+    await axios.get(`${API_BASE_URL}/health`, {
+      headers: {
+        'Authorization': `Bearer ${authService.getToken()}`,
+        'cache': 'no-store',
+      },
       signal: AbortSignal.timeout(3000),
-      cache: 'no-store',
     });
     return true;
   } catch {
