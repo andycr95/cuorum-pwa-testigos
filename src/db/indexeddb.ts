@@ -5,7 +5,12 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
  * Cola de sincronización: los datos se guardan localmente y se suben
  * automáticamente cuando se detecta conexión.
  *
+ * IMPORTANTE: synced usa 0 | 1 (número), NO boolean.
+ * Los booleans NO son llaves IDB válidas — getAllFromIndex(..., false) lanza
+ * "The parameter is not a valid key." en todos los browsers modernos.
+ *
  * v3: Agrega store de incidencias/novedades de mesa
+ * v4: Migra synced: boolean → synced: 0 | 1 (fix error de llave IDB inválida)
  */
 
 export type TipoIncidencia =
@@ -38,11 +43,11 @@ interface CuorumDB extends DBSchema {
       observaciones?: string;
       capturedAt: string;
       deviceId: string;
-      synced: boolean;
+      synced: 0 | 1;
       syncAttempts: number;
       lastSyncError?: string;
     };
-    indexes: { 'by-synced': boolean; 'by-mesa': string; 'by-eleccion': string };
+    indexes: { 'by-synced': 0 | 1; 'by-mesa': string; 'by-eleccion': string };
   };
   // @ts-ignore - idb type compatibility
   fotosE14: {
@@ -54,11 +59,11 @@ interface CuorumDB extends DBSchema {
       blob: Blob;
       capturedAt: string;
       deviceId: string;
-      synced: boolean;
+      synced: 0 | 1;
       syncAttempts: number;
       lastSyncError?: string;
     };
-    indexes: { 'by-synced': boolean };
+    indexes: { 'by-synced': 0 | 1 };
   };
   syncLog: {
     key: string;
@@ -83,11 +88,11 @@ interface CuorumDB extends DBSchema {
       fotoBlob?: Blob;
       capturedAt: string;
       deviceId: string;
-      synced: boolean;
+      synced: 0 | 1;
       syncAttempts: number;
       lastSyncError?: string;
     };
-    indexes: { 'by-synced': boolean; 'by-mesa': string };
+    indexes: { 'by-synced': 0 | 1; 'by-mesa': string };
   };
 }
 
@@ -96,12 +101,13 @@ let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 3, {
+  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 4, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
         resultadosStore.createIndex('by-synced', 'synced');
         resultadosStore.createIndex('by-mesa', 'mesaId');
+        resultadosStore.createIndex('by-eleccion', 'eleccionId');
 
         const fotosStore = db.createObjectStore('fotosE14', { keyPath: 'id' });
         fotosStore.createIndex('by-synced', 'synced');
@@ -109,28 +115,59 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
         db.createObjectStore('syncLog', { keyPath: 'id' });
       }
 
-      if (oldVersion < 2 && oldVersion >= 1) {
-        const resultadosStore = db.objectStoreNames.contains('resultados')
-          ? // @ts-ignore - access during upgrade
-            db.transaction.objectStore('resultados')
-          : null;
-        if (resultadosStore && !resultadosStore.indexNames.contains('by-eleccion')) {
+      if (oldVersion >= 1 && oldVersion < 2) {
+        // @ts-ignore
+        const resultadosStore = db.transaction.objectStore('resultados');
+        if (!resultadosStore.indexNames.contains('by-eleccion')) {
           resultadosStore.createIndex('by-eleccion', 'eleccionId');
         }
       }
 
       if (oldVersion < 3) {
-        // Store de incidencias/novedades reportadas desde la mesa
         if (!db.objectStoreNames.contains('incidencias')) {
           const incStore = db.createObjectStore('incidencias', { keyPath: 'id' });
           incStore.createIndex('by-synced', 'synced');
           incStore.createIndex('by-mesa', 'mesaId');
         }
       }
+
+      // v4: No se crean nuevos stores — solo se migran los datos existentes.
+      // La migración real (boolean → number) se hace en la función migrateV4()
+      // llamada post-open para evitar problemas con transacciones versionchange.
     },
   });
 
+  // Ejecutar migración de datos v4 fuera del upgrade callback
+  await migrateV4(dbInstance);
+
   return dbInstance;
+}
+
+/**
+ * Migra registros existentes con synced:boolean a synced:0|1.
+ * Se ejecuta una sola vez (los registros ya migrados no tienen typeof boolean).
+ * Separarla del upgrade callback evita el cierre prematuro de la transacción.
+ */
+async function migrateV4(db: IDBPDatabase<CuorumDB>) {
+  const storeNames = ['resultados', 'fotosE14', 'incidencias'] as const;
+
+  for (const storeName of storeNames) {
+    if (!db.objectStoreNames.contains(storeName)) continue;
+
+    // @ts-ignore — necesitamos leer sin tipado estricto para detectar booleans heredados
+    const allRecords: { synced: boolean | 0 | 1; [key: string]: unknown }[] =
+      await (db as IDBPDatabase).getAll(storeName);
+
+    const toMigrate = allRecords.filter((r) => typeof r.synced === 'boolean');
+    if (toMigrate.length === 0) continue;
+
+    const tx = (db as IDBPDatabase).transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    for (const record of toMigrate) {
+      await store.put({ ...record, synced: record.synced ? 1 : 0 });
+    }
+    await tx.done;
+  }
 }
 
 // ─── Resultados ───────────────────────────────────────────────
@@ -139,7 +176,7 @@ export async function guardarResultado(
   data: Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>,
 ) {
   const db = await getDB();
-  await db.put('resultados', { ...data, synced: false, syncAttempts: 0 });
+  await db.put('resultados', { ...data, synced: 0, syncAttempts: 0 });
 }
 
 // ─── Fotos E-14 ───────────────────────────────────────────────
@@ -148,7 +185,7 @@ export async function guardarFotoE14(
   data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>,
 ) {
   const db = await getDB();
-  await db.put('fotosE14', { ...data, synced: false, syncAttempts: 0 });
+  await db.put('fotosE14', { ...data, synced: 0, syncAttempts: 0 });
 }
 
 // ─── Incidencias ──────────────────────────────────────────────
@@ -157,12 +194,12 @@ export async function guardarIncidencia(
   data: Omit<CuorumDB['incidencias']['value'], 'synced' | 'syncAttempts'>,
 ) {
   const db = await getDB();
-  await db.put('incidencias', { ...data, synced: false, syncAttempts: 0 });
+  await db.put('incidencias', { ...data, synced: 0, syncAttempts: 0 });
 }
 
 export async function getIncidenciasPendientes() {
   const db = await getDB();
-  return db.getAllFromIndex('incidencias', 'by-synced', false);
+  return db.getAllFromIndex('incidencias', 'by-synced', 0);
 }
 
 export async function marcarIncidenciasSincronizadas(ids: string[]) {
@@ -171,7 +208,7 @@ export async function marcarIncidenciasSincronizadas(ids: string[]) {
   for (const id of ids) {
     const item = await tx.objectStore('incidencias').get(id);
     if (item) {
-      item.synced = true;
+      item.synced = 1;
       await tx.objectStore('incidencias').put(item);
     }
   }
@@ -182,8 +219,8 @@ export async function marcarIncidenciasSincronizadas(ids: string[]) {
 
 export async function getPendientes() {
   const db = await getDB();
-  const resultados = await db.getAllFromIndex('resultados', 'by-synced', false);
-  const fotos = await db.getAllFromIndex('fotosE14', 'by-synced', false);
+  const resultados = await db.getAllFromIndex('resultados', 'by-synced', 0);
+  const fotos = await db.getAllFromIndex('fotosE14', 'by-synced', 0);
   return { resultados, fotos };
 }
 
@@ -196,7 +233,7 @@ export async function marcarSincronizados(resultadoIds: string[], fotoIds: strin
   for (const id of resultadoIds) {
     const item = await tx.objectStore('resultados').get(id);
     if (item) {
-      item.synced = true;
+      item.synced = 1;
       await tx.objectStore('resultados').put(item);
     }
   }
@@ -204,7 +241,7 @@ export async function marcarSincronizados(resultadoIds: string[], fotoIds: strin
   for (const id of fotoIds) {
     const item = await tx.objectStore('fotosE14').get(id);
     if (item) {
-      item.synced = true;
+      item.synced = 1;
       await tx.objectStore('fotosE14').put(item);
     }
   }
