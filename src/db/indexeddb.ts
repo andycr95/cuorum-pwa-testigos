@@ -4,7 +4,17 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
  * Base de datos local IndexedDB para modo offline.
  * Cola de sincronización: los datos se guardan localmente y se suben
  * automáticamente cuando se detecta conexión.
+ *
+ * v3: Agrega store de incidencias/novedades de mesa
  */
+
+export type TipoIncidencia =
+  | 'MATERIALES_FALTANTES'
+  | 'INTIMIDACION'
+  | 'VIOLENCIA'
+  | 'JURADO_AUSENTE'
+  | 'IRREGULARIDAD_ACTA'
+  | 'OTRO';
 
 interface CuorumDB extends DBSchema {
   // @ts-ignore - idb type compatibility
@@ -14,18 +24,18 @@ interface CuorumDB extends DBSchema {
       id: string;
       mesaId: string;
       testigoId: string;
-      eleccionId: string; // Nueva: múltiples elecciones por mesa
-      candidato: string; // Legacy: mantener por compatibilidad
-      partido: string; // Legacy: mantener por compatibilidad
-      candidatoId?: string; // Nueva: referencia a candidato real
-      listaId?: string; // Nueva: para elecciones colegiadas
-      tipoVoto: 'CANDIDATO' | 'LISTA' | 'BLANCO' | 'NULO' | 'NO_MARCADO'; // Nueva
+      eleccionId: string;
+      candidato: string;
+      partido: string;
+      candidatoId?: string;
+      listaId?: string;
+      tipoVoto: 'CANDIDATO' | 'LISTA' | 'BLANCO' | 'NULO' | 'NO_MARCADO';
       votos: number;
       votosBlanco: number;
       votosNulos: number;
       votosNoMarcados: number;
       totalVotosMesa: number;
-      observaciones?: string; // Observaciones del testigo sobre el conteo
+      observaciones?: string;
       capturedAt: string;
       deviceId: string;
       synced: boolean;
@@ -61,6 +71,24 @@ interface CuorumDB extends DBSchema {
       error?: string;
     };
   };
+  // @ts-ignore - idb type compatibility
+  incidencias: {
+    key: string;
+    value: {
+      id: string;
+      mesaId: string;
+      testigoId: string;
+      tipo: TipoIncidencia;
+      descripcion: string;
+      fotoBlob?: Blob;
+      capturedAt: string;
+      deviceId: string;
+      synced: boolean;
+      syncAttempts: number;
+      lastSyncError?: string;
+    };
+    indexes: { 'by-synced': boolean; 'by-mesa': string };
+  };
 }
 
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
@@ -68,33 +96,35 @@ let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 2, {
+  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 3, {
     upgrade(db, oldVersion) {
-      // V1 → V2: Agregar soporte para múltiples elecciones y listas
       if (oldVersion < 1) {
-        // Store de resultados de mesa
         const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
         resultadosStore.createIndex('by-synced', 'synced');
         resultadosStore.createIndex('by-mesa', 'mesaId');
 
-        // Store de fotos E-14
         const fotosStore = db.createObjectStore('fotosE14', { keyPath: 'id' });
         fotosStore.createIndex('by-synced', 'synced');
 
-        // Log de sincronización
         db.createObjectStore('syncLog', { keyPath: 'id' });
       }
 
       if (oldVersion < 2 && oldVersion >= 1) {
-        // Agregar índice por elección
-        // Durante upgrade, el object store ya está disponible en el transaction del upgrade
         const resultadosStore = db.objectStoreNames.contains('resultados')
           ? // @ts-ignore - access during upgrade
             db.transaction.objectStore('resultados')
           : null;
-
         if (resultadosStore && !resultadosStore.indexNames.contains('by-eleccion')) {
           resultadosStore.createIndex('by-eleccion', 'eleccionId');
+        }
+      }
+
+      if (oldVersion < 3) {
+        // Store de incidencias/novedades reportadas desde la mesa
+        if (!db.objectStoreNames.contains('incidencias')) {
+          const incStore = db.createObjectStore('incidencias', { keyPath: 'id' });
+          incStore.createIndex('by-synced', 'synced');
+          incStore.createIndex('by-mesa', 'mesaId');
         }
       }
     },
@@ -103,33 +133,53 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   return dbInstance;
 }
 
-/**
- * Guarda un resultado de mesa localmente (para sync posterior)
- */
-export async function guardarResultado(data: Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>) {
+// ─── Resultados ───────────────────────────────────────────────
+
+export async function guardarResultado(
+  data: Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>,
+) {
   const db = await getDB();
-  await db.put('resultados', {
-    ...data,
-    synced: false,
-    syncAttempts: 0,
-  });
+  await db.put('resultados', { ...data, synced: false, syncAttempts: 0 });
 }
 
-/**
- * Guarda foto E-14 localmente
- */
-export async function guardarFotoE14(data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>) {
+// ─── Fotos E-14 ───────────────────────────────────────────────
+
+export async function guardarFotoE14(
+  data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>,
+) {
   const db = await getDB();
-  await db.put('fotosE14', {
-    ...data,
-    synced: false,
-    syncAttempts: 0,
-  });
+  await db.put('fotosE14', { ...data, synced: false, syncAttempts: 0 });
 }
 
-/**
- * Obtiene todos los items pendientes de sincronización
- */
+// ─── Incidencias ──────────────────────────────────────────────
+
+export async function guardarIncidencia(
+  data: Omit<CuorumDB['incidencias']['value'], 'synced' | 'syncAttempts'>,
+) {
+  const db = await getDB();
+  await db.put('incidencias', { ...data, synced: false, syncAttempts: 0 });
+}
+
+export async function getIncidenciasPendientes() {
+  const db = await getDB();
+  return db.getAllFromIndex('incidencias', 'by-synced', false);
+}
+
+export async function marcarIncidenciasSincronizadas(ids: string[]) {
+  const db = await getDB();
+  const tx = db.transaction('incidencias', 'readwrite');
+  for (const id of ids) {
+    const item = await tx.objectStore('incidencias').get(id);
+    if (item) {
+      item.synced = true;
+      await tx.objectStore('incidencias').put(item);
+    }
+  }
+  await tx.done;
+}
+
+// ─── Pendientes generales ─────────────────────────────────────
+
 export async function getPendientes() {
   const db = await getDB();
   const resultados = await db.getAllFromIndex('resultados', 'by-synced', false);
@@ -137,9 +187,8 @@ export async function getPendientes() {
   return { resultados, fotos };
 }
 
-/**
- * Marca items como sincronizados
- */
+// ─── Marcar sincronizados ─────────────────────────────────────
+
 export async function marcarSincronizados(resultadoIds: string[], fotoIds: string[]) {
   const db = await getDB();
   const tx = db.transaction(['resultados', 'fotosE14'], 'readwrite');
@@ -163,10 +212,14 @@ export async function marcarSincronizados(resultadoIds: string[], fotoIds: strin
   await tx.done;
 }
 
-/**
- * Registra evento de sincronización
- */
-export async function logSync(action: string, itemsCount: number, success: boolean, error?: string) {
+// ─── Sync log ─────────────────────────────────────────────────
+
+export async function logSync(
+  action: string,
+  itemsCount: number,
+  success: boolean,
+  error?: string,
+) {
   const db = await getDB();
   await db.put('syncLog', {
     id: `sync_${Date.now()}`,

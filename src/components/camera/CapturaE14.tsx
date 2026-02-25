@@ -1,236 +1,237 @@
 import { useRef, useState, useCallback } from 'react';
-import { guardarFotoE14 } from '../../db/indexeddb';
 
 /**
- * CapturaE14 - Módulo de cámara optimizado para formularios E-14
+ * CapturaE14 — Captura de foto con pipeline de compresión optimizado para E-14
  *
- * Compresión agresiva: fotos < 200KB para transmisión en redes EDGE/2G
  * Pipeline:
- * 1. Captura desde cámara trasera (preferida para documentos)
- * 2. Redimensiona a 1200px max width
- * 3. Convierte a escala de grises (E-14 es B/N)
+ * 1. File input con capture="environment" (cámara trasera, máxima compatibilidad en PWA)
+ * 2. Canvas resize a max 1200px
+ * 3. Conversión a escala de grises (E-14 es documento B/N → mejor compresión)
  * 4. Compresión JPEG progresiva hasta < 200KB
+ * 5. Si aún supera 200KB: reducción de resolución al 60%
+ *
+ * Interfaz idéntica a CapturaFoto para intercambio directo.
+ * La compresión se hace en el cliente antes de guardar/enviar.
  */
 
-const MAX_SIZE_BYTES = 200 * 1024; // 200KB
+const MAX_SIZE_BYTES = 200 * 1024; // 200 KB — apto para transmisión 2G/EDGE
 
 interface CapturaE14Props {
-  mesaId: string;
-  testigoId: string;
-  deviceId: string;
-  onCapturada: () => void;
+  onFotoCapturada: (blob: Blob, preview: string) => void;
+  onEliminar?: () => void;
+  fotoPreview?: string | null;
+  disabled?: boolean;
 }
 
-export function CapturaE14({ mesaId, testigoId, deviceId, onCapturada }: CapturaE14Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [savedSize, setSavedSize] = useState<number | null>(null);
-
-  const iniciarCamara = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // Cámara trasera
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setCameraActive(true);
-      }
-    } catch (err) {
-      alert('No se pudo acceder a la cámara. Verifique los permisos.');
-    }
-  };
-
-  const detenerCamara = () => {
-    const video = videoRef.current;
-    if (video?.srcObject) {
-      (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-      video.srcObject = null;
-    }
-    setCameraActive(false);
-  };
+export function CapturaE14({
+  onFotoCapturada,
+  onEliminar,
+  fotoPreview,
+  disabled = false,
+}: CapturaE14Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [procesando, setProcesando] = useState(false);
+  const [infoCompresion, setInfoCompresion] = useState<{
+    original: number;
+    final: number;
+  } | null>(null);
 
   /**
-   * Comprime imagen progresivamente hasta estar bajo 200KB.
-   * Convierte a escala de grises para E-14 (documento B/N).
+   * Comprime la imagen en canvas:
+   * - Escala de grises (reduce tamaño ~40% vs color para docs B/N)
+   * - JPEG progresivo hasta < 200KB
+   * - Fallback: reducción de resolución al 60%
    */
-  const comprimirImagen = useCallback(async (canvas: HTMLCanvasElement): Promise<Blob> => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('No canvas context');
+  const comprimirImagen = useCallback(
+    async (imageBitmap: ImageBitmap, originalSize: number): Promise<Blob> => {
+      const maxWidth = 1200;
+      const scale = Math.min(1, maxWidth / imageBitmap.width);
 
-    // Convertir a escala de grises para mejor compresión
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-      data[i] = gray;     // R
-      data[i + 1] = gray; // G
-      data[i + 2] = gray; // B
-    }
-    ctx.putImageData(imageData, 0, 0);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(imageBitmap.width * scale);
+      canvas.height = Math.round(imageBitmap.height * scale);
 
-    // Compresión progresiva
-    let quality = 0.7;
-    let blob: Blob | null = null;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
 
-    while (quality >= 0.15) {
-      blob = await new Promise<Blob | null>(resolve =>
-        canvas.toBlob(resolve, 'image/jpeg', quality)
-      );
+      // Conversión a escala de grises — mejora compresión ~30-40% en documentos
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imageData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+        d[i] = gray;
+        d[i + 1] = gray;
+        d[i + 2] = gray;
+        // d[i+3] (alpha) sin cambio
+      }
+      ctx.putImageData(imageData, 0, 0);
 
-      if (blob && blob.size <= MAX_SIZE_BYTES) break;
-      quality -= 0.05;
-    }
+      // Compresión JPEG progresiva
+      let quality = 0.75;
+      let blob: Blob | null = null;
 
-    // Si aún es muy grande, reducir resolución
-    if (!blob || blob.size > MAX_SIZE_BYTES) {
-      const smallCanvas = document.createElement('canvas');
-      const scale = 0.6;
-      smallCanvas.width = canvas.width * scale;
-      smallCanvas.height = canvas.height * scale;
-      const smallCtx = smallCanvas.getContext('2d')!;
-      smallCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+      while (quality >= 0.15) {
+        blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, 'image/jpeg', quality),
+        );
+        if (blob && blob.size <= MAX_SIZE_BYTES) break;
+        quality -= 0.05;
+      }
 
-      blob = await new Promise<Blob | null>(resolve =>
-        smallCanvas.toBlob(resolve, 'image/jpeg', 0.3)
-      );
-    }
+      // Fallback: reducir resolución al 60% si aún supera límite
+      if (!blob || blob.size > MAX_SIZE_BYTES) {
+        const smallCanvas = document.createElement('canvas');
+        smallCanvas.width = Math.round(canvas.width * 0.6);
+        smallCanvas.height = Math.round(canvas.height * 0.6);
+        const smallCtx = smallCanvas.getContext('2d')!;
+        smallCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+        blob = await new Promise<Blob | null>((resolve) =>
+          smallCanvas.toBlob(resolve, 'image/jpeg', 0.3),
+        );
+      }
 
-    if (!blob) throw new Error('No se pudo comprimir la imagen');
-    return blob;
-  }, []);
+      if (!blob) throw new Error('No se pudo comprimir la imagen');
 
-  const capturar = async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+      setInfoCompresion({ original: originalSize, final: blob.size });
+      return blob;
+    },
+    [],
+  );
 
-    // Capturar frame del video
-    const maxWidth = 1200;
-    const scale = Math.min(1, maxWidth / video.videoWidth);
-    canvas.width = video.videoWidth * scale;
-    canvas.height = video.videoHeight * scale;
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setProcesando(true);
+    setInfoCompresion(null);
 
-    // Preview
-    setPreview(canvas.toDataURL('image/jpeg', 0.5));
-    detenerCamara();
-  };
-
-  const guardar = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    setSaving(true);
     try {
-      const blob = await comprimirImagen(canvas);
-      setSavedSize(blob.size);
+      const originalSize = file.size;
 
-      await guardarFotoE14({
-        id: `e14_${mesaId}_${Date.now()}`,
-        mesaId,
-        testigoId,
-        blob,
-        capturedAt: new Date().toISOString(),
-        deviceId,
-      });
+      // Crear ImageBitmap para procesamiento en canvas
+      const imageBitmap = await createImageBitmap(file);
+      const blob = await comprimirImagen(imageBitmap, originalSize);
+      imageBitmap.close();
 
-      onCapturada();
-    } catch (err) {
-      alert('Error al guardar la foto');
+      const preview = URL.createObjectURL(blob);
+      onFotoCapturada(blob, preview);
+    } catch (error) {
+      console.error('[CapturaE14] Error al procesar imagen:', error);
+      alert('Error al procesar la imagen. Intenta nuevamente.');
     } finally {
-      setSaving(false);
+      setProcesando(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="p-4">
-          <h3 className="text-lg font-bold text-gray-800">Foto Formulario E-14</h3>
-          <p className="text-xs text-gray-500">
-            La foto se comprimirá a menos de 200KB para transmisión 2G
+  const formatKB = (bytes: number) => `${Math.round(bytes / 1024)} KB`;
+
+  // ─── Preview de foto capturada ────────────────────────────────
+
+  if (fotoPreview) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-5 bg-editorial-red rounded-full" />
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            Foto del E-14
           </p>
         </div>
 
-        {/* Video / Preview */}
-        <div className="relative bg-black aspect-[4/3]">
-          {cameraActive && (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          )}
+        <div className="relative rounded-2xl overflow-hidden border-2 border-green-400/60 shadow-xl">
+          <img
+            src={fotoPreview}
+            alt="Formulario E-14"
+            className="w-full h-auto object-cover"
+            style={{ filter: 'grayscale(100%)' }} // Visual hint de que es B/N
+          />
 
-          {preview && !cameraActive && (
-            <img src={preview} alt="E-14 capturado" className="w-full h-full object-contain" />
-          )}
-
-          {!cameraActive && !preview && (
-            <div className="absolute inset-0 flex items-center justify-center text-white">
-              <p className="text-sm">Presione "Abrir Cámara" para capturar el E-14</p>
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+            <div className="px-3 py-1.5 bg-green-500 rounded-full shadow-lg">
+              <p className="text-xs font-black text-white flex items-center gap-1.5">
+                <span>✓</span>
+                <span>Foto capturada</span>
+              </p>
             </div>
-          )}
+            {infoCompresion && (
+              <div className="px-2 py-1 bg-black/70 backdrop-blur-sm rounded-full">
+                <p className="text-[10px] font-bold text-white">
+                  {formatKB(infoCompresion.original)} → {formatKB(infoCompresion.final)}
+                  {infoCompresion.final <= MAX_SIZE_BYTES ? ' ⚡ 2G' : ''}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Canvas oculto para procesamiento */}
-        <canvas ref={canvasRef} className="hidden" />
+        {!disabled && onEliminar && (
+          <button
+            type="button"
+            onClick={onEliminar}
+            className="w-full py-3 px-4 bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 text-red-700 rounded-xl font-bold text-sm uppercase tracking-wide hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            <span className="text-lg">🗑️</span>
+            <span>Volver a tomar foto</span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
-        {/* Controles */}
-        <div className="p-4 space-y-3">
-          {!cameraActive && !preview && (
-            <button
-              onClick={iniciarCamara}
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-            >
-              Abrir Cámara
-            </button>
-          )}
+  // ─── Botón de captura ────────────────────────────────────────
 
-          {cameraActive && (
-            <button
-              onClick={capturar}
-              className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
-            >
-              Capturar Foto
-            </button>
-          )}
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-5 bg-editorial-red rounded-full" />
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          Foto del E-14 (Opcional)
+        </p>
+      </div>
 
-          {preview && (
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setPreview(null); iniciarCamara(); }}
-                className="flex-1 py-3 border border-gray-300 rounded-lg font-semibold"
-              >
-                Repetir
-              </button>
-              <button
-                onClick={guardar}
-                disabled={saving}
-                className="flex-1 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
-              >
-                {saving ? 'Comprimiendo...' : 'Guardar'}
-              </button>
-            </div>
-          )}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={disabled || procesando}
+        className="relative w-full overflow-hidden rounded-2xl py-6 border-2 border-dashed border-gray-300 hover:border-editorial-red/50 bg-gradient-to-br from-gray-50 to-white hover:from-editorial-red/5 hover:to-red-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+      >
+        <div className="relative flex flex-col items-center gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-editorial-red to-red-700 shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            {procesando ? (
+              <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span className="text-3xl">📷</span>
+            )}
+          </div>
 
-          {savedSize !== null && (
-            <p className="text-center text-sm text-green-600">
-              Foto guardada ({(savedSize / 1024).toFixed(0)} KB)
-              {savedSize <= MAX_SIZE_BYTES ? ' — Apta para 2G' : ' — Supera límite 2G'}
+          <div className="text-center">
+            <p className="text-base font-black text-gray-800 group-hover:text-editorial-red transition-colors">
+              {procesando ? 'Comprimiendo imagen...' : 'Tomar foto del E-14'}
             </p>
-          )}
+            <p className="text-xs text-gray-500 mt-1">
+              {procesando
+                ? 'Optimizando para transmisión 2G'
+                : 'Compresión automática < 200 KB · Escala de grises'}
+            </p>
+          </div>
         </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileChange}
+          className="hidden"
+          disabled={disabled || procesando}
+        />
+      </button>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <p className="text-xs text-blue-700 leading-relaxed">
+          <span className="font-bold">💡 Consejo:</span> Asegúrate de que toda el acta sea
+          legible. La foto se comprime automáticamente para funcionar en zonas con señal 2G/EDGE.
+        </p>
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ interface VoteInputProps {
   subtitle?: string;
   size?: 'normal' | 'large';
   variant?: 'candidate' | 'special';
+  disabled?: boolean;
 }
 
 export function VoteInput({
@@ -24,8 +25,10 @@ export function VoteInput({
   subtitle,
   size = 'normal',
   variant = 'candidate',
+  disabled = false,
 }: VoteInputProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const num = parseInt(e.target.value) || 0;
     if (num >= 0 && num <= 9999) {
       onChange(num);
@@ -33,11 +36,13 @@ export function VoteInput({
   };
 
   const increment = () => {
-    if (value < 9999) onChange(value + 1);
+    if (disabled || value >= 9999) return;
+    onChange(value + 1);
   };
 
   const decrement = () => {
-    if (value > 0) onChange(value - 1);
+    if (disabled || value <= 0) return;
+    onChange(value - 1);
   };
 
   const isLarge = size === 'large';
@@ -63,7 +68,7 @@ export function VoteInput({
         <button
           type="button"
           onClick={decrement}
-          disabled={value === 0}
+          disabled={disabled || value === 0}
           className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg ${
             isLarge
               ? 'w-12 h-12 text-xl'
@@ -86,7 +91,8 @@ export function VoteInput({
             max="9999"
             value={value || ''}
             onChange={handleChange}
-            className={`text-center font-black border-3 rounded-2xl transition-all focus:outline-none focus:ring-4 shadow-lg ${
+            disabled={disabled}
+            className={`text-center font-black border-3 rounded-2xl transition-all focus:outline-none focus:ring-4 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
               isLarge
                 ? 'w-24 h-12 text-3xl'
                 : 'w-20 h-10 text-2xl'
@@ -115,7 +121,7 @@ export function VoteInput({
         <button
           type="button"
           onClick={increment}
-          disabled={value >= 9999}
+          disabled={disabled || value >= 9999}
           className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg ${
             isLarge
               ? 'w-12 h-12 text-xl'
