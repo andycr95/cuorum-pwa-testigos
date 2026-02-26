@@ -52,11 +52,16 @@ export interface LoginResponse {
   mesa: TestigoData['mesa'];
   elecciones: TestigoData['elecciones'];
   deviceId: string;
+  campana: {
+    id: string;
+    nombre: string;
+  };
 }
 
 class AuthService {
   private readonly TOKEN_KEY = 'cuorum_testigo_token';
   private readonly DATA_KEY = 'cuorum_testigo_data';
+  private readonly CAMPANA_KEY = 'cuorum_testigo_campana';
 
   /**
    * Inicia sesión con cédula y PIN
@@ -82,7 +87,9 @@ class AuthService {
         mesa: data.mesa,
         elecciones: data.elecciones,
         deviceId: data.deviceId,
+        campana: data.campana,
       }));
+      localStorage.setItem(this.CAMPANA_KEY, data.campana.id);
 
       return data;
     } catch (error) {

@@ -118,9 +118,16 @@ export async function sincronizar(): Promise<SyncResultado> {
       };
     }
 
+    const config: { headers: Record<string, string> } = { headers: {} };
+
     const token = authService.getToken();
     if (!token) {
       throw new Error('No hay sesión activa. Inicia sesión nuevamente.');
+    }
+
+    const campanaId = localStorage.getItem('cuorum_testigo_campana');
+    if (campanaId) {
+      config.headers['X-Campana-Id'] = campanaId;
     }
 
     let resultadosSinc = 0;
@@ -155,7 +162,7 @@ export async function sincronizar(): Promise<SyncResultado> {
       formData.append('fotosMetadata', JSON.stringify(fotosMetadata));
 
       const response = await axios.post(`${API_BASE_URL}/testigos/sync`, formData, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, ...config.headers },
       });
 
       // Parsear validación del servidor si el backend la provee
@@ -201,7 +208,7 @@ export async function sincronizar(): Promise<SyncResultado> {
         incFormData.append('fotosIncidenciasIds', JSON.stringify(fotosIds));
 
         await axios.post(`${API_BASE_URL}/testigos/incidencias`, incFormData, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, ...config.headers },
         });
 
         await marcarIncidenciasSincronizadas(incidencias.map((i) => i.id));
