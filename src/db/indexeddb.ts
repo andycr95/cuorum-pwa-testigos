@@ -202,6 +202,13 @@ export async function getIncidenciasPendientes() {
   return db.getAllFromIndex('incidencias', 'by-synced', 0);
 }
 
+export async function getIncidenciasByMesa(mesaId: string) {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('incidencias', 'by-mesa', mesaId);
+  // Ordenar por capturedAt desc (más reciente primero)
+  return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+}
+
 export async function marcarIncidenciasSincronizadas(ids: string[]) {
   const db = await getDB();
   const tx = db.transaction('incidencias', 'readwrite');

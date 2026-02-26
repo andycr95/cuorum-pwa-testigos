@@ -324,7 +324,7 @@ export function FormularioMesaMultiple({
           )}
         </div>
 
-        <div className="p-6 space-y-0">
+        <div className="p-6">
 
           {/* Selector de Elección */}
           <SelectorEleccion
@@ -532,7 +532,7 @@ export function FormularioMesaMultiple({
           </div>
 
           {/* ── Total de votos ──────────────────────────────────────── */}
-          <div className={`relative overflow-hidden rounded-3xl mb-6 border-2 transition-all shadow-xl ${
+          <div className={`my-4 relative overflow-hidden rounded-3xl border-2 transition-all shadow-xl ${
             hayAlertaFraude
               ? 'bg-gradient-to-br from-red-50 via-red-100 to-red-50 border-red-500 shadow-red-200'
               : totalVotos > 0
@@ -602,8 +602,8 @@ export function FormularioMesaMultiple({
                 guardado
                   ? 'bg-gradient-to-br from-green-500 via-green-600 to-green-500 shadow-2xl shadow-green-200/50'
                   : hayAlertaFraude
-                  ? 'bg-gradient-to-br from-red-600 via-red-700 to-red-600 hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
-                  : 'bg-gradient-to-br from-editorial-red via-red-700 to-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
+                  ? 'bg-brand-600 hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
+                  : 'bg-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
               } disabled:opacity-95 disabled:cursor-not-allowed`}
               style={{ letterSpacing: '0.1em' }}
             >
