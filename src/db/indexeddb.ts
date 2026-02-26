@@ -21,7 +21,19 @@ export type TipoIncidencia =
   | 'IRREGULARIDAD_ACTA'
   | 'OTRO';
 
+interface EscrutinioCacheEntry {
+  cacheKey: string;
+  data: unknown;
+  timestamp: string;
+}
+
 interface CuorumDB extends DBSchema {
+  // Escrutinio cache stores
+  'escrutinio-resultados': { key: string; value: EscrutinioCacheEntry };
+  'escrutinio-fotos': { key: string; value: EscrutinioCacheEntry };
+  'escrutinio-incidencias': { key: string; value: EscrutinioCacheEntry };
+  'escrutinio-consolidado': { key: string; value: EscrutinioCacheEntry };
+  'escrutinio-geo': { key: string; value: EscrutinioCacheEntry };
   // @ts-ignore - idb type compatibility
   resultados: {
     key: string;
@@ -101,7 +113,7 @@ let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 4, {
+  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 5, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
@@ -134,6 +146,22 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
       // v4: No se crean nuevos stores — solo se migran los datos existentes.
       // La migración real (boolean → number) se hace en la función migrateV4()
       // llamada post-open para evitar problemas con transacciones versionchange.
+
+      // v5: Stores de cache para escrutinio (testigos de solo lectura)
+      if (oldVersion < 5) {
+        const escrutinioStores = [
+          'escrutinio-resultados',
+          'escrutinio-fotos',
+          'escrutinio-incidencias',
+          'escrutinio-consolidado',
+          'escrutinio-geo',
+        ] as const;
+        for (const storeName of escrutinioStores) {
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'cacheKey' });
+          }
+        }
+      }
     },
   });
 
@@ -273,4 +301,66 @@ export async function logSync(
     success,
     error,
   });
+}
+
+export async function getResultadosByMesa(mesaId: string) {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('resultados', 'by-mesa', mesaId);
+  return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+}
+
+// ─── Escrutinio cache helpers ─────────────────────────────────
+
+type EscrutinioStoreName = 'escrutinio-resultados' | 'escrutinio-fotos' | 'escrutinio-incidencias' | 'escrutinio-consolidado' | 'escrutinio-geo';
+
+function buildCacheKey(filtros: Record<string, unknown>): string {
+  return JSON.stringify(filtros, Object.keys(filtros).sort());
+}
+
+export async function cacheEscrutinioData(storeName: EscrutinioStoreName, filtros: Record<string, unknown>, data: unknown) {
+  const db = await getDB();
+  await db.put(storeName, {
+    cacheKey: buildCacheKey(filtros),
+    data,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export async function getCachedEscrutinioData<T = unknown>(storeName: EscrutinioStoreName, filtros: Record<string, unknown>): Promise<{ data: T; timestamp: string } | null> {
+  const db = await getDB();
+  const entry = await db.get(storeName, buildCacheKey(filtros));
+  if (!entry) return null;
+  return { data: entry.data as T, timestamp: entry.timestamp };
+}
+
+export async function cacheGeoData(key: string, data: unknown) {
+  const db = await getDB();
+  await db.put('escrutinio-geo', {
+    cacheKey: key,
+    data,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export async function getCachedGeoData<T = unknown>(key: string): Promise<T | null> {
+  const db = await getDB();
+  const entry = await db.get('escrutinio-geo', key);
+  if (!entry) return null;
+  return entry.data as T;
+}
+
+export async function clearEscrutinioCache() {
+  const db = await getDB();
+  const stores: EscrutinioStoreName[] = [
+    'escrutinio-resultados',
+    'escrutinio-fotos',
+    'escrutinio-incidencias',
+    'escrutinio-consolidado',
+    'escrutinio-geo',
+  ];
+  for (const storeName of stores) {
+    if (db.objectStoreNames.contains(storeName)) {
+      await db.clear(storeName);
+    }
+  }
 }

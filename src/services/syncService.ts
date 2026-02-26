@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from './api';
 import {
   getPendientes,
   marcarSincronizados,
@@ -6,9 +6,6 @@ import {
   getIncidenciasPendientes,
   marcarIncidenciasSincronizadas,
 } from '../db/indexeddb';
-import { authService } from './authService';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
  * Servicio de Sincronización Offline-First
@@ -37,11 +34,7 @@ export async function verificarConectividadReal(): Promise<boolean> {
   if (!navigator.onLine) return false; // Corte rápido si el browser sabe que está offline
 
   try {
-    await axios.get(`${API_BASE_URL}/health`, {
-      headers: {
-        'Authorization': `Bearer ${authService.getToken()}`,
-        'cache': 'no-store',
-      },
+    await api.get(`/health`, {
       signal: AbortSignal.timeout(3000),
     });
     return true;
@@ -118,18 +111,6 @@ export async function sincronizar(): Promise<SyncResultado> {
       };
     }
 
-    const config: { headers: Record<string, string> } = { headers: {} };
-
-    const token = authService.getToken();
-    if (!token) {
-      throw new Error('No hay sesión activa. Inicia sesión nuevamente.');
-    }
-
-    const campanaId = localStorage.getItem('cuorum_testigo_campana');
-    if (campanaId) {
-      config.headers['X-Campana-Id'] = campanaId;
-    }
-
     let resultadosSinc = 0;
     let fotosSinc = 0;
     let incidenciasSinc = 0;
@@ -161,9 +142,7 @@ export async function sincronizar(): Promise<SyncResultado> {
       }
       formData.append('fotosMetadata', JSON.stringify(fotosMetadata));
 
-      const response = await axios.post(`${API_BASE_URL}/testigos/sync`, formData, {
-        headers: { Authorization: `Bearer ${token}`, ...config.headers },
-      });
+      const response = await api.post(`/testigos/sync`, formData);
 
       // Parsear validación del servidor si el backend la provee
       if (response.data && typeof response.data === 'object') {
@@ -207,9 +186,7 @@ export async function sincronizar(): Promise<SyncResultado> {
         });
         incFormData.append('fotosIncidenciasIds', JSON.stringify(fotosIds));
 
-        await axios.post(`${API_BASE_URL}/testigos/incidencias`, incFormData, {
-          headers: { Authorization: `Bearer ${token}`, ...config.headers },
-        });
+        await api.post(`/testigos/incidencias`, incFormData);
 
         await marcarIncidenciasSincronizadas(incidencias.map((i) => i.id));
         incidenciasSinc = incidencias.length;

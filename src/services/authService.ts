@@ -4,9 +4,7 @@
  * Maneja login, logout, verificación de token y persistencia de sesión
  */
 
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+import { api } from './api';
 
 export interface MesaData {
   id: string;
@@ -28,6 +26,7 @@ export interface TestigoData {
     telefono: string;
     email: string | null;
   };
+  tipoTestigo: 'ELECTORAL' | 'ESCRUTINIO';
   mesa: MesaData; // Mesa actual (para compatibilidad)
   mesas?: MesaData[]; // Array de mesas (para el selector)
   elecciones: Array<{
@@ -48,6 +47,7 @@ export interface TestigoData {
 
 export interface LoginResponse {
   token: string;
+  tipoTestigo: 'ELECTORAL' | 'ESCRUTINIO';
   testigo: TestigoData['testigo'];
   mesa: TestigoData['mesa'];
   elecciones: TestigoData['elecciones'];
@@ -68,14 +68,9 @@ class AuthService {
    */
   async login(cedula: string, pin: string): Promise<LoginResponse> {
     try {
-      const response = await axios.post<LoginResponse>(
-        `${API_BASE_URL}/auth/testigos/login`,
+      const response = await api.post<LoginResponse>(
+        `/auth/testigos/login`,
         { cedula, pin },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
       );
 
       const data = response.data;
@@ -84,6 +79,7 @@ class AuthService {
       localStorage.setItem(this.TOKEN_KEY, data.token);
       localStorage.setItem(this.DATA_KEY, JSON.stringify({
         testigo: data.testigo,
+        tipoTestigo: data.tipoTestigo || 'ELECTORAL',
         mesa: data.mesa,
         elecciones: data.elecciones,
         deviceId: data.deviceId,
@@ -93,9 +89,6 @@ class AuthService {
 
       return data;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
       if (error instanceof Error) {
         throw error;
       }
@@ -111,11 +104,7 @@ class AuthService {
     if (!token) return false;
 
     try {
-      await axios.get(`${API_BASE_URL}/auth/testigos/verify`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      await api.get(`/auth/testigos/verify`);
 
       return true;
     } catch (error) {
@@ -131,6 +120,7 @@ class AuthService {
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.DATA_KEY);
+    localStorage.removeItem(this.CAMPANA_KEY);
   }
 
   /**
@@ -155,21 +145,18 @@ class AuthService {
   }
 
   /**
+   * Obtiene el tipo de testigo (ELECTORAL o ESCRUTINIO)
+   */
+  getTipoTestigo(): 'ELECTORAL' | 'ESCRUTINIO' {
+    const data = this.getTestigoData();
+    return data?.tipoTestigo || 'ELECTORAL';
+  }
+
+  /**
    * Verifica si hay una sesión activa
    */
   isAuthenticated(): boolean {
     return this.getToken() !== null && this.getTestigoData() !== null;
-  }
-
-  /**
-   * Obtiene headers con autenticación para requests
-   */
-  getAuthHeaders(): Record<string, string> {
-    const token = this.getToken();
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-    };
   }
 }
 

@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { FormularioMesaMultiple } from './components/formulario/FormularioMesaMultiple';
 import { LoginPage } from './components/auth/LoginPage';
 import { SelectorMesa } from './components/auth/SelectorMesa';
+import { EscrutinioDashboard } from './components/escrutinio/EscrutinioDashboard';
 import { authService, TestigoData } from './services/authService';
+import { clearEscrutinioCache } from './db/indexeddb';
 
 /**
  * PWA Testigos Electorales
@@ -46,7 +48,7 @@ export function App() {
         setIsAuthenticated(true);
         
         // Autoseleccionar si solo hay una mesa
-        const listaMesas = data.mesas || [data.mesa];
+        const listaMesas = data.mesas && data.mesas.length > 0 ? data.mesas || [data.mesa] : [];
         if (listaMesas.length === 1) {
           setSelectedMesaId(listaMesas[0].id);
         }
@@ -77,12 +79,11 @@ export function App() {
 
   // Manejar logout
   const handleLogout = () => {
-    if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-      authService.logout();
-      setTestigoData(null);
-      setIsAuthenticated(false);
-      setSelectedMesaId(null);
-    }
+    authService.logout();
+    clearEscrutinioCache().catch(() => {});
+    setTestigoData(null);
+    setIsAuthenticated(false);
+    setSelectedMesaId(null);
   };
 
   // Volver al selector de mesa
@@ -115,7 +116,12 @@ export function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Obtener mesa seleccionada
+  // Testigo de escrutinio → dashboard de solo lectura
+  if (testigoData.tipoTestigo === 'ESCRUTINIO') {
+    return <EscrutinioDashboard testigoData={testigoData} onLogout={handleLogout} />;
+  }
+
+  // Obtener mesa seleccionada (flujo ELECTORAL)
   const listaMesas = testigoData.mesas || [testigoData.mesa];
   const mesaSeleccionada = listaMesas.find(m => m.id === selectedMesaId);
 

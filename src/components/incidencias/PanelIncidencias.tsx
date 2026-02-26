@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { api } from '../../services/api';
 import { guardarIncidencia, getIncidenciasByMesa, TipoIncidencia } from '../../db/indexeddb';
 import { sincronizar, verificarConectividadReal } from '../../services/syncService';
-import { authService } from '../../services/authService';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /** Incidencia ya sincronizada que llega desde el backend */
 interface IncidenciaRemota {
@@ -104,13 +101,9 @@ export function PanelIncidencias({
       // Fuente 2: ya sincronizadas en el backend
       let remotas: IncidenciaRemota[] = [];
       try {
-        const token = authService.getToken();
-        const { data } = await axios.get<{ data: Array<{ id: string; tipo: TipoIncidencia; descripcion: string; fotoUrl: string | null; capturedAt: string }> }>(
-          `${API_BASE_URL}/testigos/incidencias`,
+        const { data } = await api.get<{ data: Array<{ id: string; tipo: TipoIncidencia; descripcion: string; fotoUrl: string | null; capturedAt: string }> }>(`/testigos/incidencias`,
           {
             params: { mesaId, limit: 100 },
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 8000,
           },
         );
         remotas = (data.data ?? []).map((r) => ({
