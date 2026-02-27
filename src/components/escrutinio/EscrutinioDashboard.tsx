@@ -22,23 +22,28 @@ interface Props {
   onLogout: () => void;
 }
 
-const INCIDENCIA_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-  MATERIALES_FALTANTES: { label: 'Materiales faltantes', emoji: '📦', color: 'bg-yellow-100 text-yellow-800' },
-  INTIMIDACION:         { label: 'Intimidación',          emoji: '⚠️',  color: 'bg-yellow-100 text-yellow-800' },
-  VIOLENCIA:            { label: 'Violencia',             emoji: '🚨', color: 'bg-red-100 text-red-800' },
-  JURADO_AUSENTE:       { label: 'Jurado ausente',        emoji: '👤', color: 'bg-blue-100 text-blue-800' },
-  IRREGULARIDAD_ACTA:   { label: 'Irregularidad en acta', emoji: '📋', color: 'bg-purple-100 text-purple-800' },
-  OTRO:                 { label: 'Otro',                   emoji: '📝', color: 'bg-gray-100 text-gray-800' },
+const INCIDENCIA_LABELS: Record<string, { label: string; color: string }> = {
+  MATERIALES_FALTANTES: { label: 'Materiales faltantes', color: 'bg-yellow-100 text-yellow-800' },
+  INTIMIDACION:         { label: 'Intimidaci\u00f3n',    color: 'bg-yellow-100 text-yellow-800' },
+  VIOLENCIA:            { label: 'Violencia',            color: 'bg-red-100 text-red-800' },
+  JURADO_AUSENTE:       { label: 'Jurado ausente',       color: 'bg-blue-100 text-blue-800' },
+  IRREGULARIDAD_ACTA:   { label: 'Irregularidad en acta', color: 'bg-purple-100 text-purple-800' },
+  OTRO:                 { label: 'Otro',                  color: 'bg-gray-100 text-gray-800' },
 };
 
 export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
-  // Filtros
+  // Elecciones — auto-seleccionada desde auth
+  const elecciones = authService.getEleccionesData();
+  const [eleccionId, setEleccionId] = useState<string>(
+    authService.getEleccionId() || (elecciones.length > 0 ? elecciones[0].id : ''),
+  );
+  const campanaId = authService.getCampanaId();
+
+  // Filtros geo (colapsables)
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const [departamentoId, setDepartamentoId] = useState('');
   const [municipioId, setMunicipioId] = useState('');
   const [puestoVotacionId, setPuestoVotacionId] = useState('');
-  const [eleccionId, setEleccionId] = useState<string | null>(authService.getEleccionId());
-  const [eleccion, setEleccion] = useState<TestigoData['elecciones'] | null>();
-  const [campanaId, setCampanaId] = useState<string | null>(authService.getCampanaId());
 
   // Geo data
   const [departamentos, setDepartamentos] = useState<Array<{ id: string; nombre: string }>>([]);
@@ -61,9 +66,14 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
+  // Nombre de la elección activa
+  const eleccionActiva = elecciones.find(e => e.id === eleccionId);
+
+  // Conteo de filtros geo activos (para badge)
+  const filtrosActivos = [departamentoId, municipioId, puestoVotacionId].filter(Boolean).length;
+
   // Online/Offline detection
   useEffect(() => {
-    setEleccion(authService.getEleccionesData());
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
@@ -74,8 +84,9 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     };
   }, []);
 
-  // Load geo data (departamentos, elecciones)
+  // Load geo data (departamentos) — solo cuando se abren los filtros
   useEffect(() => {
+    if (!filtrosAbiertos || departamentos.length > 0) return;
     const loadGeo = async () => {
       try {
         const deps = await escrutinioService.getDepartamentos(campanaId || '');
@@ -87,7 +98,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       }
     };
     loadGeo();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filtrosAbiertos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load municipios when departamento changes
   useEffect(() => {
@@ -110,7 +121,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       }
     };
     loadMunicipios();
-  }, [departamentoId]);
+  }, [departamentoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load puestos when municipio changes
   useEffect(() => {
@@ -141,7 +152,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     ...(eleccionId && { eleccionId }),
   }), [departamentoId, municipioId, puestoVotacionId, eleccionId]);
 
-  // Fetch data — API-first, cache solo como fallback offline
+  // Fetch data
   const fetchData = useCallback(async () => {
     setLoading(true);
     setIsCached(false);
@@ -149,14 +160,10 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     const storeName = `escrutinio-${tabActiva === 'novedades' ? 'incidencias' : tabActiva}` as const;
     const cacheKey = { tab: tabActiva, ...filtros, page };
 
-    // 1. Intentar siempre el backend primero
     try {
       let freshData: unknown;
       if (tabActiva === 'consolidado') {
-        if (!eleccionId) {
-          setLoading(false);
-          return;
-        }
+        if (!eleccionId) { setLoading(false); return; }
         freshData = await escrutinioService.getConsolidado({ eleccionId, ...filtros });
       } else if (tabActiva === 'resultados') {
         freshData = await escrutinioService.getResultados({ ...filtros, page, limit: 50 });
@@ -168,10 +175,8 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       applyData(tabActiva, freshData);
       setIsCached(false);
       setLastUpdate(new Date().toISOString());
-      // Guardar en cache para uso offline futuro
       await cacheEscrutinioData(storeName, cacheKey, freshData);
     } catch {
-      // 2. Si falla (offline), intentar cache como fallback
       const cached = await getCachedEscrutinioData(storeName, cacheKey);
       if (cached) {
         applyData(tabActiva, cached.data);
@@ -192,19 +197,21 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   }
 
   // Trigger fetch on filter/tab/page change
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Reset page on filter/tab change
-  useEffect(() => {
-    setPage(1);
-  }, [tabActiva, departamentoId, municipioId, puestoVotacionId, eleccionId]);
+  useEffect(() => { setPage(1); }, [tabActiva, departamentoId, municipioId, puestoVotacionId, eleccionId]);
 
   const handleLogout = () => {
-    if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+    if (confirm('\u00bfEst\u00e1s seguro de que deseas cerrar sesi\u00f3n?')) {
       onLogout();
     }
+  };
+
+  const limpiarFiltros = () => {
+    setDepartamentoId('');
+    setMunicipioId('');
+    setPuestoVotacionId('');
   };
 
   return (
@@ -224,14 +231,14 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className="px-2 py-1 bg-purple-500/40 rounded-md text-xs font-semibold">
                 Escrutinio
               </span>
               <button
                 onClick={handleLogout}
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                title="Cerrar sesión"
+                title="Cerrar sesi\u00f3n"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -239,88 +246,154 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Filtros */}
-      <div className="bg-white border-b shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <select
-              value={departamentoId}
-              onChange={(e) => {
-                setDepartamentoId(e.target.value);
-                setMunicipioId('');
-                setPuestoVotacionId('');
-              }}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            >
-              <option value="">Todos los departamentos</option>
-              {departamentos.map(d => (
-                <option key={d.id} value={d.id}>{d.nombre}</option>
-              ))}
-            </select>
-
-            <select
-              value={municipioId}
-              onChange={(e) => {
-                setMunicipioId(e.target.value);
-                setPuestoVotacionId('');
-              }}
-              disabled={!departamentoId}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white disabled:opacity-50 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            >
-              <option value="">Todos los municipios</option>
-              {municipios.map(m => (
-                <option key={m.id} value={m.id}>{m.nombre}</option>
-              ))}
-            </select>
-
-            <select
-              value={puestoVotacionId}
-              onChange={(e) => setPuestoVotacionId(e.target.value)}
-              disabled={!municipioId}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white disabled:opacity-50 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            >
-              <option value="">Todos los puestos</option>
-              {puestos.map(p => (
-                <option key={p.id} value={p.id}>{p.nombre}</option>
-              ))}
-            </select>
-
-            <input
-              type="text"
-              disabled
-              value={eleccion ? eleccion[0].nombre : 'Cargando elecciones...'}
-              className='text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
-              placeholder='Filtro de elección (próximamente)'
-            />
-          </div>
-
-          {/* Status bar */}
-          <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1 ${isOnline ? 'text-green-600' : 'text-orange-600'}`}>
-                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-orange-500'}`} />
-                {isOnline ? 'En línea' : 'Sin conexión'}
+          {/* Elecci\u00f3n activa — info contextual en el header */}
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            {elecciones.length <= 1 ? (
+              // Una sola elecci\u00f3n — mostrar como chip informativo
+              <span className="px-3 py-1 bg-white/15 backdrop-blur rounded-lg text-sm font-medium">
+                {eleccionActiva?.nombre || 'Sin elecci\u00f3n'}
               </span>
-              {isCached && (
-                <span className="text-orange-500 font-medium">Datos en caché</span>
-              )}
-            </div>
-            {lastUpdate && (
-              <span>
-                Actualizado: {new Date(lastUpdate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+            ) : (
+              // M\u00faltiples elecciones — selector compacto
+              <select
+                value={eleccionId}
+                onChange={(e) => setEleccionId(e.target.value)}
+                className="px-3 py-1 bg-white/15 backdrop-blur rounded-lg text-sm font-medium text-white border border-white/20 focus:ring-2 focus:ring-white/40 focus:outline-none appearance-none cursor-pointer"
+              >
+                {elecciones.map(e => (
+                  <option key={e.id} value={e.id} className="text-gray-900">{e.nombre}</option>
+                ))}
+              </select>
+            )}
+            {eleccionActiva && (
+              <span className="text-purple-300 text-xs">
+                {eleccionActiva.tipoEleccion.replace(/_/g, ' ')}
               </span>
             )}
           </div>
         </div>
       </div>
 
+      {/* Barra de estado + filtros toggle */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-2">
+          <div className="flex items-center justify-between">
+            {/* Estado + filtros toggle */}
+            <div className="flex items-center gap-3">
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${isOnline ? 'text-green-600' : 'text-orange-600'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-orange-500'}`} />
+                {isOnline ? 'En l\u00ednea' : 'Sin conexi\u00f3n'}
+              </span>
+              {isCached && (
+                <span className="text-orange-500 text-xs font-medium">Datos en cach\u00e9</span>
+              )}
+
+              {/* Bot\u00f3n de filtros */}
+              <button
+                onClick={() => setFiltrosAbiertos(!filtrosAbiertos)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  filtrosAbiertos || filtrosActivos > 0
+                    ? 'bg-purple-100 text-purple-700'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filtrar
+                {filtrosActivos > 0 && (
+                  <span className="w-4 h-4 bg-purple-600 text-white rounded-full text-[10px] flex items-center justify-center">
+                    {filtrosActivos}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Refresh + timestamp */}
+            <div className="flex items-center gap-2">
+              {lastUpdate && (
+                <span className="text-xs text-gray-400">
+                  {new Date(lastUpdate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-40"
+                title="Actualizar datos"
+              >
+                <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Filtros geo colapsables */}
+          {filtrosAbiertos && (
+            <div className="mt-2 pb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <select
+                  value={departamentoId}
+                  onChange={(e) => {
+                    setDepartamentoId(e.target.value);
+                    setMunicipioId('');
+                    setPuestoVotacionId('');
+                  }}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Todos los departamentos</option>
+                  {departamentos.map(d => (
+                    <option key={d.id} value={d.id}>{d.nombre}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={municipioId}
+                  onChange={(e) => {
+                    setMunicipioId(e.target.value);
+                    setPuestoVotacionId('');
+                  }}
+                  disabled={!departamentoId}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white disabled:opacity-40 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Todos los municipios</option>
+                  {municipios.map(m => (
+                    <option key={m.id} value={m.id}>{m.nombre}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={puestoVotacionId}
+                  onChange={(e) => setPuestoVotacionId(e.target.value)}
+                  disabled={!municipioId}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white disabled:opacity-40 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Todos los puestos</option>
+                  {puestos.map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {filtrosActivos > 0 && (
+                <button
+                  onClick={limpiarFiltros}
+                  className="mt-2 text-xs text-purple-600 font-semibold hover:underline"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4">
-          <nav className="flex gap-1 -mb-px">
+          <nav className="flex gap-1 -mb-px overflow-x-auto">
             {([
               { key: 'consolidado', label: 'Consolidado' },
               { key: 'resultados', label: 'Resultados' },
@@ -330,7 +403,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               <button
                 key={tab.key}
                 onClick={() => setTabActiva(tab.key)}
-                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                   tabActiva === tab.key
                     ? 'border-purple-600 text-purple-700'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -353,27 +426,20 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
 
         {!loading && !isOnline && !isCached && (
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 text-center">
-            <p className="text-orange-800 font-semibold">Sin conexión</p>
-            <p className="text-orange-600 text-sm mt-1">No hay datos en caché para estos filtros. Conéctate a internet para cargar datos.</p>
+            <p className="text-orange-800 font-semibold">Sin conexi\u00f3n</p>
+            <p className="text-orange-600 text-sm mt-1">No hay datos en cach\u00e9 para estos filtros. Con\u00e9ctate a internet para cargar datos.</p>
           </div>
         )}
 
-        {/* Tab: Consolidado */}
         {tabActiva === 'consolidado' && (
-          <TabConsolidado consolidado={consolidado} loading={loading && !isCached} eleccionId={eleccionId!} />
+          <TabConsolidado consolidado={consolidado} loading={loading && !isCached} />
         )}
-
-        {/* Tab: Resultados */}
         {tabActiva === 'resultados' && (
           <TabResultados data={resultados} loading={loading && !isCached} page={page} onPageChange={setPage} />
         )}
-
-        {/* Tab: Fotos */}
         {tabActiva === 'fotos' && (
           <TabFotos data={fotos} loading={loading && !isCached} page={page} onPageChange={setPage} />
         )}
-
-        {/* Tab: Novedades */}
         {tabActiva === 'novedades' && (
           <TabNovedades data={incidencias} loading={loading && !isCached} page={page} onPageChange={setPage} />
         )}
@@ -384,19 +450,10 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
 
 // ─── Tab: Consolidado ──────────────────────────────────────────
 
-function TabConsolidado({ consolidado, loading, eleccionId }: {
+function TabConsolidado({ consolidado, loading }: {
   consolidado: ConsolidadoEscrutinio | null;
   loading: boolean;
-  eleccionId: string;
 }) {
-  if (!eleccionId) {
-    return (
-      <div className="bg-white rounded-xl p-6 text-center text-gray-500">
-        Selecciona una elección para ver el consolidado.
-      </div>
-    );
-  }
-
   if (loading || !consolidado) return null;
 
   const { candidatos, totales, cobertura } = consolidado;
@@ -412,7 +469,7 @@ function TabConsolidado({ consolidado, loading, eleccionId }: {
           <p className="text-xs text-purple-600 font-semibold">{cobertura} cobertura</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Votos válidos</p>
+          <p className="text-xs text-gray-500 uppercase font-semibold">Votos v\u00e1lidos</p>
           <p className="text-2xl font-bold text-gray-900">{totales.totalVotosValidos.toLocaleString('es-CO')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border">
@@ -594,7 +651,7 @@ function TabNovedades({ data, loading, page, onPageChange }: {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2 py-1 rounded ${config.color}`}>
-                  {config.emoji} {config.label}
+                  {config.label}
                 </span>
                 <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-1 rounded">
                   Mesa #{inc.mesa.numero}
