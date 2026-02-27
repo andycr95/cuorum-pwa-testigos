@@ -41,6 +41,18 @@ export interface TestigoData {
       partido: string;
       numero: number | null;
     }>;
+    listas?: Array<{
+      id: string;
+      nombre: string;
+      partido: string;
+      tipoLista: 'CERRADA' | 'PREFERENTE';
+      candidatos: Array<{
+        id: string;
+        nombre: string;
+        partido: string;
+        numero: number | null;
+      }>;
+    }>;
   }>;
   deviceId: string;
 }
@@ -138,7 +150,20 @@ class AuthService {
     if (!data) return null;
 
     try {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data) as TestigoData;
+
+      // Normalizar tipoCargo para sesiones cacheadas que tengan el valor del backend (COLEGIADO)
+      if (parsed.elecciones) {
+        parsed.elecciones = parsed.elecciones.map((e) => ({
+          ...e,
+          tipoCargo:
+            (e.tipoCargo as string) === 'COLEGIADO'
+              ? (e.votoPreferente ? 'LISTA_CON_PREFERENTE' : 'LISTA')
+              : e.tipoCargo,
+        }));
+      }
+
+      return parsed;
     } catch {
       return null;
     }

@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
-import { guardarResultado, guardarFotoE14 } from '../../db/indexeddb';
+import { useState, useCallback, useEffect } from 'react';
+import { guardarResultado, guardarFotoE14, getResultadosByMesa } from '../../db/indexeddb';
+import { api } from '../../services/api';
 import { sincronizar, verificarConectividadReal, SyncResultado } from '../../services/syncService';
 import { SelectorEleccion } from './SelectorEleccion';
 import { VoteInput } from './VoteInput';
@@ -40,6 +41,18 @@ interface Lista {
   partido: string;
   tipoLista: 'CERRADA' | 'PREFERENTE';
   candidatos: Candidato[];
+}
+
+interface ResultadoGuardado {
+  candidato: string;
+  partido: string;
+  tipoVoto: string;
+  votos: number;
+  votosBlanco: number;
+  votosNulos: number;
+  votosNoMarcados: number;
+  totalVotosMesa: number;
+  capturedAt: string;
 }
 
 interface FormularioMesaMultipleProps {
@@ -90,6 +103,62 @@ export function FormularioMesaMultiple({
   const [codigoActa, setCodigoActa] = useState<string | null>(null);
   const [cerrando, setCerrando] = useState(false);
 
+  // Estado para verificación de resultados ya registrados
+  const [yaRegistrado, setYaRegistrado] = useState(false);
+  const [resultadosExistentes, setResultadosExistentes] = useState<ResultadoGuardado[]>([]);
+  const [cargandoResultados, setCargandoResultados] = useState(true);
+
+  // Verificar si ya existen resultados para esta mesa + elección
+  useEffect(() => {
+    let cancelled = false;
+    const verificar = async () => {
+      setCargandoResultados(true);
+      try {
+        // 1. Verificar en IndexedDB local
+        const locales = await getResultadosByMesa(mesaId);
+        const deEstaEleccion = locales.filter(r => r.eleccionId === eleccionActual);
+
+        if (deEstaEleccion.length > 0 && !cancelled) {
+          setResultadosExistentes(deEstaEleccion);
+          setYaRegistrado(true);
+          setCargandoResultados(false);
+          return;
+        }
+
+        // 2. Verificar en el servidor (si hay conexión)
+        try {
+          const { data } = await api.get<{
+            data: Array<ResultadoGuardado & { eleccionId: string }>;
+          }>('/testigos/resultados/historial', {
+            params: { mesaId, limit: 200 },
+          });
+          const remotos = (data.data ?? []).filter(
+            (r) => r.eleccionId === eleccionActual,
+          );
+          if (remotos.length > 0 && !cancelled) {
+            setResultadosExistentes(remotos);
+            setYaRegistrado(true);
+            setCargandoResultados(false);
+            return;
+          }
+        } catch {
+          // Sin conexión — solo verificamos localmente
+        }
+
+        // No hay resultados previos
+        if (!cancelled) {
+          setYaRegistrado(false);
+          setResultadosExistentes([]);
+        }
+      } finally {
+        if (!cancelled) setCargandoResultados(false);
+      }
+    };
+
+    verificar();
+    return () => { cancelled = true; };
+  }, [mesaId, eleccionActual]);
+
   const eleccion = elecciones.find((e) => e.id === eleccionActual);
 
   if (!eleccion) {
@@ -132,6 +201,9 @@ export function FormularioMesaMultiple({
     setSyncStatus(null);
     setActaCerrada(false);
     setCodigoActa(null);
+    setYaRegistrado(false);
+    setResultadosExistentes([]);
+    setCargandoResultados(true);
   }, [fotoPreview]);
 
   const handleGuardar = async () => {
@@ -336,6 +408,96 @@ export function FormularioMesaMultiple({
             }}
           />
 
+          {/* Verificando resultados previos */}
+          {cargandoResultados && (
+            <div className="py-8 text-center">
+              <span className="inline-block w-6 h-6 border-2 border-editorial-red/40 border-t-transparent rounded-full animate-spin mb-2" />
+              <p className="text-xs text-gray-500 font-semibold">Verificando resultados previos...</p>
+            </div>
+          )}
+
+          {/* Resultados ya registrados — vista de solo lectura */}
+          {!cargandoResultados && yaRegistrado && (
+            <div className="space-y-4 mb-6">
+              {/* Banner */}
+              <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                    <span className="text-white text-xl">✓</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-green-800">Resultados ya registrados</p>
+                    <p className="text-xs text-green-600 mt-0.5">
+                      Los resultados para esta elección ya fueron capturados. Solo puedes registrar incidentes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumen de resultados */}
+              <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                  <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Resumen de votos registrados</p>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {resultadosExistentes
+                    .filter(r => r.tipoVoto === 'CANDIDATO' || r.tipoVoto === 'LISTA')
+                    .map((r, i) => (
+                      <div key={i} className="flex items-center justify-between px-4 py-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-800 truncate">{r.candidato}</p>
+                          {r.partido && <p className="text-xs text-gray-500">{r.partido}</p>}
+                        </div>
+                        <span className="text-lg font-black text-editorial-red ml-3">{r.votos}</span>
+                      </div>
+                    ))}
+                </div>
+                {/* Votos especiales */}
+                {((resultadosExistentes[0]?.votosBlanco ?? 0) > 0 ||
+                  (resultadosExistentes[0]?.votosNulos ?? 0) > 0 ||
+                  (resultadosExistentes[0]?.votosNoMarcados ?? 0) > 0) && (
+                  <div className="border-t-2 border-dashed border-gray-200 divide-y divide-gray-100">
+                    {(resultadosExistentes[0]?.votosBlanco ?? 0) > 0 && (
+                      <div className="flex items-center justify-between px-4 py-2">
+                        <p className="text-xs text-gray-500">Votos en blanco</p>
+                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosBlanco}</span>
+                      </div>
+                    )}
+                    {(resultadosExistentes[0]?.votosNulos ?? 0) > 0 && (
+                      <div className="flex items-center justify-between px-4 py-2">
+                        <p className="text-xs text-gray-500">Votos nulos</p>
+                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosNulos}</span>
+                      </div>
+                    )}
+                    {(resultadosExistentes[0]?.votosNoMarcados ?? 0) > 0 && (
+                      <div className="flex items-center justify-between px-4 py-2">
+                        <p className="text-xs text-gray-500">No marcados</p>
+                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosNoMarcados}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Total */}
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                  <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Total votos</p>
+                  <span className="text-xl font-black text-editorial-black">
+                    {resultadosExistentes[0]?.totalVotosMesa ?? 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Timestamp */}
+              {resultadosExistentes[0]?.capturedAt && (
+                <p className="text-center text-[10px] text-gray-400 font-semibold">
+                  Registrado el {new Date(resultadosExistentes[0].capturedAt).toLocaleString('es-CO')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Formulario editable (solo si NO hay resultados previos) ── */}
+          {!cargandoResultados && !yaRegistrado && (<>
+
           {/* Alerta de fraude */}
           {hayAlertaFraude && (
             <div className="mb-6 relative overflow-hidden rounded-2xl">
@@ -380,7 +542,7 @@ export function FormularioMesaMultiple({
                   }}
                   size="large"
                   variant="candidate"
-                  disabled={actaCerrada}
+                  disabled={guardado}
                 />
               ))}
             </div>
@@ -403,7 +565,7 @@ export function FormularioMesaMultiple({
                         inputMode="numeric"
                         min="0"
                         value={votosLista[lista.id] || ''}
-                        disabled={actaCerrada}
+                        disabled={guardado}
                         onChange={(e) => {
                           const num = parseInt(e.target.value) || 0;
                           if (num >= 0) {
@@ -428,7 +590,7 @@ export function FormularioMesaMultiple({
                             inputMode="numeric"
                             min="0"
                             value={votosPreferente[candidato.id] || ''}
-                            disabled={actaCerrada}
+                            disabled={guardado}
                             onChange={(e) => {
                               const num = parseInt(e.target.value) || 0;
                               if (num >= 0) {
@@ -467,21 +629,21 @@ export function FormularioMesaMultiple({
               value={votosBlanco}
               onChange={(v) => { setVotosBlanco(v); setGuardado(false); setSyncStatus(null); }}
               variant="special"
-              disabled={actaCerrada}
+              disabled={guardado}
             />
             <VoteInput
               label="Votos nulos"
               value={votosNulos}
               onChange={(v) => { setVotosNulos(v); setGuardado(false); setSyncStatus(null); }}
               variant="special"
-              disabled={actaCerrada}
+              disabled={guardado}
             />
             <VoteInput
               label="No marcados"
               value={votosNoMarcados}
               onChange={(v) => { setVotosNoMarcados(v); setGuardado(false); setSyncStatus(null); }}
               variant="special"
-              disabled={actaCerrada}
+              disabled={guardado}
             />
           </div>
 
@@ -514,7 +676,7 @@ export function FormularioMesaMultiple({
                 setSyncStatus(null);
               }}
               fotoPreview={fotoPreview}
-              disabled={actaCerrada}
+              disabled={guardado}
             />
           </div>
 
@@ -527,7 +689,7 @@ export function FormularioMesaMultiple({
                 setGuardado(false);
                 setSyncStatus(null);
               }}
-              disabled={actaCerrada}
+              disabled={guardado}
             />
           </div>
 
@@ -711,7 +873,9 @@ export function FormularioMesaMultiple({
             </button>
           )}
 
-          {/* ── Panel de incidencias ────────────────────────────────── */}
+          </>)}
+
+          {/* ── Panel de incidencias (siempre visible) ───────────────── */}
           <div className="mb-6">
             <PanelIncidencias
               mesaId={mesaId}
