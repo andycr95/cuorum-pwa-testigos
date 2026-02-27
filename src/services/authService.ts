@@ -143,6 +143,13 @@ class AuthService {
   }
 
   /**
+   * Obtiene el ID de la campaña activa   
+   */
+  getCampanaId(): string | null {
+    return localStorage.getItem(this.CAMPANA_KEY);
+  }
+
+  /**
    * Obtiene los datos del testigo guardados
    */
   getTestigoData(): TestigoData | null {

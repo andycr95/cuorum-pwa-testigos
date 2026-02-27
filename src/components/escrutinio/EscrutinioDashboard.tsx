@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { TestigoData } from '../../services/authService';
 import {
   escrutinioService,
   type ResultadoEscrutinio,
@@ -8,6 +7,7 @@ import {
   type ConsolidadoEscrutinio,
   type PaginatedResponse,
 } from '../../services/escrutinioService';
+import { authService, TestigoData } from '../../services/authService';
 import {
   cacheEscrutinioData,
   getCachedEscrutinioData,
@@ -37,12 +37,12 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   const [municipioId, setMunicipioId] = useState('');
   const [puestoVotacionId, setPuestoVotacionId] = useState('');
   const [eleccionId, setEleccionId] = useState('');
+  const [campanaId, setCampanaId] = useState<string | null>(authService.getCampanaId());
 
   // Geo data
   const [departamentos, setDepartamentos] = useState<Array<{ id: string; nombre: string }>>([]);
   const [municipios, setMunicipios] = useState<Array<{ id: string; nombre: string }>>([]);
   const [puestos, setPuestos] = useState<Array<{ id: string; nombre: string }>>([]);
-  const [elecciones, setElecciones] = useState<Array<{ id: string; nombre: string }>>([]);
 
   // Tab
   const [tabActiva, setTabActiva] = useState<TabActiva>('consolidado');
@@ -75,16 +75,8 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   // Load geo data (departamentos, elecciones)
   useEffect(() => {
     const loadGeo = async () => {
-      // Elecciones from auth data
-      const elecs = await escrutinioService.getElecciones();
-      setElecciones(elecs);
-      if (elecs.length > 0 && !eleccionId) {
-        setEleccionId(elecs[0].id);
-      }
-
-      // Departamentos — API first, cache como fallback
       try {
-        const deps = await escrutinioService.getDepartamentos();
+        const deps = await escrutinioService.getDepartamentos(campanaId || '');
         setDepartamentos(deps);
         await cacheGeoData('departamentos', deps);
       } catch {
@@ -107,7 +99,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     const loadMunicipios = async () => {
       const cacheKey = `municipios-${departamentoId}`;
       try {
-        const munis = await escrutinioService.getMunicipios(departamentoId);
+        const munis = await escrutinioService.getMunicipios(departamentoId, campanaId || '');
         setMunicipios(munis);
         await cacheGeoData(cacheKey, munis);
       } catch {
@@ -294,16 +286,13 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               ))}
             </select>
 
-            <select
+            <input
+              type="text"
+              disabled
               value={eleccionId}
-              onChange={(e) => setEleccionId(e.target.value)}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            >
-              <option value="">Elección</option>
-              {elecciones.map(e => (
-                <option key={e.id} value={e.id}>{e.nombre}</option>
-              ))}
-            </select>
+              className='text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
+              placeholder='Filtro de elección (próximamente)'
+            />
           </div>
 
           {/* Status bar */}

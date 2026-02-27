@@ -6,7 +6,6 @@
  */
 
 import { api } from './api';
-import { authService } from './authService';
 
 export interface FiltrosEscrutinio {
   departamentoId?: string;
@@ -175,20 +174,14 @@ class EscrutinioService {
     return response.data;
   }
 
-  async getDepartamentos(): Promise<Array<{ id: string; nombre: string }>> {
-    const response = await api.get(`/geo/departamentos`);
+  async getDepartamentos(idCampana?: string): Promise<Array<{ id: string; nombre: string }>> {
+    const response = await api.get(`/geo/departamentos/campana/${idCampana}`);
     return response.data;
   }
 
-  async getMunicipios(departamentoId: string): Promise<Array<{ id: string; nombre: string }>> {
-    const response = await api.get(`/geo/departamentos/${departamentoId}/municipios`);
+  async getMunicipios(departamentoId: string, idCampana?: string): Promise<Array<{ id: string; nombre: string }>> {
+    const response = await api.get(`/geo/departamentos/${departamentoId}/municipios/campana/${idCampana}`);
     return response.data;
-  }
-
-  async getElecciones(): Promise<Array<{ id: string; nombre: string }>> {
-    // Uses the elecciones already stored in auth data, no extra endpoint needed
-    const data = authService.getTestigoData();
-    return data?.elecciones?.map(e => ({ id: e.id, nombre: e.nombre })) ?? [];
   }
 }
 
