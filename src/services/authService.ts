@@ -74,6 +74,8 @@ class AuthService {
   private readonly TOKEN_KEY = 'cuorum_testigo_token';
   private readonly DATA_KEY = 'cuorum_testigo_data';
   private readonly CAMPANA_KEY = 'cuorum_testigo_campana';
+  private readonly ELECCION_KEY = 'cuorum_testigo_eleccion';
+  private readonly ELECCION_DATA_KEY = 'cuorum_testigo_eleccion_data';
 
   /**
    * Inicia sesión con cédula y PIN
@@ -98,6 +100,8 @@ class AuthService {
         campana: data.campana,
       }));
       localStorage.setItem(this.CAMPANA_KEY, data.campana.id);
+      localStorage.setItem(this.ELECCION_KEY, data.elecciones.length > 0 ? data.elecciones[0].id : '');
+      localStorage.setItem(this.ELECCION_DATA_KEY, JSON.stringify(data.elecciones));
 
       return data;
     } catch (error) {
@@ -133,6 +137,8 @@ class AuthService {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.DATA_KEY);
     localStorage.removeItem(this.CAMPANA_KEY);
+    localStorage.removeItem(this.ELECCION_KEY);
+    localStorage.removeItem(this.ELECCION_DATA_KEY);
   }
 
   /**
@@ -147,6 +153,29 @@ class AuthService {
    */
   getCampanaId(): string | null {
     return localStorage.getItem(this.CAMPANA_KEY);
+  }
+
+  /**
+   * Obtiene el ID de la elección activa
+   */
+  getEleccionId(): string | null {
+    return localStorage.getItem(this.ELECCION_KEY);
+  }
+
+  /**
+   * Obtiene los datos de las elecciones (para el selector)
+   */
+  getEleccionesData(): TestigoData['elecciones'] {
+    const data = localStorage.getItem(this.ELECCION_DATA_KEY);
+    if (!data) return [];
+    try {
+      const parsed = JSON.parse(data) as TestigoData['elecciones'];
+      console.log(parsed);
+
+      return parsed;
+    } catch {
+      return [];
+    }
   }
 
   /**

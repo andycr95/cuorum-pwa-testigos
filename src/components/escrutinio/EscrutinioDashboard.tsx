@@ -36,7 +36,8 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   const [departamentoId, setDepartamentoId] = useState('');
   const [municipioId, setMunicipioId] = useState('');
   const [puestoVotacionId, setPuestoVotacionId] = useState('');
-  const [eleccionId, setEleccionId] = useState('');
+  const [eleccionId, setEleccionId] = useState<string | null>(authService.getEleccionId());
+  const [eleccion, setEleccion] = useState<TestigoData['elecciones'] | null>();
   const [campanaId, setCampanaId] = useState<string | null>(authService.getCampanaId());
 
   // Geo data
@@ -62,6 +63,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
 
   // Online/Offline detection
   useEffect(() => {
+    setEleccion(authService.getEleccionesData());
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
@@ -289,7 +291,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
             <input
               type="text"
               disabled
-              value={eleccionId}
+              value={eleccion ? eleccion[0].nombre : 'Cargando elecciones...'}
               className='text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
               placeholder='Filtro de elección (próximamente)'
             />
@@ -358,7 +360,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
 
         {/* Tab: Consolidado */}
         {tabActiva === 'consolidado' && (
-          <TabConsolidado consolidado={consolidado} loading={loading && !isCached} eleccionId={eleccionId} />
+          <TabConsolidado consolidado={consolidado} loading={loading && !isCached} eleccionId={eleccionId!} />
         )}
 
         {/* Tab: Resultados */}
