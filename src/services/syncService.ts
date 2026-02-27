@@ -23,6 +23,21 @@ let nextRetryAt = 0;
 const MAX_BACKOFF_MS = 8 * 60 * 1000; // 8 minutos
 
 /**
+ * Flag para pausar el auto-sync de fondo durante guardado manual.
+ * Previene race condition: el poller podría enviar resultados parciales
+ * (sin la foto E-14) si dispara entre los writes individuales a IndexedDB.
+ */
+let autoSyncPaused = false;
+
+export function pauseAutoSync() {
+  autoSyncPaused = true;
+}
+
+export function resumeAutoSync() {
+  autoSyncPaused = false;
+}
+
+/**
  * Verifica conectividad REAL mediante un probe HTTP.
  *
  * navigator.onLine es poco confiable: puede reportar `true` en una
@@ -61,6 +76,7 @@ export interface SyncResultado {
 export function iniciarMonitoreoConexion() {
   // Intentar sync cuando se recupera la conexión — reset backoff
   window.addEventListener('online', () => {
+    if (autoSyncPaused) return; // Guardado manual en progreso — no interferir
     console.log('[Sync] Conexión detectada. Reseteando backoff e iniciando sync...');
     backoffMs = 0;
     nextRetryAt = 0;
@@ -70,6 +86,7 @@ export function iniciarMonitoreoConexion() {
   // Poll cada 30s — respeta el backoff exponencial en fallos
   setInterval(async () => {
     if (syncInProgress) return;
+    if (autoSyncPaused) return; // Guardado manual en progreso — no interferir
     if (Date.now() < nextRetryAt) return; // En espera de backoff
 
     const online = await verificarConectividadReal();
@@ -142,7 +159,9 @@ export async function sincronizar(): Promise<SyncResultado> {
       }
       formData.append('fotosMetadata', JSON.stringify(fotosMetadata));
 
-      const response = await api.post(`/testigos/sync`, formData);
+      const response = await api.post(`/testigos/sync`, formData, {
+        headers: { 'Content-Type': undefined },
+      });
 
       // Parsear validación del servidor si el backend la provee
       if (response.data && typeof response.data === 'object') {
@@ -186,7 +205,9 @@ export async function sincronizar(): Promise<SyncResultado> {
         });
         incFormData.append('fotosIncidenciasIds', JSON.stringify(fotosIds));
 
-        await api.post(`/testigos/incidencias`, incFormData);
+        await api.post(`/testigos/incidencias`, incFormData, {
+          headers: { 'Content-Type': undefined },
+        });
 
         await marcarIncidenciasSincronizadas(incidencias.map((i) => i.id));
         incidenciasSinc = incidencias.length;

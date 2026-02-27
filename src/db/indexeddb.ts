@@ -223,6 +223,32 @@ export async function guardarFotoE14(
   await db.put('fotosE14', { ...data, synced: 0, syncAttempts: 0 });
 }
 
+/**
+ * Guarda todos los resultados y la foto E-14 en una SOLA transacción IDB.
+ * Esto garantiza atomicidad: el auto-sync de fondo ve TODO o NADA,
+ * evitando la race condition donde se envían resultados sin la foto.
+ */
+export async function guardarResultadosYFoto(
+  resultados: Array<Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>>,
+  foto?: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>,
+) {
+  const db = await getDB();
+  const storeNames: ('resultados' | 'fotosE14')[] = ['resultados'];
+  if (foto) storeNames.push('fotosE14');
+
+  const tx = db.transaction(storeNames, 'readwrite');
+
+  for (const data of resultados) {
+    await tx.objectStore('resultados').put({ ...data, synced: 0, syncAttempts: 0 });
+  }
+
+  if (foto) {
+    await tx.objectStore('fotosE14').put({ ...foto, synced: 0, syncAttempts: 0 });
+  }
+
+  await tx.done;
+}
+
 // ─── Incidencias ──────────────────────────────────────────────
 
 export async function guardarIncidencia(

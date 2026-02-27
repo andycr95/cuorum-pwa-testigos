@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { guardarResultado, guardarFotoE14, getResultadosByMesa } from '../../db/indexeddb';
+import { guardarResultadosYFoto, getResultadosByMesa } from '../../db/indexeddb';
 import { api } from '../../services/api';
-import { sincronizar, verificarConectividadReal, SyncResultado } from '../../services/syncService';
+import { sincronizar, verificarConectividadReal, pauseAutoSync, resumeAutoSync, SyncResultado } from '../../services/syncService';
 import { SelectorEleccion } from './SelectorEleccion';
 import { VoteInput } from './VoteInput';
 import { CapturaE14 } from '../camera/CapturaE14';
@@ -210,10 +210,18 @@ export function FormularioMesaMultiple({
     setError(null);
     setGuardando(true);
 
+    // Pausar auto-sync de fondo para evitar que envíe resultados parciales
+    // (sin la foto E-14) si el poller dispara durante el guardado.
+    pauseAutoSync();
+
     try {
+      // ─── Paso 1: Recopilar todos los datos en memoria ──────────
+      const now = new Date().toISOString();
+      const resultadosBatch: Parameters<typeof guardarResultadosYFoto>[0] = [];
+
       if (eleccion.tipoCargo === 'UNINOMINAL') {
         for (const candidato of eleccion.candidatos || []) {
-          await guardarResultado({
+          resultadosBatch.push({
             id: `${mesaId}_${eleccionActual}_${candidato.id}_${Date.now()}`,
             mesaId,
             testigoId,
@@ -228,13 +236,13 @@ export function FormularioMesaMultiple({
             votosNoMarcados,
             totalVotosMesa: totalVotos,
             observaciones: observaciones || undefined,
-            capturedAt: new Date().toISOString(),
+            capturedAt: now,
             deviceId,
           });
         }
       } else {
         for (const lista of eleccion.listas || []) {
-          await guardarResultado({
+          resultadosBatch.push({
             id: `${mesaId}_${eleccionActual}_lista_${lista.id}_${Date.now()}`,
             mesaId,
             testigoId,
@@ -249,7 +257,7 @@ export function FormularioMesaMultiple({
             votosNoMarcados,
             totalVotosMesa: totalVotos,
             observaciones: observaciones || undefined,
-            capturedAt: new Date().toISOString(),
+            capturedAt: now,
             deviceId,
           });
 
@@ -257,7 +265,7 @@ export function FormularioMesaMultiple({
             for (const candidato of lista.candidatos) {
               const votsPreff = votosPreferente[candidato.id] || 0;
               if (votsPreff > 0) {
-                await guardarResultado({
+                resultadosBatch.push({
                   id: `${mesaId}_${eleccionActual}_preferente_${candidato.id}_${Date.now()}`,
                   mesaId,
                   testigoId,
@@ -273,7 +281,7 @@ export function FormularioMesaMultiple({
                   votosNoMarcados,
                   totalVotosMesa: totalVotos,
                   observaciones: observaciones || undefined,
-                  capturedAt: new Date().toISOString(),
+                  capturedAt: now,
                   deviceId,
                 });
               }
@@ -286,7 +294,7 @@ export function FormularioMesaMultiple({
       for (const tipoVoto of ['BLANCO', 'NULO', 'NO_MARCADO'] as const) {
         const votos = tipoVoto === 'BLANCO' ? votosBlanco : tipoVoto === 'NULO' ? votosNulos : votosNoMarcados;
         if (votos > 0) {
-          await guardarResultado({
+          resultadosBatch.push({
             id: `${mesaId}_${eleccionActual}_${tipoVoto}_${Date.now()}`,
             mesaId,
             testigoId,
@@ -300,27 +308,24 @@ export function FormularioMesaMultiple({
             votosNoMarcados,
             totalVotosMesa: totalVotos,
             observaciones: observaciones || undefined,
-            capturedAt: new Date().toISOString(),
+            capturedAt: now,
             deviceId,
           });
         }
       }
 
-      // Guardar foto E-14 si existe
-      if (fotoBlob) {
-        await guardarFotoE14({
-          id: `foto_${mesaId}_${Date.now()}`,
-          mesaId,
-          testigoId,
-          blob: fotoBlob,
-          capturedAt: new Date().toISOString(),
-          deviceId,
-        });
-      }
+      // Foto E-14
+      const fotoData = fotoBlob
+        ? { id: `foto_${mesaId}_${Date.now()}`, mesaId, testigoId, blob: fotoBlob, capturedAt: now, deviceId }
+        : undefined;
+
+      // ─── Paso 2: Guardar TODO en una sola transacción IDB ──────
+      // Atómico: el auto-sync de fondo ve todo o nada.
+      await guardarResultadosYFoto(resultadosBatch, fotoData);
 
       setGuardado(true);
 
-      // Intentar sync con verificación REAL de conectividad
+      // ─── Paso 3: Sincronizar ───────────────────────────────────
       const online = await verificarConectividadReal();
       if (online) {
         const resultado = await sincronizar();
@@ -338,6 +343,7 @@ export function FormularioMesaMultiple({
       setError('Error al guardar. Los datos se reintentarán automáticamente.');
     } finally {
       setGuardando(false);
+      resumeAutoSync();
     }
   };
 
