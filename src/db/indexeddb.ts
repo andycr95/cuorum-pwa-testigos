@@ -108,12 +108,19 @@ interface CuorumDB extends DBSchema {
   };
 }
 
+const DB_VERSION = 5;
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
+  // Si la instancia cacheada es de una versión anterior (no tiene los stores v5),
+  // cerrarla y re-abrir para forzar el upgrade.
+  if (dbInstance && !dbInstance.objectStoreNames.contains('escrutinio-geo')) {
+    dbInstance.close();
+    dbInstance = null;
+  }
   if (dbInstance) return dbInstance;
 
-  dbInstance = await openDB<CuorumDB>('cuorum-testigos', 5, {
+  dbInstance = await openDB<CuorumDB>('cuorum-testigos', DB_VERSION, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
@@ -318,49 +325,73 @@ function buildCacheKey(filtros: Record<string, unknown>): string {
 }
 
 export async function cacheEscrutinioData(storeName: EscrutinioStoreName, filtros: Record<string, unknown>, data: unknown) {
-  const db = await getDB();
-  await db.put(storeName, {
-    cacheKey: buildCacheKey(filtros),
-    data,
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    const db = await getDB();
+    if (!db.objectStoreNames.contains(storeName)) return;
+    await db.put(storeName, {
+      cacheKey: buildCacheKey(filtros),
+      data,
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    // Cache write es opcional — no bloquear el flujo principal
+  }
 }
 
 export async function getCachedEscrutinioData<T = unknown>(storeName: EscrutinioStoreName, filtros: Record<string, unknown>): Promise<{ data: T; timestamp: string } | null> {
-  const db = await getDB();
-  const entry = await db.get(storeName, buildCacheKey(filtros));
-  if (!entry) return null;
-  return { data: entry.data as T, timestamp: entry.timestamp };
+  try {
+    const db = await getDB();
+    if (!db.objectStoreNames.contains(storeName)) return null;
+    const entry = await db.get(storeName, buildCacheKey(filtros));
+    if (!entry) return null;
+    return { data: entry.data as T, timestamp: entry.timestamp };
+  } catch {
+    return null;
+  }
 }
 
 export async function cacheGeoData(key: string, data: unknown) {
-  const db = await getDB();
-  await db.put('escrutinio-geo', {
-    cacheKey: key,
-    data,
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    const db = await getDB();
+    if (!db.objectStoreNames.contains('escrutinio-geo')) return;
+    await db.put('escrutinio-geo', {
+      cacheKey: key,
+      data,
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    // Cache write es opcional
+  }
 }
 
 export async function getCachedGeoData<T = unknown>(key: string): Promise<T | null> {
-  const db = await getDB();
-  const entry = await db.get('escrutinio-geo', key);
-  if (!entry) return null;
-  return entry.data as T;
+  try {
+    const db = await getDB();
+    if (!db.objectStoreNames.contains('escrutinio-geo')) return null;
+    const entry = await db.get('escrutinio-geo', key);
+    if (!entry) return null;
+    return entry.data as T;
+  } catch {
+    return null;
+  }
 }
 
 export async function clearEscrutinioCache() {
-  const db = await getDB();
-  const stores: EscrutinioStoreName[] = [
-    'escrutinio-resultados',
-    'escrutinio-fotos',
-    'escrutinio-incidencias',
-    'escrutinio-consolidado',
-    'escrutinio-geo',
-  ];
-  for (const storeName of stores) {
-    if (db.objectStoreNames.contains(storeName)) {
-      await db.clear(storeName);
+  try {
+    const db = await getDB();
+    const stores: EscrutinioStoreName[] = [
+      'escrutinio-resultados',
+      'escrutinio-fotos',
+      'escrutinio-incidencias',
+      'escrutinio-consolidado',
+      'escrutinio-geo',
+    ];
+    for (const storeName of stores) {
+      if (db.objectStoreNames.contains(storeName)) {
+        await db.clear(storeName);
+      }
     }
+  } catch {
+    // Limpieza de cache es opcional
   }
 }

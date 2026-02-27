@@ -82,17 +82,14 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         setEleccionId(elecs[0].id);
       }
 
-      // Departamentos — try cache first
-      const cachedDeps = await getCachedGeoData<Array<{ id: string; nombre: string }>>('departamentos');
-      if (cachedDeps) {
-        setDepartamentos(cachedDeps);
-      }
+      // Departamentos — API first, cache como fallback
       try {
         const deps = await escrutinioService.getDepartamentos();
         setDepartamentos(deps);
         await cacheGeoData('departamentos', deps);
       } catch {
-        // Use cached if available
+        const cachedDeps = await getCachedGeoData<Array<{ id: string; nombre: string }>>('departamentos');
+        if (cachedDeps) setDepartamentos(cachedDeps);
       }
     };
     loadGeo();
@@ -109,14 +106,13 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     }
     const loadMunicipios = async () => {
       const cacheKey = `municipios-${departamentoId}`;
-      const cached = await getCachedGeoData<Array<{ id: string; nombre: string }>>(cacheKey);
-      if (cached) setMunicipios(cached);
       try {
         const munis = await escrutinioService.getMunicipios(departamentoId);
         setMunicipios(munis);
         await cacheGeoData(cacheKey, munis);
       } catch {
-        // Use cached
+        const cached = await getCachedGeoData<Array<{ id: string; nombre: string }>>(cacheKey);
+        if (cached) setMunicipios(cached);
       }
     };
     loadMunicipios();
@@ -131,14 +127,13 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     }
     const loadPuestos = async () => {
       const cacheKey = `puestos-${municipioId}`;
-      const cached = await getCachedGeoData<Array<{ id: string; nombre: string }>>(cacheKey);
-      if (cached) setPuestos(cached);
       try {
         const pts = await escrutinioService.getPuestos(municipioId);
         setPuestos(pts.map(p => ({ id: p.id, nombre: p.nombre })));
         await cacheGeoData(cacheKey, pts.map(p => ({ id: p.id, nombre: p.nombre })));
       } catch {
-        // Use cached
+        const cached = await getCachedGeoData<Array<{ id: string; nombre: string }>>(cacheKey);
+        if (cached) setPuestos(cached);
       }
     };
     loadPuestos();
@@ -152,23 +147,15 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     ...(eleccionId && { eleccionId }),
   }), [departamentoId, municipioId, puestoVotacionId, eleccionId]);
 
-  // Fetch data based on active tab (stale-while-revalidate)
+  // Fetch data — API-first, cache solo como fallback offline
   const fetchData = useCallback(async () => {
     setLoading(true);
     setIsCached(false);
     const filtros = buildFiltros();
     const storeName = `escrutinio-${tabActiva === 'novedades' ? 'incidencias' : tabActiva}` as const;
-
-    // 1. Show cached data immediately
     const cacheKey = { tab: tabActiva, ...filtros, page };
-    const cached = await getCachedEscrutinioData(storeName, cacheKey);
-    if (cached) {
-      applyData(tabActiva, cached.data);
-      setIsCached(true);
-      setLastUpdate(cached.timestamp);
-    }
 
-    // 2. Fetch fresh data
+    // 1. Intentar siempre el backend primero
     try {
       let freshData: unknown;
       if (tabActiva === 'consolidado') {
@@ -187,10 +174,16 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       applyData(tabActiva, freshData);
       setIsCached(false);
       setLastUpdate(new Date().toISOString());
+      // Guardar en cache para uso offline futuro
       await cacheEscrutinioData(storeName, cacheKey, freshData);
     } catch {
-      // Offline — keep cached data, show indicator
-      if (!cached) {
+      // 2. Si falla (offline), intentar cache como fallback
+      const cached = await getCachedEscrutinioData(storeName, cacheKey);
+      if (cached) {
+        applyData(tabActiva, cached.data);
+        setIsCached(true);
+        setLastUpdate(cached.timestamp);
+      } else {
         applyData(tabActiva, null);
       }
     }
