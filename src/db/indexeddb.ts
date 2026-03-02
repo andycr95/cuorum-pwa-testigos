@@ -27,7 +27,7 @@ interface EscrutinioCacheEntry {
   timestamp: string;
 }
 
-interface CuorumDB extends DBSchema {
+export interface CuorumDB extends DBSchema {
   // Escrutinio cache stores
   'escrutinio-resultados': { key: string; value: EscrutinioCacheEntry };
   'escrutinio-fotos': { key: string; value: EscrutinioCacheEntry };
@@ -89,6 +89,27 @@ interface CuorumDB extends DBSchema {
     };
   };
   // @ts-ignore - idb type compatibility
+  e14OcrJobs: {
+    key: string;
+    value: {
+      id: string;
+      mesaId: string;
+      testigoId: string;
+      eleccionId: string;
+      campanaId: string;
+      fotos: { orden: number; blob: Blob; capturedAt: string }[];
+      estado: 'PENDIENTE' | 'SUBIENDO' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR';
+      resultadoOcr?: Record<string, number>;
+      serialE14?: string;
+      synced: 0 | 1;
+      syncAttempts: number;
+      lastSyncError?: string;
+      capturedAt: string;
+      deviceId: string;
+    };
+    indexes: { 'by-synced': 0 | 1; 'by-mesa': string };
+  };
+  // @ts-ignore - idb type compatibility
   incidencias: {
     key: string;
     value: {
@@ -108,13 +129,13 @@ interface CuorumDB extends DBSchema {
   };
 }
 
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   // Si la instancia cacheada es de una versión anterior (no tiene los stores v5),
   // cerrarla y re-abrir para forzar el upgrade.
-  if (dbInstance && !dbInstance.objectStoreNames.contains('escrutinio-geo')) {
+  if (dbInstance && (!dbInstance.objectStoreNames.contains('escrutinio-geo') || !dbInstance.objectStoreNames.contains('e14OcrJobs'))) {
     dbInstance.close();
     dbInstance = null;
   }
@@ -167,6 +188,15 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
           if (!db.objectStoreNames.contains(storeName)) {
             db.createObjectStore(storeName, { keyPath: 'cacheKey' });
           }
+        }
+      }
+
+      // v6: Store para jobs de OCR multi-foto E-14
+      if (oldVersion < 6) {
+        if (!db.objectStoreNames.contains('e14OcrJobs')) {
+          const ocrStore = db.createObjectStore('e14OcrJobs', { keyPath: 'id' });
+          ocrStore.createIndex('by-synced', 'synced');
+          ocrStore.createIndex('by-mesa', 'mesaId');
         }
       }
     },
@@ -419,5 +449,47 @@ export async function clearEscrutinioCache() {
     }
   } catch {
     // Limpieza de cache es opcional
+  }
+}
+
+// ─── E-14 OCR Jobs ────────────────────────────────────────────
+
+export async function guardarOcrJob(
+  data: Omit<CuorumDB['e14OcrJobs']['value'], 'synced' | 'syncAttempts'>,
+) {
+  const db = await getDB();
+  await db.put('e14OcrJobs', { ...data, synced: 0, syncAttempts: 0 });
+}
+
+export async function getOcrJobsPendientes() {
+  const db = await getDB();
+  return db.getAllFromIndex('e14OcrJobs', 'by-synced', 0);
+}
+
+export async function getOcrJobsByMesa(mesaId: string) {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('e14OcrJobs', 'by-mesa', mesaId);
+  return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+}
+
+export async function marcarOcrJobSyncado(id: string, estado: CuorumDB['e14OcrJobs']['value']['estado']) {
+  const db = await getDB();
+  const item = await db.get('e14OcrJobs', id);
+  if (item) {
+    item.synced = 1;
+    item.estado = estado;
+    await db.put('e14OcrJobs', item);
+  }
+}
+
+export async function updateOcrJobEstado(
+  id: string,
+  estado: CuorumDB['e14OcrJobs']['value']['estado'],
+  extra?: { resultadoOcr?: Record<string, number>; serialE14?: string; lastSyncError?: string },
+) {
+  const db = await getDB();
+  const item = await db.get('e14OcrJobs', id);
+  if (item) {
+    await db.put('e14OcrJobs', { ...item, estado, ...extra });
   }
 }

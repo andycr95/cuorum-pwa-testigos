@@ -5,8 +5,12 @@ import { sincronizar, verificarConectividadReal, pauseAutoSync, resumeAutoSync, 
 import { SelectorEleccion } from './SelectorEleccion';
 import { VoteInput } from './VoteInput';
 import { CapturaE14 } from '../camera/CapturaE14';
+import { CapturaMultipleE14 } from '../camera/CapturaMultipleE14';
+import { EstadoOcrE14 } from '../camera/EstadoOcrE14';
 import { ObservacionesInput } from './ObservacionesInput';
 import { PanelIncidencias } from '../incidencias/PanelIncidencias';
+import { useOcrJobsE14 } from '../../hooks/useOcrJobsE14';
+import { authService } from '../../services/authService';
 
 /**
  * FormularioMesaMultiple — Captura de resultados electorales
@@ -81,6 +85,7 @@ export function FormularioMesaMultiple({
   elecciones,
   deviceId,
 }: FormularioMesaMultipleProps) {
+  const [modoCaptura, setModoCaptura] = useState<'manual' | 'foto'>('manual');
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
   const [votosUninominal, setVotosUninominal] = useState<Record<string, number>>({});
   const [votosLista, setVotosLista] = useState<Record<string, number>>({});
@@ -107,6 +112,16 @@ export function FormularioMesaMultiple({
   const [yaRegistrado, setYaRegistrado] = useState(false);
   const [resultadosExistentes, setResultadosExistentes] = useState<ResultadoGuardado[]>([]);
   const [cargandoResultados, setCargandoResultados] = useState(true);
+
+  // ─── OCR multi-foto hook ────────────────────────────────────
+  const campanaId = authService.getCampanaId() || '';
+  const ocrJobs = useOcrJobsE14({
+    mesaId,
+    testigoId,
+    eleccionId: eleccionActual,
+    campanaId,
+    deviceId,
+  });
 
   // Verificar si ya existen resultados para esta mesa + elección
   useEffect(() => {
@@ -413,6 +428,49 @@ export function FormularioMesaMultiple({
               limpiarFormulario();
             }}
           />
+
+          {/* Tab bar: Manual / Foto E-14 */}
+          <div className="flex gap-2 mb-6">
+            <button
+              type="button"
+              onClick={() => setModoCaptura('manual')}
+              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
+                modoCaptura === 'manual'
+                  ? 'bg-editorial-red text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Manual
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoCaptura('foto')}
+              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
+                modoCaptura === 'foto'
+                  ? 'bg-editorial-red text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Foto E-14
+            </button>
+          </div>
+
+          {/* ── Modo Foto OCR ──────────────────────────────────────── */}
+          {modoCaptura === 'foto' && (
+            <div className="space-y-4 mb-6">
+              <CapturaMultipleE14
+                onFotosListas={ocrJobs.guardar}
+                disabled={ocrJobs.saving}
+              />
+              <EstadoOcrE14
+                jobs={ocrJobs.jobs}
+                onRetry={ocrJobs.syncJobs}
+              />
+            </div>
+          )}
+
+          {/* ── Modo Manual (formulario original) ─────────────────── */}
+          {modoCaptura === 'manual' && (<>
 
           {/* Verificando resultados previos */}
           {cargandoResultados && (
@@ -880,6 +938,9 @@ export function FormularioMesaMultiple({
           )}
 
           </>)}
+
+          </>)}
+          {/* ── end modoCaptura === 'manual' ── */}
 
           {/* ── Panel de incidencias (siempre visible) ───────────────── */}
           <div className="mb-6">
