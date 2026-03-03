@@ -11,9 +11,13 @@ interface Foto {
 interface CapturaMultipleE14Props {
   onFotosListas: (fotos: { orden: number; blob: Blob }[]) => void;
   disabled?: boolean;
+  /** Custom label for the submit button. Defaults to "Enviar N fotos para OCR" */
+  submitLabel?: string;
+  /** Custom title for the header. Defaults to "Fotos del E-14 para OCR" */
+  title?: string;
 }
 
-export function CapturaMultipleE14({ onFotosListas, disabled = false }: CapturaMultipleE14Props) {
+export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabel, title }: CapturaMultipleE14Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [procesando, setProcesando] = useState(false);
@@ -99,7 +103,7 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false }: CapturaM
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full" />
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          Fotos del E-14 para OCR ({fotos.length} foto{fotos.length !== 1 ? 's' : ''})
+          {title ?? 'Fotos del E-14 para OCR'} ({fotos.length} foto{fotos.length !== 1 ? 's' : ''})
         </p>
       </div>
 
@@ -178,7 +182,7 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false }: CapturaM
           disabled={disabled || procesando}
           className="w-full py-4 bg-gradient-to-br from-editorial-red to-red-700 text-white rounded-2xl font-black text-sm uppercase tracking-wide shadow-xl hover:shadow-2xl active:scale-95 transition-all disabled:opacity-50"
         >
-          Enviar {fotos.length} foto{fotos.length !== 1 ? 's' : ''} para OCR
+          {submitLabel ?? `Enviar ${fotos.length} foto${fotos.length !== 1 ? 's' : ''} para OCR`}
         </button>
       )}
 

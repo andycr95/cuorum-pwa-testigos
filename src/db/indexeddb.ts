@@ -99,6 +99,7 @@ export interface CuorumDB extends DBSchema {
       campanaId: string;
       fotos: { orden: number; blob: Blob; capturedAt: string }[];
       estado: 'PENDIENTE' | 'SUBIENDO' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR';
+      serverJobId?: string;
       resultadoOcr?: Record<string, number>;
       serialE14?: string;
       synced: 0 | 1;
@@ -220,7 +221,7 @@ async function migrateV4(db: IDBPDatabase<CuorumDB>) {
     if (!db.objectStoreNames.contains(storeName)) continue;
 
     // @ts-ignore — necesitamos leer sin tipado estricto para detectar booleans heredados
-    const allRecords: { synced: boolean | 0 | 1; [key: string]: unknown }[] =
+    const allRecords: { synced: boolean | 0 | 1;[key: string]: unknown }[] =
       await (db as IDBPDatabase).getAll(storeName);
 
     const toMigrate = allRecords.filter((r) => typeof r.synced === 'boolean');
@@ -260,11 +261,12 @@ export async function guardarFotoE14(
  */
 export async function guardarResultadosYFoto(
   resultados: Array<Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>>,
-  foto?: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>,
+  fotos?: Array<Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>>,
 ) {
   const db = await getDB();
+  const hayFotos = fotos && fotos.length > 0;
   const storeNames: ('resultados' | 'fotosE14')[] = ['resultados'];
-  if (foto) storeNames.push('fotosE14');
+  if (hayFotos) storeNames.push('fotosE14');
 
   const tx = db.transaction(storeNames, 'readwrite');
 
@@ -272,8 +274,10 @@ export async function guardarResultadosYFoto(
     await tx.objectStore('resultados').put({ ...data, synced: 0, syncAttempts: 0 });
   }
 
-  if (foto) {
-    await tx.objectStore('fotosE14').put({ ...foto, synced: 0, syncAttempts: 0 });
+  if (hayFotos) {
+    for (const foto of fotos!) {
+      await tx.objectStore('fotosE14').put({ ...foto, synced: 0, syncAttempts: 0 });
+    }
   }
 
   await tx.done;
@@ -472,12 +476,17 @@ export async function getOcrJobsByMesa(mesaId: string) {
   return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
 }
 
-export async function marcarOcrJobSyncado(id: string, estado: CuorumDB['e14OcrJobs']['value']['estado']) {
+export async function marcarOcrJobSyncado(
+  id: string,
+  estado: CuorumDB['e14OcrJobs']['value']['estado'],
+  serverJobId?: string,
+) {
   const db = await getDB();
   const item = await db.get('e14OcrJobs', id);
   if (item) {
     item.synced = 1;
     item.estado = estado;
+    if (serverJobId) item.serverJobId = serverJobId;
     await db.put('e14OcrJobs', item);
   }
 }
@@ -489,6 +498,8 @@ export async function updateOcrJobEstado(
 ) {
   const db = await getDB();
   const item = await db.get('e14OcrJobs', id);
+  console.log(item);
+
   if (item) {
     await db.put('e14OcrJobs', { ...item, estado, ...extra });
   }

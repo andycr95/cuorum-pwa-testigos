@@ -4,7 +4,6 @@ import { api } from '../../services/api';
 import { sincronizar, verificarConectividadReal, pauseAutoSync, resumeAutoSync, SyncResultado } from '../../services/syncService';
 import { SelectorEleccion } from './SelectorEleccion';
 import { VoteInput } from './VoteInput';
-import { CapturaE14 } from '../camera/CapturaE14';
 import { CapturaMultipleE14 } from '../camera/CapturaMultipleE14';
 import { EstadoOcrE14 } from '../camera/EstadoOcrE14';
 import { ObservacionesInput } from './ObservacionesInput';
@@ -94,8 +93,7 @@ export function FormularioMesaMultiple({
   const [votosNulos, setVotosNulos] = useState(0);
   const [votosNoMarcados, setVotosNoMarcados] = useState(0);
   const [observaciones, setObservaciones] = useState('');
-  const [fotoBlob, setFotoBlob] = useState<Blob | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [fotosManual, setFotosManual] = useState<{ orden: number; blob: Blob }[]>([]);
   const [guardado, setGuardado] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +120,15 @@ export function FormularioMesaMultiple({
     campanaId,
     deviceId,
   });
+
+  // Si hay un job OCR COMPLETADO para la elección actual, forzar tab foto y bloquear manual
+  const ocrCompletado = ocrJobs.jobs.some(
+    j => j.estado === 'COMPLETADO' && j.eleccionId === eleccionActual,
+  );
+
+  useEffect(() => {
+    if (ocrCompletado) setModoCaptura('foto');
+  }, [ocrCompletado]);
 
   // Verificar si ya existen resultados para esta mesa + elección
   useEffect(() => {
@@ -207,9 +214,7 @@ export function FormularioMesaMultiple({
     setVotosNulos(0);
     setVotosNoMarcados(0);
     setObservaciones('');
-    setFotoBlob(null);
-    if (fotoPreview) URL.revokeObjectURL(fotoPreview);
-    setFotoPreview(null);
+    setFotosManual([]);
     setGuardado(false);
     setGuardando(false);
     setError(null);
@@ -219,7 +224,7 @@ export function FormularioMesaMultiple({
     setYaRegistrado(false);
     setResultadosExistentes([]);
     setCargandoResultados(true);
-  }, [fotoPreview]);
+  }, []);
 
   const handleGuardar = async () => {
     setError(null);
@@ -329,14 +334,19 @@ export function FormularioMesaMultiple({
         }
       }
 
-      // Foto E-14
-      const fotoData = fotoBlob
-        ? { id: `foto_${mesaId}_${Date.now()}`, mesaId, testigoId, blob: fotoBlob, capturedAt: now, deviceId }
-        : undefined;
+      // Fotos E-14 de evidencia (modo manual, pueden ser varias)
+      const fotosData = fotosManual.map((f, i) => ({
+        id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
+        mesaId,
+        testigoId,
+        blob: f.blob,
+        capturedAt: now,
+        deviceId,
+      }));
 
       // ─── Paso 2: Guardar TODO en una sola transacción IDB ──────
       // Atómico: el auto-sync de fondo ve todo o nada.
-      await guardarResultadosYFoto(resultadosBatch, fotoData);
+      await guardarResultadosYFoto(resultadosBatch, fotosData.length > 0 ? fotosData : undefined);
 
       setGuardado(true);
 
@@ -433,14 +443,19 @@ export function FormularioMesaMultiple({
           <div className="flex gap-2 mb-6">
             <button
               type="button"
-              onClick={() => setModoCaptura('manual')}
+              onClick={() => !ocrCompletado && setModoCaptura('manual')}
+              disabled={ocrCompletado}
+              title={ocrCompletado ? 'El acta ya fue procesada por OCR' : undefined}
               className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
-                modoCaptura === 'manual'
+                ocrCompletado
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
+                  : modoCaptura === 'manual'
                   ? 'bg-editorial-red text-white shadow-lg'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               Manual
+              {ocrCompletado && <span className="ml-1 text-xs">🔒</span>}
             </button>
             <button
               type="button"
@@ -452,19 +467,34 @@ export function FormularioMesaMultiple({
               }`}
             >
               Foto E-14
+              {ocrCompletado && <span className="ml-1 text-[10px] text-green-600">✓</span>}
             </button>
           </div>
 
           {/* ── Modo Foto OCR ──────────────────────────────────────── */}
           {modoCaptura === 'foto' && (
             <div className="space-y-4 mb-6">
-              <CapturaMultipleE14
-                onFotosListas={ocrJobs.guardar}
-                disabled={ocrJobs.saving}
-              />
+              {ocrCompletado ? (
+                <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
+                  <span className="text-2xl flex-shrink-0">✓</span>
+                  <div>
+                    <p className="text-sm font-black text-green-800">Acta ya procesada</p>
+                    <p className="text-xs text-green-600 mt-0.5">
+                      El análisis de las fotos E-14 fue completado. Los resultados están disponibles en el Centro de Mando.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <CapturaMultipleE14
+                  onFotosListas={ocrJobs.guardar}
+                  disabled={ocrJobs.saving}
+                />
+              )}
               <EstadoOcrE14
                 jobs={ocrJobs.jobs}
                 onRetry={ocrJobs.syncJobs}
+                onSync={ocrJobs.syncJobs}
+                syncing={ocrJobs.syncing}
               />
             </div>
           )}
@@ -723,24 +753,17 @@ export function FormularioMesaMultiple({
             </div>
           </div>
 
-          {/* Captura foto E-14 con compresión real */}
+          {/* Captura múltiples fotos E-14 como evidencia */}
           <div className="mb-6">
-            <CapturaE14
-              onFotoCapturada={(blob, preview) => {
-                setFotoBlob(blob);
-                setFotoPreview(preview);
+            <CapturaMultipleE14
+              onFotosListas={(fotos) => {
+                setFotosManual(fotos);
                 setGuardado(false);
                 setSyncStatus(null);
               }}
-              onEliminar={() => {
-                setFotoBlob(null);
-                if (fotoPreview) URL.revokeObjectURL(fotoPreview);
-                setFotoPreview(null);
-                setGuardado(false);
-                setSyncStatus(null);
-              }}
-              fotoPreview={fotoPreview}
               disabled={guardado}
+              title="Fotos del E-14 (evidencia)"
+              submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
             />
           </div>
 
