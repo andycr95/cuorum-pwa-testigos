@@ -67,6 +67,8 @@ export interface LoginResponse {
   campana: {
     id: string;
     nombre: string;
+    candidatoId: string | null;
+    listaId: string | null;
   };
 }
 
@@ -153,6 +155,22 @@ class AuthService {
    */
   getCampanaId(): string | null {
     return localStorage.getItem(this.CAMPANA_KEY);
+  }
+
+  /**
+   * Obtiene el candidatoId vinculado a la campaña (si existe)
+   */
+  getCandidatoId(): string | null {
+    const data = this.getTestigoData();
+    return (data as any)?.campana?.candidatoId || null;
+  }
+
+  /**
+   * Obtiene el listaId vinculado a la campaña (si existe)
+   */
+  getListaId(): string | null {
+    const data = this.getTestigoData();
+    return (data as any)?.campana?.listaId || null;
   }
 
   /**

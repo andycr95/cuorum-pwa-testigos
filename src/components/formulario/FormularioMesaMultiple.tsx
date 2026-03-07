@@ -123,6 +123,10 @@ export function FormularioMesaMultiple({
   const [resultadosExistentes, setResultadosExistentes] = useState<ResultadoGuardado[]>([]);
   const [cargandoResultados, setCargandoResultados] = useState(true);
 
+  // Candidato propio de la campaña
+  const miCandidatoId = authService.getCandidatoId();
+  const miListaId = authService.getListaId();
+
   // ─── OCR multi-foto hook ────────────────────────────────────
   const campanaId = authService.getCampanaId() || '';
   const ocrJobs = useOcrJobsE14({
@@ -239,6 +243,26 @@ export function FormularioMesaMultiple({
   }, []);
 
   const handleGuardar = async () => {
+    // Alerta si el candidato propio tiene 0 votos
+    if (miCandidatoId || miListaId) {
+      let propioTieneZero = false;
+      if (eleccion.tipoCargo === 'UNINOMINAL' && miCandidatoId) {
+        propioTieneZero = (votosUninominal[miCandidatoId] || 0) === 0;
+      } else if (miListaId) {
+        propioTieneZero = (votosLista[miListaId] || 0) === 0;
+      }
+      if (propioTieneZero) {
+        const nombrePropio = miCandidatoId
+          ? eleccion.candidatos?.find(c => c.id === miCandidatoId)?.nombre
+            || eleccion.listas?.flatMap(l => l.candidatos).find(c => c.id === miCandidatoId)?.nombre
+          : eleccion.listas?.find(l => l.id === miListaId)?.nombre;
+        const confirmar = window.confirm(
+          `Tu candidato/lista "${nombrePropio || 'propio'}" tiene 0 votos en esta mesa. ¿Estás seguro de que es correcto?`
+        );
+        if (!confirmar) return;
+      }
+    }
+
     setError(null);
     setGuardando(true);
 

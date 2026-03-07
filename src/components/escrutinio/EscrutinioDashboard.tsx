@@ -39,6 +39,8 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     authService.getEleccionId() || (elecciones.length > 0 ? elecciones[0].id : ''),
   );
   const campanaId = authService.getCampanaId();
+  const miCandidatoId = authService.getCandidatoId();
+  const miListaId = authService.getListaId();
 
   // Filtros geo (colapsables)
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
@@ -438,10 +440,10 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         )}
 
         {tabActiva === 'consolidado' && (
-          <TabConsolidado consolidado={consolidado} loading={loading && !isCached} />
+          <TabConsolidado consolidado={consolidado} loading={loading && !isCached} miCandidatoId={miCandidatoId} miListaId={miListaId} />
         )}
         {tabActiva === 'resultados' && (
-          <TabResultados data={resultados} loading={loading && !isCached} page={page} onPageChange={setPage} />
+          <TabResultados data={resultados} loading={loading && !isCached} page={page} onPageChange={setPage} miCandidatoId={miCandidatoId} />
         )}
         {tabActiva === 'actas' && (
           <TabActas data={actas} loading={loading && !isCached} page={page} onPageChange={setPage} />
@@ -459,9 +461,11 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
 
 // ─── Tab: Consolidado ──────────────────────────────────────────
 
-function TabConsolidado({ consolidado, loading }: {
+function TabConsolidado({ consolidado, loading, miCandidatoId, miListaId }: {
   consolidado: ConsolidadoEscrutinio | null;
   loading: boolean;
+  miCandidatoId: string | null;
+  miListaId: string | null;
 }) {
   const [expandedPartidos, setExpandedPartidos] = useState<Set<string>>(new Set());
 
@@ -477,7 +481,21 @@ function TabConsolidado({ consolidado, loading }: {
     if (!partidosMap[key]) partidosMap[key] = [];
     partidosMap[key].push(c);
   }
-  const entries = Object.entries(partidosMap);
+  // Determinar el partido propio (del candidato o lista vinculada a la campaña)
+  const miPartido = miCandidatoId
+    ? candidatos.find(c => c.candidatoId === miCandidatoId)?.partido
+    : miListaId
+      ? candidatos.find(c => c.listaNombre)?.partido // lista match via partido grouping
+      : null;
+
+  // Ordenar: partido propio primero
+  const entries = Object.entries(partidosMap).sort(([a], [b]) => {
+    if (miPartido) {
+      if (a === miPartido) return -1;
+      if (b === miPartido) return 1;
+    }
+    return 0;
+  });
   const multiPartido = entries.length > 1;
 
   const toggle = (partido: string) => {
@@ -522,8 +540,9 @@ function TabConsolidado({ consolidado, loading }: {
           {entries.map(([partido, rows]) => {
             const totalVotos = rows.reduce((s, c) => s + c.votos, 0);
             const isExpanded = !multiPartido || expandedPartidos.has(partido);
+            const esPartidoPropio = miPartido ? partido === miPartido : false;
             return (
-              <div key={partido} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              <div key={partido} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${esPartidoPropio ? 'ring-2 ring-purple-500' : ''}`}>
                 {/* Cabecera del partido */}
                 <button
                   type="button"
@@ -536,7 +555,8 @@ function TabConsolidado({ consolidado, loading }: {
                         <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
                       </svg>
                     )}
-                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-bold flex-shrink-0">{partido}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 ${esPartidoPropio ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'}`}>{partido}</span>
+                    {esPartidoPropio && <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[10px] font-bold flex-shrink-0">MI</span>}
                     {rows[0]?.listaNombre && rows[0].listaNombre !== partido ? (
                       <span className="text-sm font-semibold text-gray-800 truncate">{rows[0].listaNombre}</span>
                     ) : rows.length === 1 ? (
@@ -554,12 +574,15 @@ function TabConsolidado({ consolidado, loading }: {
                 {/* Candidatos del partido */}
                 {isExpanded && (
                   <div className="divide-y">
-                    {rows.map((c, i) => (
-                      <div key={`${c.candidatoId || c.candidato}-${i}`} className="px-4 py-3">
+                    {rows.map((c, i) => {
+                      const esMiCandidato = miCandidatoId ? c.candidatoId === miCandidatoId : false;
+                      return (
+                      <div key={`${c.candidatoId || c.candidato}-${i}`} className={`px-4 py-3 ${esMiCandidato ? 'bg-purple-50' : ''}`}>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2 min-w-0">
                             {rows.length > 1 && <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>}
-                            <p className="text-sm font-semibold text-gray-900 truncate">{c.candidato}</p>
+                            <p className={`text-sm font-semibold truncate ${esMiCandidato ? 'text-purple-900' : 'text-gray-900'}`}>{c.candidato}</p>
+                            {esMiCandidato && <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded text-[10px] font-bold flex-shrink-0">MI</span>}
                           </div>
                           <div className="text-right flex-shrink-0 ml-2">
                             <p className="text-sm font-bold text-gray-900">{c.votos.toLocaleString('es-CO')}</p>
@@ -573,7 +596,8 @@ function TabConsolidado({ consolidado, loading }: {
                           />
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -587,18 +611,21 @@ function TabConsolidado({ consolidado, loading }: {
 
 // ─── Tab: Resultados ──────────────────────────────────────────
 
-function TabResultados({ data, loading, page, onPageChange }: {
+function TabResultados({ data, loading, page, onPageChange, miCandidatoId }: {
   data: PaginatedResponse<ResultadoEscrutinio> | null;
   loading: boolean;
   page: number;
   onPageChange: (p: number) => void;
+  miCandidatoId: string | null;
 }) {
   if (loading || !data) return null;
 
   return (
     <div className="space-y-3">
-      {data.data.map((r) => (
-        <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border">
+      {data.data.map((r) => {
+        const esMiCandidato = miCandidatoId ? r.candidatoId === miCandidatoId : false;
+        return (
+        <div key={r.id} className={`bg-white rounded-xl p-4 shadow-sm border ${esMiCandidato ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-1 rounded">
@@ -614,7 +641,10 @@ function TabResultados({ data, loading, page, onPageChange }: {
               {new Date(r.capturedAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
             </span>
           </div>
-          <p className="text-sm font-semibold text-gray-900">{r.candidato}</p>
+          <div className="flex items-center gap-2">
+            <p className={`text-sm font-semibold ${esMiCandidato ? 'text-purple-900' : 'text-gray-900'}`}>{r.candidato}</p>
+            {esMiCandidato && <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded text-[10px] font-bold">MI</span>}
+          </div>
           <p className="text-xs text-gray-500">{r.partido}</p>
           <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
             <span><strong>{r.votos}</strong> votos</span>
@@ -630,7 +660,8 @@ function TabResultados({ data, loading, page, onPageChange }: {
             Testigo: {r.testigo.nombres} {r.testigo.apellidos}
           </p>
         </div>
-      ))}
+        );
+      })}
 
       {data.data.length === 0 && (
         <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
