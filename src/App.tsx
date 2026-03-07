@@ -8,6 +8,8 @@ import { AperturaMesa } from './components/jornada/AperturaMesa';
 import { authService, TestigoData } from './services/authService';
 import { jornadaService, JornadaMesa } from './services/jornadaService';
 import { clearEscrutinioCache, guardarJornada, getJornadaByMesa } from './db/indexeddb';
+import { OfflineBanner } from './components/ui/OfflineBanner';
+import { PendingSyncBadge } from './components/ui/PendingSyncBadge';
 
 /**
  * PWA Testigos Electorales
@@ -331,6 +333,7 @@ export function App() {
   // ABIERTA / EN_CONTEO — Show FormularioMesaMultiple (existing main flow)
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <OfflineBanner />
       {/* Header Premium - Refinado */}
       <div className="sticky top-0 z-50 bg-editorial-red shadow-2xl shadow-red-900/50 border-b-4 border-red-950">
         {/* Patrón de fondo más visible */}
@@ -366,6 +369,7 @@ export function App() {
                 </svg>
               </button>
             )}
+            <PendingSyncBadge />
             {/* Botón Logout */}
             <button
               onClick={handleLogout}
