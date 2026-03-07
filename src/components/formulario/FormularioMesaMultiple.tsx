@@ -10,6 +10,9 @@ import { ObservacionesInput } from './ObservacionesInput';
 import { PanelIncidencias } from '../incidencias/PanelIncidencias';
 import { useOcrJobsE14 } from '../../hooks/useOcrJobsE14';
 import { authService } from '../../services/authService';
+import { jornadaService, AlertaValidacion } from '../../services/jornadaService';
+import { ProgresoElecciones } from '../jornada/ProgresoElecciones';
+import { WizardCierre } from '../jornada/WizardCierre';
 
 /**
  * FormularioMesaMultiple — Captura de resultados electorales
@@ -65,6 +68,7 @@ interface FormularioMesaMultipleProps {
   totalSufragantes: number;
   elecciones: Eleccion[];
   deviceId: string;
+  onMesaCerrada?: (codigo: string) => void;
 }
 
 /** Genera un código de verificación de 8 chars para el acta cerrada */
@@ -83,6 +87,7 @@ export function FormularioMesaMultiple({
   totalSufragantes,
   elecciones,
   deviceId,
+  onMesaCerrada,
 }: FormularioMesaMultipleProps) {
   const [modoCaptura, setModoCaptura] = useState<'manual' | 'foto'>('manual');
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
@@ -105,6 +110,13 @@ export function FormularioMesaMultiple({
   const [actaCerrada, setActaCerrada] = useState(false);
   const [codigoActa, setCodigoActa] = useState<string | null>(null);
   const [cerrando, setCerrando] = useState(false);
+
+  // Estado para alertas de validación post-guardado
+  const [alertasValidacion, setAlertasValidacion] = useState<AlertaValidacion[]>([]);
+  // Trigger para refrescar ProgresoElecciones después de guardar
+  const [refreshProgreso, setRefreshProgreso] = useState(0);
+  // Estado para WizardCierre
+  const [showWizardCierre, setShowWizardCierre] = useState(false);
 
   // Estado para verificación de resultados ya registrados
   const [yaRegistrado, setYaRegistrado] = useState(false);
@@ -355,6 +367,14 @@ export function FormularioMesaMultiple({
       if (online) {
         const resultado = await sincronizar();
         setSyncStatus(resultado);
+
+        // ─── Paso 4: Validar resultados ───────────────────────────
+        try {
+          const validacion = await jornadaService.validar(mesaId, eleccionActual);
+          setAlertasValidacion(validacion.alertas);
+        } catch {
+          // Validation is optional — don't block the flow
+        }
       } else {
         setSyncStatus({
           success: false,
@@ -364,6 +384,9 @@ export function FormularioMesaMultiple({
           error: 'Sin conexión — se enviará automáticamente',
         });
       }
+
+      // Refrescar progreso de elecciones
+      setRefreshProgreso((prev) => prev + 1);
     } catch {
       setError('Error al guardar. Los datos se reintentarán automáticamente.');
     } finally {
@@ -428,6 +451,18 @@ export function FormularioMesaMultiple({
         </div>
 
         <div className="p-6">
+
+          {/* Progreso de elecciones */}
+          <ProgresoElecciones
+            mesaId={mesaId}
+            elecciones={elecciones.map((e) => ({ id: e.id, nombre: e.nombre }))}
+            eleccionActual={eleccionActual}
+            onSelectEleccion={(id) => {
+              setEleccionActual(id);
+              limpiarFormulario();
+            }}
+            refreshTrigger={refreshProgreso}
+          />
 
           {/* Selector de Elección */}
           <SelectorEleccion
@@ -934,6 +969,43 @@ export function FormularioMesaMultiple({
             </div>
           )}
 
+          {/* ── Alertas de validación ───────────────────────────────── */}
+          {alertasValidacion.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {alertasValidacion.map((alerta, i) => (
+                <div
+                  key={i}
+                  className={`px-4 py-3 rounded-2xl border-2 flex items-start gap-2 ${
+                    alerta.severidad === 'error'
+                      ? 'bg-red-50 border-red-300'
+                      : 'bg-amber-50 border-amber-300'
+                  }`}
+                >
+                  <svg
+                    className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                      alerta.severidad === 'error' ? 'text-red-500' : 'text-amber-500'
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    {alerta.severidad === 'error' ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    )}
+                  </svg>
+                  <p className={`text-xs font-medium ${
+                    alerta.severidad === 'error' ? 'text-red-700' : 'text-amber-700'
+                  }`}>
+                    {alerta.mensaje}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ── Lock del acta ───────────────────────────────────────── */}
           {guardado && !actaCerrada && (
             <button
@@ -974,6 +1046,41 @@ export function FormularioMesaMultiple({
               mesaNumero={mesaNumero}
             />
           </div>
+
+          {/* ── Botón Cerrar Acta de Mesa ───────────────────────────── */}
+          {!actaCerrada && (
+            <button
+              type="button"
+              onClick={() => setShowWizardCierre(true)}
+              className="w-full py-4 mb-6 rounded-2xl border-2 border-editorial-red text-editorial-red font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] hover:bg-editorial-red/5"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Cerrar Acta de Mesa</span>
+              </span>
+              <p className="text-[10px] text-editorial-red/60 font-normal mt-1 tracking-normal">
+                Validacion final, firma digital y codigo de verificacion
+              </p>
+            </button>
+          )}
+
+          {/* ── WizardCierre modal ─────────────────────────────────── */}
+          {showWizardCierre && (
+            <WizardCierre
+              mesaId={mesaId}
+              mesaNumero={mesaNumero}
+              elecciones={elecciones.map((e) => ({ id: e.id, nombre: e.nombre }))}
+              onCerrado={(codigo) => {
+                setShowWizardCierre(false);
+                setActaCerrada(true);
+                setCodigoActa(codigo);
+                if (onMesaCerrada) onMesaCerrada(codigo);
+              }}
+              onCancel={() => setShowWizardCierre(false)}
+            />
+          )}
 
           {/* ── Indicador de conexión ───────────────────────────────── */}
           <div className="flex items-center justify-center">

@@ -111,6 +111,30 @@ export interface CuorumDB extends DBSchema {
     indexes: { 'by-synced': 0 | 1; 'by-mesa': string };
   };
   // @ts-ignore - idb type compatibility
+  jornada: {
+    key: string;
+    value: {
+      id: string;
+      mesaId: string;
+      testigoId: string;
+      campanaId: string;
+      estado: 'PENDIENTE' | 'CHECKIN' | 'ABIERTA' | 'EN_CONTEO' | 'CERRADA' | 'FIRMADA';
+      checkinAt?: string;
+      checkinLat?: number;
+      checkinLng?: number;
+      aperturaAt?: string;
+      aperturaChecklist?: Record<string, boolean>;
+      aperturaObservaciones?: string;
+      cierreAt?: string;
+      cierreObservaciones?: string;
+      firmadoAt?: string;
+      codigoVerificacion?: string;
+      synced: 0 | 1;
+      updatedAt: string;
+    };
+    indexes: { 'by-mesa': string };
+  };
+  // @ts-ignore - idb type compatibility
   incidencias: {
     key: string;
     value: {
@@ -130,13 +154,13 @@ export interface CuorumDB extends DBSchema {
   };
 }
 
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   // Si la instancia cacheada es de una versión anterior (no tiene los stores v5),
   // cerrarla y re-abrir para forzar el upgrade.
-  if (dbInstance && (!dbInstance.objectStoreNames.contains('escrutinio-geo') || !dbInstance.objectStoreNames.contains('e14OcrJobs'))) {
+  if (dbInstance && (!dbInstance.objectStoreNames.contains('escrutinio-geo') || !dbInstance.objectStoreNames.contains('e14OcrJobs') || !dbInstance.objectStoreNames.contains('jornada'))) {
     dbInstance.close();
     dbInstance = null;
   }
@@ -198,6 +222,14 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
           const ocrStore = db.createObjectStore('e14OcrJobs', { keyPath: 'id' });
           ocrStore.createIndex('by-synced', 'synced');
           ocrStore.createIndex('by-mesa', 'mesaId');
+        }
+      }
+
+      // v7: Store para jornada electoral (checkin, apertura, cierre)
+      if (oldVersion < 7) {
+        if (!db.objectStoreNames.contains('jornada')) {
+          const jornadaStore = db.createObjectStore('jornada', { keyPath: 'id' });
+          jornadaStore.createIndex('by-mesa', 'mesaId');
         }
       }
     },
@@ -503,4 +535,21 @@ export async function updateOcrJobEstado(
   if (item) {
     await db.put('e14OcrJobs', { ...item, estado, ...extra });
   }
+}
+
+// ─── Jornada Electoral ─────────────────────────────────────────
+
+export async function guardarJornada(
+  data: CuorumDB['jornada']['value'],
+) {
+  const db = await getDB();
+  await db.put('jornada', data);
+}
+
+export async function getJornadaByMesa(mesaId: string): Promise<CuorumDB['jornada']['value'] | undefined> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('jornada', 'by-mesa', mesaId);
+  // Retorna la más reciente si hay varias
+  if (all.length === 0) return undefined;
+  return all.sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))[0];
 }

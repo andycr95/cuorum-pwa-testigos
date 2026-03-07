@@ -11,18 +11,16 @@ interface Foto {
 interface CapturaMultipleE14Props {
   onFotosListas: (fotos: { orden: number; blob: Blob }[]) => void;
   disabled?: boolean;
-  /** Custom label for the submit button. Defaults to "Enviar N fotos para OCR" */
   submitLabel?: string;
-  /** Custom title for the header. Defaults to "Fotos del E-14 para OCR" */
   title?: string;
 }
 
 export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabel, title }: CapturaMultipleE14Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [procesando, setProcesando] = useState(false);
 
-  // Same compression function as CapturaE14.tsx
   const comprimirImagen = useCallback(async (imageBitmap: ImageBitmap): Promise<Blob> => {
     const maxWidth = 1200;
     const scale = Math.min(1, maxWidth / imageBitmap.width);
@@ -59,25 +57,38 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
     return blob;
   }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const procesarArchivos = async (files: FileList) => {
     setProcesando(true);
     try {
-      const bmp = await createImageBitmap(file);
-      const blob = await comprimirImagen(bmp);
-      bmp.close();
-      const preview = URL.createObjectURL(blob);
+      const nuevasFotos: Foto[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        const bmp = await createImageBitmap(file);
+        const blob = await comprimirImagen(bmp);
+        bmp.close();
+        const preview = URL.createObjectURL(blob);
+        nuevasFotos.push({ orden: 0, blob, preview });
+      }
       setFotos(prev => {
-        const next = [...prev, { orden: prev.length + 1, blob, preview }];
-        return next;
+        const merged = [...prev, ...nuevasFotos];
+        return merged.map((f, i) => ({ ...f, orden: i + 1 }));
       });
     } catch {
-      alert('Error al procesar la imagen. Intenta nuevamente.');
+      alert('Error al procesar las imagenes. Intenta nuevamente.');
     } finally {
       setProcesando(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
     }
+  };
+
+  const handleCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) procesarArchivos(e.target.files);
+  };
+
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) procesarArchivos(e.target.files);
   };
 
   const moverFoto = (idx: number, dir: -1 | 1) => {
@@ -91,7 +102,10 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
   };
 
   const eliminarFoto = (idx: number) => {
-    setFotos(prev => prev.filter((_, i) => i !== idx).map((f, i) => ({ ...f, orden: i + 1 })));
+    setFotos(prev => {
+      URL.revokeObjectURL(prev[idx].preview);
+      return prev.filter((_, i) => i !== idx).map((f, i) => ({ ...f, orden: i + 1 }));
+    });
   };
 
   const handleEnviar = () => {
@@ -147,29 +161,60 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
         </div>
       )}
 
-      {/* Boton agregar */}
-      <button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={disabled || procesando}
-        className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl hover:border-editorial-red/50 bg-gray-50 hover:bg-editorial-red/5 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-      >
-        {procesando ? (
-          <div className="w-5 h-5 border-2 border-editorial-red border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <span className="text-2xl">+</span>
-        )}
-        <span className="font-bold text-gray-700 text-sm">
-          {procesando ? 'Comprimiendo...' : fotos.length === 0 ? 'Tomar primera foto' : 'Agregar otra foto'}
-        </span>
-      </button>
+      {/* Botones para agregar fotos */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Tomar foto con camara */}
+        <button
+          type="button"
+          onClick={() => cameraInputRef.current?.click()}
+          disabled={disabled || procesando}
+          className="py-4 border-2 border-dashed border-gray-300 rounded-2xl hover:border-editorial-red/50 bg-gray-50 hover:bg-editorial-red/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {procesando ? (
+            <div className="w-5 h-5 border-2 border-editorial-red border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <svg className="w-7 h-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+            </svg>
+          )}
+          <span className="font-bold text-gray-600 text-xs">
+            {procesando ? 'Procesando...' : 'Tomar foto'}
+          </span>
+        </button>
 
+        {/* Seleccionar de galeria */}
+        <button
+          type="button"
+          onClick={() => galleryInputRef.current?.click()}
+          disabled={disabled || procesando}
+          className="py-4 border-2 border-dashed border-gray-300 rounded-2xl hover:border-editorial-red/50 bg-gray-50 hover:bg-editorial-red/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <svg className="w-7 h-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+          </svg>
+          <span className="font-bold text-gray-600 text-xs">
+            Seleccionar fotos
+          </span>
+        </button>
+      </div>
+
+      {/* Hidden inputs */}
       <input
-        ref={fileInputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
-        onChange={handleFileChange}
+        onChange={handleCameraChange}
+        className="hidden"
+        disabled={disabled || procesando}
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleGalleryChange}
         className="hidden"
         disabled={disabled || procesando}
       />
@@ -188,8 +233,8 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-xs text-blue-700 leading-relaxed">
-          <span className="font-bold">Consejo:</span> Toma una foto por seccion del acta.
-          Puedes reordenarlas antes de enviar. El sistema las procesara automaticamente.
+          <span className="font-bold">Consejo:</span> Toma una foto por seccion del acta o selecciona varias fotos de tu galeria.
+          Puedes reordenarlas antes de enviar.
         </p>
       </div>
     </div>
