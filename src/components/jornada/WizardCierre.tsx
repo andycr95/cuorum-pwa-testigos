@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { jornadaService, AlertaValidacion } from '../../services/jornadaService';
+import { jornadaService, AlertaValidacion, ProgresoElecciones } from '../../services/jornadaService';
 
 interface Props {
   mesaId: string;
@@ -20,15 +20,19 @@ interface EleccionValidacion {
 export function WizardCierre({ mesaId, mesaNumero, elecciones, onCerrado, onCancel }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [validaciones, setValidaciones] = useState<EleccionValidacion[]>([]);
+  const [progreso, setProgreso] = useState<ProgresoElecciones | null>(null);
   const [observaciones, setObservaciones] = useState('');
   const [firmaDataUrl, setFirmaDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [codigoVerificacion, setCodigoVerificacion] = useState<string | null>(null);
 
-  // Step 1: Run validations
+  // Step 1: Fetch progreso + run validations
   useEffect(() => {
     if (step !== 1) return;
+
+    // Fetch progreso to check which elections have results
+    jornadaService.getProgreso(mesaId).then(setProgreso).catch(() => {});
 
     const initial: EleccionValidacion[] = elecciones.map((e) => ({
       id: e.id,
@@ -72,8 +76,9 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, onCerrado, onCanc
 
       setCodigoVerificacion(jornada.codigoVerificacion || 'SIN-CODIGO');
       setStep(4);
-    } catch (err) {
-      setError('No se pudo cerrar el acta. Verifica tu conexion e intentalo de nuevo.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'No se pudo cerrar el acta. Verifica tu conexion e intentalo de nuevo.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -81,6 +86,8 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, onCerrado, onCanc
 
   const hasErrors = validaciones.some((v) => v.alertas.some((a) => a.severidad === 'error'));
   const allValidated = validaciones.every((v) => !v.loading);
+  const eleccionesSinReportar = progreso?.elecciones.filter((e) => !e.reportado) || [];
+  const canProceed = allValidated && eleccionesSinReportar.length === 0;
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
@@ -169,7 +176,20 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, onCerrado, onCanc
                 ))}
               </div>
 
-              {hasErrors && allValidated && (
+              {eleccionesSinReportar.length > 0 && (
+                <div className="mt-4 bg-red-50 border-2 border-red-300 rounded-xl p-3">
+                  <p className="text-xs text-red-600 font-bold mb-1">
+                    Faltan resultados por reportar:
+                  </p>
+                  <ul className="list-disc list-inside">
+                    {eleccionesSinReportar.map((e) => (
+                      <li key={e.id} className="text-xs text-red-600">{e.nombre}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {hasErrors && allValidated && eleccionesSinReportar.length === 0 && (
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
                   <p className="text-xs text-red-600 font-bold">
                     Hay errores en la validacion. Revisa los resultados antes de cerrar.
@@ -179,10 +199,10 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, onCerrado, onCanc
 
               <button
                 onClick={() => setStep(2)}
-                disabled={!allValidated}
+                disabled={!canProceed}
                 className="w-full mt-6 py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:shadow-lg active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {allValidated ? 'Continuar' : 'Validando...'}
+                {!allValidated ? 'Validando...' : eleccionesSinReportar.length > 0 ? 'Reporta todas las elecciones' : 'Continuar'}
               </button>
             </div>
           )}

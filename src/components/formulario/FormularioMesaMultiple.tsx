@@ -135,7 +135,7 @@ export function FormularioMesaMultiple({
 
   // Si hay un job OCR COMPLETADO para la elección actual, forzar tab foto y bloquear manual
   const ocrCompletado = ocrJobs.jobs.some(
-    j => j.estado === 'COMPLETADO' && j.eleccionId === eleccionActual,
+    j => (j.estado === 'COMPLETADO' || j.estado === 'CONFIRMADO') && j.eleccionId === eleccionActual,
   );
 
   useEffect(() => {
@@ -513,9 +513,9 @@ export function FormularioMesaMultiple({
                 <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
                   <span className="text-2xl flex-shrink-0">✓</span>
                   <div>
-                    <p className="text-sm font-black text-green-800">Acta ya procesada</p>
+                    <p className="text-sm font-black text-green-800">Fotos del E-14 recibidas</p>
                     <p className="text-xs text-green-600 mt-0.5">
-                      El análisis de las fotos E-14 fue completado. Los resultados están disponibles en el Centro de Mando.
+                      Revisa y confirma los resultados extraidos abajo.
                     </p>
                   </div>
                 </div>
@@ -530,6 +530,15 @@ export function FormularioMesaMultiple({
                 onRetry={ocrJobs.syncJobs}
                 onSync={ocrJobs.syncJobs}
                 syncing={ocrJobs.syncing}
+                onConfirmar={async (jobId, datos) => {
+                  return ocrJobs.confirmarJob(jobId, {
+                    ...datos,
+                    mesaId,
+                    testigoId,
+                    deviceId,
+                  });
+                }}
+                eleccionReportada={yaRegistrado}
               />
             </div>
           )}

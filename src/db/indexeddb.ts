@@ -98,10 +98,11 @@ export interface CuorumDB extends DBSchema {
       eleccionId: string;
       campanaId: string;
       fotos: { orden: number; blob: Blob; capturedAt: string }[];
-      estado: 'PENDIENTE' | 'SUBIENDO' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR';
+      estado: 'PENDIENTE' | 'SUBIENDO' | 'PROCESANDO' | 'COMPLETADO' | 'CONFIRMADO' | 'ERROR';
       serverJobId?: string;
       resultadoOcr?: Record<string, number>;
       serialE14?: string;
+      candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null; listaNombre?: string }>;
       synced: 0 | 1;
       syncAttempts: number;
       lastSyncError?: string;
@@ -492,9 +493,10 @@ export async function clearEscrutinioCache() {
 
 export async function guardarOcrJob(
   data: Omit<CuorumDB['e14OcrJobs']['value'], 'synced' | 'syncAttempts'>,
+  opts?: { synced?: 0 | 1 },
 ) {
   const db = await getDB();
-  await db.put('e14OcrJobs', { ...data, synced: 0, syncAttempts: 0 });
+  await db.put('e14OcrJobs', { ...data, synced: opts?.synced ?? 0, syncAttempts: 0 });
 }
 
 export async function getOcrJobsPendientes() {
@@ -526,7 +528,7 @@ export async function marcarOcrJobSyncado(
 export async function updateOcrJobEstado(
   id: string,
   estado: CuorumDB['e14OcrJobs']['value']['estado'],
-  extra?: { resultadoOcr?: Record<string, number>; serialE14?: string; lastSyncError?: string },
+  extra?: { resultadoOcr?: Record<string, number>; serialE14?: string; lastSyncError?: string; candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null }> },
 ) {
   const db = await getDB();
   const item = await db.get('e14OcrJobs', id);

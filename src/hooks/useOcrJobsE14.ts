@@ -53,6 +53,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
           resultadoOcr?: Record<string, number>;
           serialE14?: string;
           errorMsg?: string;
+          candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null }>;
         }>(`/testigos/actas/ocr-job/${job.serverJobId}`);
 
         const serverEstado = resp.data.estado;
@@ -61,6 +62,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
             resultadoOcr: resp.data.resultadoOcr,
             serialE14: resp.data.serialE14,
             lastSyncError: resp.data.errorMsg,
+            candidatosMap: resp.data.candidatosMap,
           });
           changed = true;
         }
@@ -173,13 +175,101 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
     [mesaId, testigoId, eleccionId, campanaId, deviceId, cargarJobs, syncJobs],
   );
 
-  // On mount: if there are already PROCESANDO jobs from a previous session, start polling
+  const confirmarJob = useCallback(
+    async (jobId: string, datos: {
+      resultados: Record<string, number>;
+      votosBlanco: number;
+      votosNulos: number;
+      votosNoMarcados: number;
+      totalVotosMesa: number;
+      mesaId: string;
+      testigoId: string;
+      deviceId: string;
+      forzar?: boolean;
+    }) => {
+      // Find the job's serverJobId
+      const allJobs = await getOcrJobsByMesa(mesaId);
+      const job = allJobs.find(j => j.id === jobId);
+      if (!job?.serverJobId) throw new Error('Job no tiene serverJobId');
+
+      const resp = await api.post(`/testigos/actas/ocr-job/${job.serverJobId}/confirmar`, datos);
+
+      if (resp.data.advertencia) {
+        return resp.data; // { advertencia: true, mensaje: "..." }
+      }
+
+      // Update local IDB to CONFIRMADO
+      await updateOcrJobEstado(jobId, 'CONFIRMADO');
+      await cargarJobs();
+      return resp.data;
+    },
+    [mesaId, cargarJobs],
+  );
+
+  // On mount: hydrate from server if IDB is empty, and start polling for PROCESANDO jobs
+  const hydrationDone = useRef(false);
   useEffect(() => {
-    getOcrJobsByMesa(mesaId).then(all => {
-      const hasProcessing = all.some(j => j.estado === 'PROCESANDO' && j.serverJobId);
+    const init = async () => {
+      const local = await getOcrJobsByMesa(mesaId);
+
+      // If IDB has no jobs for this mesa, try to hydrate from server
+      if (local.length === 0 && navigator.onLine && !hydrationDone.current) {
+        hydrationDone.current = true;
+        try {
+          const resp = await api.get<Array<{
+            id: string;
+            eleccionId: string;
+            testigoId: string;
+            campanaId: string;
+            estado: OcrJobEntry['estado'];
+            resultadoOcr?: Record<string, number>;
+            serialE14?: string;
+            errorMsg?: string;
+            candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null }>;
+            fotos: Array<{ orden: number; url: string; capturedAt: string }>;
+            createdAt: string;
+          }>>(`/testigos/actas/by-mesa/${mesaId}`);
+
+          for (const serverJob of resp.data) {
+            // Store as a synced IDB entry (no blob fotos — already on server)
+            await guardarOcrJob({
+              id: serverJob.id, // use server ID as local ID
+              mesaId,
+              testigoId: serverJob.testigoId,
+              eleccionId: serverJob.eleccionId,
+              campanaId: serverJob.campanaId,
+              deviceId,
+              fotos: serverJob.fotos.map(f => ({
+                orden: f.orden,
+                blob: new Blob(), // placeholder — photos are on server
+                capturedAt: f.capturedAt,
+              })),
+              estado: serverJob.estado,
+              serverJobId: serverJob.id,
+              resultadoOcr: serverJob.resultadoOcr as Record<string, number> | undefined,
+              serialE14: serverJob.serialE14 ?? undefined,
+              candidatosMap: serverJob.candidatosMap,
+              capturedAt: serverJob.createdAt,
+              lastSyncError: serverJob.errorMsg ?? undefined,
+            }, { synced: 1 });
+          }
+
+          if (resp.data.length > 0) {
+            await cargarJobs();
+          }
+        } catch {
+          // Offline or error — will work with local data only
+        }
+      }
+
+      // Start polling for any PROCESANDO jobs
+      const allJobs = await getOcrJobsByMesa(mesaId);
+      const hasProcessing = allJobs.some(j => j.estado === 'PROCESANDO' && j.serverJobId);
       if (hasProcessing) startPolling();
-    });
-  }, [mesaId, startPolling]);
+    };
+
+    init();
+  }, [mesaId, startPolling, cargarJobs, deviceId]);
 
   // Listen for online event
   useEffect(() => {
@@ -188,5 +278,5 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
     return () => window.removeEventListener('online', handleOnline);
   }, [syncJobs]);
 
-  return { jobs, saving, syncing, guardar, syncJobs, recargar: cargarJobs };
+  return { jobs, saving, syncing, guardar, syncJobs, recargar: cargarJobs, confirmarJob };
 }
