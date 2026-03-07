@@ -33,6 +33,7 @@ export interface CuorumDB extends DBSchema {
   'escrutinio-fotos': { key: string; value: EscrutinioCacheEntry };
   'escrutinio-incidencias': { key: string; value: EscrutinioCacheEntry };
   'escrutinio-consolidado': { key: string; value: EscrutinioCacheEntry };
+  'escrutinio-actas': { key: string; value: EscrutinioCacheEntry };
   'escrutinio-geo': { key: string; value: EscrutinioCacheEntry };
   // @ts-ignore - idb type compatibility
   resultados: {
@@ -155,13 +156,13 @@ export interface CuorumDB extends DBSchema {
   };
 }
 
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   // Si la instancia cacheada es de una versión anterior (no tiene los stores v5),
   // cerrarla y re-abrir para forzar el upgrade.
-  if (dbInstance && (!dbInstance.objectStoreNames.contains('escrutinio-geo') || !dbInstance.objectStoreNames.contains('e14OcrJobs') || !dbInstance.objectStoreNames.contains('jornada'))) {
+  if (dbInstance && (!dbInstance.objectStoreNames.contains('escrutinio-actas') || !dbInstance.objectStoreNames.contains('e14OcrJobs') || !dbInstance.objectStoreNames.contains('jornada'))) {
     dbInstance.close();
     dbInstance = null;
   }
@@ -231,6 +232,13 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
         if (!db.objectStoreNames.contains('jornada')) {
           const jornadaStore = db.createObjectStore('jornada', { keyPath: 'id' });
           jornadaStore.createIndex('by-mesa', 'mesaId');
+        }
+      }
+
+      // v8: Cache store para actas OCR en escrutinio
+      if (oldVersion < 8) {
+        if (!db.objectStoreNames.contains('escrutinio-actas')) {
+          db.createObjectStore('escrutinio-actas', { keyPath: 'cacheKey' });
         }
       }
     },
@@ -411,7 +419,7 @@ export async function getResultadosByMesa(mesaId: string) {
 
 // ─── Escrutinio cache helpers ─────────────────────────────────
 
-type EscrutinioStoreName = 'escrutinio-resultados' | 'escrutinio-fotos' | 'escrutinio-incidencias' | 'escrutinio-consolidado' | 'escrutinio-geo';
+type EscrutinioStoreName = 'escrutinio-resultados' | 'escrutinio-fotos' | 'escrutinio-incidencias' | 'escrutinio-consolidado' | 'escrutinio-geo' | 'escrutinio-actas';
 
 function buildCacheKey(filtros: Record<string, unknown>): string {
   return JSON.stringify(filtros, Object.keys(filtros).sort());
@@ -477,6 +485,7 @@ export async function clearEscrutinioCache() {
       'escrutinio-fotos',
       'escrutinio-incidencias',
       'escrutinio-consolidado',
+      'escrutinio-actas',
       'escrutinio-geo',
     ];
     for (const storeName of stores) {

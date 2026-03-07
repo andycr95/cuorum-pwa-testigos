@@ -151,9 +151,10 @@ function RevisionOcrInline({ job, onConfirmar, eleccionReportada }: {
   const resultadoOcr = job.resultadoOcr!;
   const candidatosMap = job.candidatosMap || {};
 
-  // Separate candidate votes, lista votes, and totals
+  // Separate candidate votes, lista votes, circunscripcion totals, and totals
   const listaEntries = Object.entries(resultadoOcr).filter(([k]) => k.startsWith('_lista:'));
   const candidatoEntries = Object.entries(resultadoOcr).filter(([k]) => !k.startsWith('_'));
+  const circEntries = Object.entries(resultadoOcr).filter(([k]) => k.startsWith('_circ:'));
   const allVoteEntries = [...listaEntries, ...candidatoEntries];
 
   // Sort by partido then posicion (lista votes first within partido, then candidates)
@@ -183,6 +184,9 @@ function RevisionOcrInline({ job, onConfirmar, eleccionReportada }: {
   const [votosBlanco, setVotosBlanco] = useState(resultadoOcr['_votosBlanco'] ?? 0);
   const [votosNulos, setVotosNulos] = useState(resultadoOcr['_votosNulos'] ?? 0);
   const [votosNoMarcados, setVotosNoMarcados] = useState(resultadoOcr['_votosNoMarcados'] ?? 0);
+  const [circValues, setCircValues] = useState<Record<string, number>>(
+    Object.fromEntries(circEntries),
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showWarning, setShowWarning] = useState(false);
@@ -194,7 +198,7 @@ function RevisionOcrInline({ job, onConfirmar, eleccionReportada }: {
     setError(null);
     try {
       const result = await onConfirmar(job.id, {
-        resultados: votos,
+        resultados: { ...votos, ...circValues },
         votosBlanco,
         votosNulos,
         votosNoMarcados,
@@ -332,26 +336,62 @@ function RevisionOcrInline({ job, onConfirmar, eleccionReportada }: {
           </div>
         </div>
 
-        {/* Totals */}
+        {/* Nivelacion de la mesa */}
         <div className="border-t border-gray-200 pt-3">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Totales del acta</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Nivelacion de la mesa</p>
           <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-gray-700">Total sufragantes (E-11)</p>
+              <input type="number" inputMode="numeric" min={0} value={totalVotosMesa}
+                onChange={(e) => setTotalVotosMesa(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-16 px-2 py-1.5 text-xs text-right font-bold border-2 border-gray-200 rounded-lg focus:border-editorial-red focus:outline-none" />
+            </div>
             {[
-              { label: 'Total votos mesa', value: totalVotosMesa, setter: setTotalVotosMesa },
+              { label: 'Total votos en la urna', value: resultadoOcr['_totalVotosUrna'] },
+              { label: 'Total votos incinerados', value: resultadoOcr['_totalVotosIncinerados'] },
+            ].filter(item => item.value != null).map(({ label, value }) => (
+              <div key={label} className="flex items-center justify-between gap-2">
+                <p className="text-xs text-gray-700">{label}</p>
+                <span className="text-xs font-bold text-gray-600 tabular-nums px-2">{value}</span>
+              </div>
+            ))}
+            {resultadoOcr['_huboRecuento'] === 1 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                <p className="text-[11px] text-amber-700 font-bold">Hubo recuento de votos</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Circunscripciones + votos especiales */}
+        <div className="border-t border-gray-200 pt-3">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Totales circunscripcion</p>
+          <div className="space-y-1.5">
+            {/* Circunscripcion breakdown (if multi-circunscripcion E-14) */}
+            {Object.keys(circValues).length > 0 && (
+              <div className="bg-gray-50 rounded-lg px-2 py-1.5 space-y-1">
+                {Object.entries(circValues).map(([key, val]) => (
+                  <div key={key} className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-gray-500">{key.replace('_circ:', '')}</p>
+                    <input type="number" inputMode="numeric" min={0} value={val}
+                      onChange={(e) => setCircValues(prev => ({ ...prev, [key]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                      className="w-16 px-2 py-1.5 text-[11px] text-right font-bold border-2 border-gray-200 rounded-lg focus:border-editorial-red focus:outline-none" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Votos blanco, nulos, no marcados */}
+            {[
               { label: 'Votos en blanco', value: votosBlanco, setter: setVotosBlanco },
               { label: 'Votos nulos', value: votosNulos, setter: setVotosNulos },
               { label: 'Tarjetas no marcadas', value: votosNoMarcados, setter: setVotosNoMarcados },
             ].map(({ label, value, setter }) => (
               <div key={label} className="flex items-center justify-between gap-2">
                 <p className="text-xs text-gray-700">{label}</p>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={value}
+                <input type="number" inputMode="numeric" min={0} value={value}
                   onChange={(e) => setter(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-16 px-2 py-1.5 text-xs text-right font-bold border-2 border-gray-200 rounded-lg focus:border-editorial-red focus:outline-none"
-                />
+                  className="w-16 px-2 py-1.5 text-xs text-right font-bold border-2 border-gray-200 rounded-lg focus:border-editorial-red focus:outline-none" />
               </div>
             ))}
           </div>

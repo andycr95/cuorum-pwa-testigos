@@ -5,6 +5,7 @@ import {
   type FotoE14Escrutinio,
   type IncidenciaEscrutinio,
   type ConsolidadoEscrutinio,
+  type ActaOcrEscrutinio,
   type PaginatedResponse,
 } from '../../services/escrutinioService';
 import { authService, TestigoData } from '../../services/authService';
@@ -15,7 +16,7 @@ import {
   getCachedGeoData,
 } from '../../db/indexeddb';
 
-type TabActiva = 'consolidado' | 'resultados' | 'fotos' | 'novedades';
+type TabActiva = 'consolidado' | 'resultados' | 'actas' | 'fotos' | 'novedades';
 
 interface Props {
   testigoData: TestigoData;
@@ -56,6 +57,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   // Data states
   const [consolidado, setConsolidado] = useState<ConsolidadoEscrutinio | null>(null);
   const [resultados, setResultados] = useState<PaginatedResponse<ResultadoEscrutinio> | null>(null);
+  const [actas, setActas] = useState<PaginatedResponse<ActaOcrEscrutinio> | null>(null);
   const [fotos, setFotos] = useState<PaginatedResponse<FotoE14Escrutinio> | null>(null);
   const [incidencias, setIncidencias] = useState<PaginatedResponse<IncidenciaEscrutinio> | null>(null);
 
@@ -167,6 +169,8 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         freshData = await escrutinioService.getConsolidado({ eleccionId, ...filtros });
       } else if (tabActiva === 'resultados') {
         freshData = await escrutinioService.getResultados({ ...filtros, page, limit: 50 });
+      } else if (tabActiva === 'actas') {
+        freshData = await escrutinioService.getActasOcr({ ...filtros, page, limit: 20 });
       } else if (tabActiva === 'fotos') {
         freshData = await escrutinioService.getFotosE14({ ...filtros, page, limit: 50 });
       } else {
@@ -192,6 +196,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   function applyData(tab: TabActiva, data: unknown) {
     if (tab === 'consolidado') setConsolidado(data as ConsolidadoEscrutinio | null);
     else if (tab === 'resultados') setResultados(data as PaginatedResponse<ResultadoEscrutinio> | null);
+    else if (tab === 'actas') setActas(data as PaginatedResponse<ActaOcrEscrutinio> | null);
     else if (tab === 'fotos') setFotos(data as PaginatedResponse<FotoE14Escrutinio> | null);
     else setIncidencias(data as PaginatedResponse<IncidenciaEscrutinio> | null);
   }
@@ -397,6 +402,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
             {([
               { key: 'consolidado', label: 'Consolidado' },
               { key: 'resultados', label: 'Resultados' },
+              { key: 'actas', label: 'Actas OCR' },
               { key: 'fotos', label: 'Fotos E14' },
               { key: 'novedades', label: 'Novedades' },
             ] as const).map(tab => (
@@ -437,6 +443,9 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         {tabActiva === 'resultados' && (
           <TabResultados data={resultados} loading={loading && !isCached} page={page} onPageChange={setPage} />
         )}
+        {tabActiva === 'actas' && (
+          <TabActas data={actas} loading={loading && !isCached} page={page} onPageChange={setPage} />
+        )}
         {tabActiva === 'fotos' && (
           <TabFotos data={fotos} loading={loading && !isCached} page={page} onPageChange={setPage} />
         )}
@@ -454,10 +463,31 @@ function TabConsolidado({ consolidado, loading }: {
   consolidado: ConsolidadoEscrutinio | null;
   loading: boolean;
 }) {
+  const [expandedPartidos, setExpandedPartidos] = useState<Set<string>>(new Set());
+
   if (loading || !consolidado) return null;
 
   const { candidatos, totales, cobertura } = consolidado;
   const maxVotos = candidatos.length > 0 ? Math.max(...candidatos.map(c => c.votos)) : 1;
+
+  // Agrupar por partido
+  const partidosMap: Record<string, typeof candidatos> = {};
+  for (const c of candidatos) {
+    const key = c.partido || 'Sin partido';
+    if (!partidosMap[key]) partidosMap[key] = [];
+    partidosMap[key].push(c);
+  }
+  const entries = Object.entries(partidosMap);
+  const multiPartido = entries.length > 1;
+
+  const toggle = (partido: string) => {
+    if (!multiPartido) return;
+    setExpandedPartidos((prev) => {
+      const next = new Set(prev);
+      if (next.has(partido)) next.delete(partido); else next.add(partido);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -469,7 +499,7 @@ function TabConsolidado({ consolidado, loading }: {
           <p className="text-xs text-purple-600 font-semibold">{cobertura} cobertura</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Votos v\u00e1lidos</p>
+          <p className="text-xs text-gray-500 uppercase font-semibold">Votos válidos</p>
           <p className="text-2xl font-bold text-gray-900">{totales.totalVotosValidos.toLocaleString('es-CO')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border">
@@ -482,42 +512,75 @@ function TabConsolidado({ consolidado, loading }: {
         </div>
       </div>
 
-      {/* Ranking */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div className="px-4 py-3 border-b bg-gray-50">
-          <h3 className="text-sm font-semibold text-gray-900">Ranking de candidatos</h3>
+      {/* Ranking agrupado por partido */}
+      {candidatos.length === 0 ? (
+        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm border">
+          Sin datos de candidatos para estos filtros
         </div>
-        <div className="divide-y">
-          {candidatos.map((c, i) => (
-            <div key={`${c.candidatoId || c.candidato}-${i}`} className="px-4 py-3">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-400 w-5">#{i + 1}</span>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{c.candidato}</p>
-                    <p className="text-xs text-gray-500">{c.partido}</p>
+      ) : (
+        <div className="space-y-3">
+          {entries.map(([partido, rows]) => {
+            const totalVotos = rows.reduce((s, c) => s + c.votos, 0);
+            const isExpanded = !multiPartido || expandedPartidos.has(partido);
+            return (
+              <div key={partido} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                {/* Cabecera del partido */}
+                <button
+                  type="button"
+                  onClick={() => toggle(partido)}
+                  className={`w-full flex items-center justify-between px-4 py-3 bg-gray-50 border-b text-left ${multiPartido ? 'cursor-pointer active:bg-gray-100' : 'cursor-default'}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {multiPartido && (
+                      <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                      </svg>
+                    )}
+                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-bold flex-shrink-0">{partido}</span>
+                    {rows[0]?.listaNombre && rows[0].listaNombre !== partido ? (
+                      <span className="text-sm font-semibold text-gray-800 truncate">{rows[0].listaNombre}</span>
+                    ) : rows.length === 1 ? (
+                      <span className="text-sm font-semibold text-gray-800 truncate">{rows[0].candidato}</span>
+                    ) : (
+                      <span className="text-xs text-gray-500">{rows.length} candidatos</span>
+                    )}
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">{c.votos.toLocaleString('es-CO')}</p>
-                  <p className="text-xs text-gray-500">{c.porcentaje}%</p>
-                </div>
+                  <div className="text-right flex-shrink-0 ml-3">
+                    <p className="text-sm font-bold text-purple-600">{totalVotos.toLocaleString('es-CO')}</p>
+                    <p className="text-xs text-gray-400">{rows.reduce((s, c) => s + parseFloat(c.porcentaje), 0).toFixed(1)}%</p>
+                  </div>
+                </button>
+
+                {/* Candidatos del partido */}
+                {isExpanded && (
+                  <div className="divide-y">
+                    {rows.map((c, i) => (
+                      <div key={`${c.candidatoId || c.candidato}-${i}`} className="px-4 py-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {rows.length > 1 && <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>}
+                            <p className="text-sm font-semibold text-gray-900 truncate">{c.candidato}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <p className="text-sm font-bold text-gray-900">{c.votos.toLocaleString('es-CO')}</p>
+                            <p className="text-xs text-gray-500">{c.porcentaje}%</p>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5">
+                          <div
+                            className="bg-purple-500 h-1.5 rounded-full transition-all duration-500"
+                            style={{ width: `${maxVotos > 0 ? (c.votos / maxVotos) * 100 : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div
-                  className="bg-purple-500 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${maxVotos > 0 ? (c.votos / maxVotos) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          ))}
-          {candidatos.length === 0 && (
-            <div className="px-4 py-8 text-center text-gray-400 text-sm">
-              Sin datos de candidatos para estos filtros
-            </div>
-          )}
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -572,6 +635,250 @@ function TabResultados({ data, loading, page, onPageChange }: {
       {data.data.length === 0 && (
         <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
           Sin resultados para estos filtros
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={data.totalPages} total={data.total} onPageChange={onPageChange} />
+    </div>
+  );
+}
+
+// ─── Tab: Actas OCR ──────────────────────────────────────────
+
+function TabActas({ data, loading, page, onPageChange }: {
+  data: PaginatedResponse<ActaOcrEscrutinio> | null;
+  loading: boolean;
+  page: number;
+  onPageChange: (p: number) => void;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  if (loading || !data) return null;
+
+  return (
+    <div className="space-y-3">
+      {data.data.map((acta) => {
+        const ocr = (acta.resultadoOcr ?? {}) as Record<string, number>;
+        const candidatosMap = acta.candidatosMap ?? {};
+        const isExpanded = expandedId === acta.id;
+
+        // Separate entries
+        const listaEntries = Object.entries(ocr).filter(([k]) => k.startsWith('_lista:'));
+        const candidatoEntries = Object.entries(ocr).filter(([k]) => !k.startsWith('_'));
+        const circEntries = Object.entries(ocr).filter(([k]) => k.startsWith('_circ:'));
+        const allVotes = [...listaEntries, ...candidatoEntries].sort(([a], [b]) => {
+          const pa = candidatosMap[a]?.partido || '';
+          const pb = candidatosMap[b]?.partido || '';
+          if (pa !== pb) return pa.localeCompare(pb);
+          return (candidatosMap[a]?.posicion ?? -1) - (candidatosMap[b]?.posicion ?? -1);
+        });
+
+        // Parse resumen vs otras constancias vs alertas
+        let resumenRaw = acta.resumenOcr || '';
+        let constancias: string | undefined;
+        let alertasTexto: string | undefined;
+        const idxAlertas = resumenRaw.indexOf('--- ALERTAS ---');
+        if (idxAlertas >= 0) {
+          alertasTexto = resumenRaw.slice(idxAlertas + '--- ALERTAS ---'.length).trim();
+          resumenRaw = resumenRaw.slice(0, idxAlertas).trim();
+        }
+        const idxConst = resumenRaw.indexOf('--- OTRAS CONSTANCIAS ---');
+        if (idxConst >= 0) {
+          constancias = resumenRaw.slice(idxConst + '--- OTRAS CONSTANCIAS ---'.length).trim();
+          resumenRaw = resumenRaw.slice(0, idxConst).trim();
+        }
+        const resumen = resumenRaw;
+        const alertasCriticas = ocr['_alertasCriticas'] ?? 0;
+        const alertasAdvertencia = ocr['_alertasAdvertencia'] ?? 0;
+        const totalAlertasOcr = alertasCriticas + alertasAdvertencia + (ocr['_alertasInfo'] ?? 0);
+        const alertaLines = alertasTexto?.split('\n').filter(l => l.trim()) ?? [];
+
+        return (
+          <div key={acta.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            {/* Header — always visible */}
+            <button
+              type="button"
+              onClick={() => setExpandedId(isExpanded ? null : acta.id)}
+              className="w-full px-4 py-3 flex items-center justify-between text-left"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                    Mesa #{acta.mesa.numero}
+                  </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${acta.estado === 'CONFIRMADO' ? 'bg-emerald-100 text-emerald-700' : 'bg-green-100 text-green-700'}`}>
+                    {acta.estado}
+                  </span>
+                  {alertasCriticas > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">{alertasCriticas} alerta{alertasCriticas !== 1 ? 's' : ''}</span>
+                  )}
+                  {alertasCriticas === 0 && alertasAdvertencia > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">{alertasAdvertencia} advertencia{alertasAdvertencia !== 1 ? 's' : ''}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 truncate">
+                  {acta.mesa.puestoVotacion.nombre}
+                  {acta.mesa.puestoVotacion.municipio ? ` — ${acta.mesa.puestoVotacion.municipio.nombre}` : ''}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  {acta.eleccion.nombre} · {acta.testigo.nombres} {acta.testigo.apellidos}
+                </p>
+              </div>
+              <span className="text-gray-400 text-lg ml-2">{isExpanded ? '−' : '+'}</span>
+            </button>
+
+            {/* Expanded detail */}
+            {isExpanded && (
+              <div className="border-t border-gray-100 px-4 py-3 space-y-3">
+                {/* Photos */}
+                {acta.fotos.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {acta.fotos.map(f => (
+                      <img key={f.id} src={f.url} alt={`Pag ${f.orden}`}
+                        className="w-20 h-20 object-cover rounded-lg border flex-shrink-0" loading="lazy" />
+                    ))}
+                  </div>
+                )}
+
+                {/* Resumen IA */}
+                {resumen && (
+                  <div className="bg-gray-50 rounded-lg px-3 py-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Analisis IA</p>
+                    <p className="text-xs text-gray-600 leading-relaxed">{resumen}</p>
+                  </div>
+                )}
+
+                {/* Alertas de consistencia */}
+                {totalAlertasOcr > 0 && (
+                  <div className={`rounded-lg px-3 py-2 space-y-1.5 border ${alertasCriticas > 0 ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-[10px] font-bold uppercase ${alertasCriticas > 0 ? 'text-red-500' : 'text-amber-500'}`}>Alertas</p>
+                      <div className="flex gap-1">
+                        {alertasCriticas > 0 && <span className="px-1.5 py-0.5 bg-red-200 text-red-700 rounded text-[9px] font-bold">{alertasCriticas}</span>}
+                        {alertasAdvertencia > 0 && <span className="px-1.5 py-0.5 bg-amber-200 text-amber-700 rounded text-[9px] font-bold">{alertasAdvertencia}</span>}
+                      </div>
+                    </div>
+                    {alertaLines.map((line, i) => (
+                      <p key={i} className={`text-[11px] leading-relaxed ${
+                        line.includes('[CRITICO]') ? 'text-red-700 font-semibold' :
+                        line.includes('[ADVERTENCIA]') ? 'text-amber-700' :
+                        'text-gray-600'
+                      }`}>{line}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Otras constancias */}
+                {constancias && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <p className="text-[10px] font-bold text-amber-500 uppercase mb-1">Otras constancias</p>
+                    <p className="text-xs text-gray-600 leading-relaxed italic">{constancias}</p>
+                  </div>
+                )}
+
+                {/* Nivelacion */}
+                {(ocr['_totalVotosUrna'] != null || ocr['_totalVotosIncinerados'] != null) && (
+                  <div className="bg-blue-50 rounded-lg px-3 py-2 space-y-1">
+                    <p className="text-[10px] font-bold text-blue-400 uppercase">Nivelacion de la mesa</p>
+                    {[
+                      { label: 'Sufragantes (E-11)', value: ocr['_totalVotosMesa'] },
+                      { label: 'Votos en la urna', value: ocr['_totalVotosUrna'] },
+                      { label: 'Votos incinerados', value: ocr['_totalVotosIncinerados'] },
+                    ].map(({ label, value }) => value != null ? (
+                      <div key={label} className="flex justify-between text-xs">
+                        <span className="text-gray-500">{label}</span>
+                        <span className="font-bold text-gray-700 tabular-nums">{value}</span>
+                      </div>
+                    ) : null)}
+                    {ocr['_huboRecuento'] === 1 && (
+                      <p className="text-[10px] font-bold text-amber-600 mt-1">Hubo recuento de votos</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Votes by partido */}
+                {allVotes.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Votos por candidato</p>
+                    <div className="space-y-0.5 max-h-60 overflow-y-auto">
+                      {(() => {
+                        let lastPartido = '';
+                        // Compute partido totals
+                        const partidoTotals: Record<string, number> = {};
+                        for (const [id, v] of allVotes) {
+                          const p = candidatosMap[id]?.partido || '';
+                          if (p) partidoTotals[p] = (partidoTotals[p] || 0) + v;
+                        }
+                        return allVotes.map(([id, v]) => {
+                          const info = candidatosMap[id];
+                          const partido = info?.partido || '';
+                          const showHeader = partido !== lastPartido;
+                          lastPartido = partido;
+                          const isLista = id.startsWith('_lista:');
+                          return (
+                            <div key={id}>
+                              {showHeader && partido && (
+                                <div className="bg-gray-100 px-2 py-0.5 rounded mt-1 flex justify-between">
+                                  <span className="text-[10px] font-black text-gray-500 uppercase">
+                                    {info?.listaNombre || partido} ({partido})
+                                  </span>
+                                  <span className="text-[10px] font-black text-gray-600 tabular-nums">{partidoTotals[partido] ?? 0}</span>
+                                </div>
+                              )}
+                              <div className={`flex justify-between px-2 py-0.5 ${isLista ? 'bg-blue-50 rounded' : ''}`}>
+                                <span className={`text-xs truncate ${isLista ? 'text-blue-700 font-bold' : 'text-gray-600'}`}>
+                                  {!isLista && info?.posicion != null ? `${info.posicion}. ` : ''}
+                                  {isLista ? (info?.nombre || 'Agrupacion') : (info?.nombre || id.slice(0, 8))}
+                                </span>
+                                <span className={`text-xs font-bold tabular-nums ${isLista ? 'text-blue-800' : 'text-gray-800'}`}>{v}</span>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Circunscripciones + totales */}
+                <div className="border-t pt-2 space-y-1">
+                  {circEntries.length > 0 && (
+                    <div className="bg-gray-50 rounded-lg px-2 py-1.5 space-y-0.5">
+                      {circEntries.map(([k, v]) => (
+                        <div key={k} className="flex justify-between text-[11px]">
+                          <span className="text-gray-500">{k.replace('_circ:', '')}</span>
+                          <span className="font-bold text-gray-700 tabular-nums">{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {[
+                    { label: 'Votos en blanco', value: ocr['_votosBlanco'] },
+                    { label: 'Votos nulos', value: ocr['_votosNulos'] },
+                    { label: 'No marcados', value: ocr['_votosNoMarcados'] },
+                  ].map(({ label, value }) => value != null ? (
+                    <div key={label} className="flex justify-between text-xs px-1">
+                      <span className="text-gray-500">{label}</span>
+                      <span className="font-bold text-gray-700 tabular-nums">{value}</span>
+                    </div>
+                  ) : null)}
+                </div>
+
+                {/* Serial */}
+                {acta.serialE14 && (
+                  <p className="text-[10px] text-gray-400 border-t pt-2">
+                    Serie: <span className="font-mono font-bold text-gray-600">{acta.serialE14}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {data.data.length === 0 && (
+        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
+          Sin actas OCR procesadas para estos filtros
         </div>
       )}
 

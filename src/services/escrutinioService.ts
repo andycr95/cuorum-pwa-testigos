@@ -35,6 +35,7 @@ export interface ResultadoEscrutinio {
   mesaId: string;
   candidato: string;
   partido: string;
+  listaNombre?: string | null;
   votos: number;
   votosBlanco: number;
   votosNulos: number;
@@ -96,11 +97,33 @@ export interface IncidenciaEscrutinio {
   testigo: { nombres: string; apellidos: string; cedula: string; telefono: string };
 }
 
+export interface ActaOcrEscrutinio {
+  id: string;
+  estado: 'COMPLETADO' | 'CONFIRMADO';
+  serialE14?: string | null;
+  resumenOcr?: string | null;
+  resultadoOcr?: Record<string, number> | null;
+  confirmedAt?: string | null;
+  createdAt: string;
+  mesa: {
+    numero: number;
+    puestoVotacion: {
+      nombre: string;
+      municipio?: { nombre: string };
+    };
+  };
+  testigo: { nombres: string; apellidos: string };
+  eleccion: { nombre: string };
+  fotos: Array<{ id: string; orden: number; url: string }>;
+  candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null; listaNombre?: string }>;
+}
+
 export interface ConsolidadoEscrutinio {
   eleccionId: string;
   candidatos: Array<{
     candidato: string;
     partido: string;
+    listaNombre?: string | null;
     candidatoId: string | null;
     tipoVoto: string;
     votos: number;
@@ -155,6 +178,13 @@ class EscrutinioService {
 
   async getIncidencias(filtros: FiltrosEscrutinio): Promise<PaginatedResponse<IncidenciaEscrutinio>> {
     const response = await api.get(`/testigos/escrutinio/incidencias`, {
+      params: cleanParams(filtros as Record<string, unknown>),
+    });
+    return response.data;
+  }
+
+  async getActasOcr(filtros: FiltrosEscrutinio): Promise<PaginatedResponse<ActaOcrEscrutinio>> {
+    const response = await api.get(`/testigos/escrutinio/actas-ocr`, {
       params: cleanParams(filtros as Record<string, unknown>),
     });
     return response.data;
