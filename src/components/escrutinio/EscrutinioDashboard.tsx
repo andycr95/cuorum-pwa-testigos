@@ -6,6 +6,7 @@ import {
   type IncidenciaEscrutinio,
   type ConsolidadoEscrutinio,
   type ActaOcrEscrutinio,
+  type E14OficialEscrutinio,
   type PaginatedResponse,
 } from '../../services/escrutinioService';
 import { authService, TestigoData } from '../../services/authService';
@@ -16,7 +17,7 @@ import {
   getCachedGeoData,
 } from '../../db/indexeddb';
 
-type TabActiva = 'consolidado' | 'resultados' | 'actas' | 'fotos' | 'novedades';
+type TabActiva = 'consolidado' | 'resultados' | 'actas' | 'fotos' | 'novedades' | 'e14oficial';
 
 interface Props {
   testigoData: TestigoData;
@@ -62,6 +63,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   const [actas, setActas] = useState<PaginatedResponse<ActaOcrEscrutinio> | null>(null);
   const [fotos, setFotos] = useState<PaginatedResponse<FotoE14Escrutinio> | null>(null);
   const [incidencias, setIncidencias] = useState<PaginatedResponse<IncidenciaEscrutinio> | null>(null);
+  const [e14oficial, setE14oficial] = useState<PaginatedResponse<E14OficialEscrutinio> | null>(null);
 
   // UI states
   const [loading, setLoading] = useState(false);
@@ -161,7 +163,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     setLoading(true);
     setIsCached(false);
     const filtros = buildFiltros();
-    const storeName = `escrutinio-${tabActiva === 'novedades' ? 'incidencias' : tabActiva}` as const;
+    const storeName = `escrutinio-${tabActiva === 'novedades' ? 'incidencias' : tabActiva === 'e14oficial' ? 'e14oficial' : tabActiva}` as const;
     const cacheKey = { tab: tabActiva, ...filtros, page };
 
     try {
@@ -175,6 +177,8 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         freshData = await escrutinioService.getActasOcr({ ...filtros, page, limit: 20 });
       } else if (tabActiva === 'fotos') {
         freshData = await escrutinioService.getFotosE14({ ...filtros, page, limit: 50 });
+      } else if (tabActiva === 'e14oficial') {
+        freshData = await escrutinioService.getE14Oficial({ ...filtros, page, limit: 30 });
       } else {
         freshData = await escrutinioService.getIncidencias({ ...filtros, page, limit: 50 });
       }
@@ -200,6 +204,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     else if (tab === 'resultados') setResultados(data as PaginatedResponse<ResultadoEscrutinio> | null);
     else if (tab === 'actas') setActas(data as PaginatedResponse<ActaOcrEscrutinio> | null);
     else if (tab === 'fotos') setFotos(data as PaginatedResponse<FotoE14Escrutinio> | null);
+    else if (tab === 'e14oficial') setE14oficial(data as PaginatedResponse<E14OficialEscrutinio> | null);
     else setIncidencias(data as PaginatedResponse<IncidenciaEscrutinio> | null);
   }
 
@@ -406,6 +411,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               { key: 'resultados', label: 'Resultados' },
               { key: 'actas', label: 'Actas OCR' },
               { key: 'fotos', label: 'Fotos E14' },
+              { key: 'e14oficial', label: 'E-14 Oficial' },
               { key: 'novedades', label: 'Novedades' },
             ] as const).map(tab => (
               <button
@@ -453,6 +459,9 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         )}
         {tabActiva === 'novedades' && (
           <TabNovedades data={incidencias} loading={loading && !isCached} page={page} onPageChange={setPage} />
+        )}
+        {tabActiva === 'e14oficial' && (
+          <TabE14Oficial data={e14oficial} loading={loading && !isCached} page={page} onPageChange={setPage} />
         )}
       </div>
     </div>
@@ -1022,6 +1031,109 @@ function TabNovedades({ data, loading, page, onPageChange }: {
       {data.data.length === 0 && (
         <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
           Sin novedades para estos filtros
+        </div>
+      )}
+
+      <Pagination page={page} totalPages={data.totalPages} total={data.total} onPageChange={onPageChange} />
+    </div>
+  );
+}
+
+// ─── Tab: E-14 Oficial (Registraduría) ──────────────────────
+
+function TabE14Oficial({ data, loading, page, onPageChange }: {
+  data: PaginatedResponse<E14OficialEscrutinio> | null;
+  loading: boolean;
+  page: number;
+  onPageChange: (p: number) => void;
+}) {
+  const [loadingUrl, setLoadingUrl] = useState<string | null>(null);
+
+  const handleVerPdf = async (mesaId: string, disposition: 'inline' | 'attachment' = 'inline') => {
+    setLoadingUrl(mesaId);
+    try {
+      const url = await escrutinioService.getE14OficialUrl(mesaId, disposition);
+      window.open(url, '_blank');
+    } catch {
+      // silently fail — button re-enables
+    }
+    setLoadingUrl(null);
+  };
+
+  if (loading || !data) return null;
+
+  return (
+    <div className="space-y-3">
+      {data.total > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
+          <span className="text-blue-600 text-lg">📋</span>
+          <div>
+            <p className="text-sm font-semibold text-blue-800">{data.total} actas E-14 oficiales disponibles</p>
+            <p className="text-xs text-blue-600">Documentos descargados del portal de divulgación de la Registraduría Nacional</p>
+          </div>
+        </div>
+      )}
+
+      {data.data.map((acta) => {
+        const kb = Math.round(acta.tamanoBytes / 1024);
+        const depto = acta.mesa.puestoVotacion.municipio.departamento?.nombre;
+        const muni = acta.mesa.puestoVotacion.municipio.nombre;
+        const puesto = acta.mesa.puestoVotacion.nombre;
+        const isLoading = loadingUrl === acta.mesaId;
+
+        return (
+          <div key={acta.id} className="bg-white rounded-xl p-4 shadow-sm border">
+            {/* Header: Mesa + location */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                  Mesa #{acta.mesa.numero}
+                </span>
+                <span className="text-xs font-medium bg-green-50 text-green-700 px-2 py-1 rounded">
+                  PDF oficial
+                </span>
+              </div>
+              <span className="text-xs text-gray-400">
+                {new Date(acta.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+              </span>
+            </div>
+
+            {/* Location info */}
+            <div className="text-xs text-gray-500 mb-3 space-y-0.5">
+              <p className="font-medium text-gray-700">{puesto}</p>
+              <p>{muni}{depto ? ` — ${depto}` : ''}</p>
+              <p className="text-gray-400">{kb} KB</p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleVerPdf(acta.mesaId, 'inline')}
+                disabled={isLoading}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              >
+                {isLoading ? (
+                  <div className="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  <>👁️ Ver E-14</>
+                )}
+              </button>
+              <button
+                onClick={() => handleVerPdf(acta.mesaId, 'attachment')}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+              >
+                ⬇️ Descargar
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      {data.data.length === 0 && (
+        <div className="bg-white rounded-xl p-8 text-center shadow-sm border">
+          <p className="text-gray-400 text-sm">No hay actas E-14 oficiales para estos filtros</p>
+          <p className="text-gray-300 text-xs mt-1">Las actas se importan desde el portal de divulgación de la Registraduría</p>
         </div>
       )}
 

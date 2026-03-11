@@ -150,6 +150,24 @@ export interface PuestoVotacion {
   _count: { mesas: number };
 }
 
+export interface E14OficialEscrutinio {
+  id: string;
+  mesaId: string;
+  s3Key: string;
+  tamanoBytes: number;
+  createdAt: string;
+  mesa: {
+    numero: number;
+    puestoVotacion: {
+      nombre: string;
+      municipio: {
+        nombre: string;
+        departamento?: { nombre: string };
+      };
+    };
+  };
+}
+
 function cleanParams(params: Record<string, unknown>): Record<string, string> {
   const clean: Record<string, string> = {};
   for (const [key, value] of Object.entries(params)) {
@@ -212,6 +230,20 @@ class EscrutinioService {
   async getMunicipios(departamentoId: string, idCampana?: string): Promise<Array<{ id: string; nombre: string }>> {
     const response = await api.get(`/geo/departamentos/${departamentoId}/municipios/campana/${idCampana}`);
     return response.data;
+  }
+
+  async getE14Oficial(filtros: FiltrosEscrutinio): Promise<PaginatedResponse<E14OficialEscrutinio>> {
+    const response = await api.get(`/testigos/escrutinio/e14-oficial`, {
+      params: cleanParams(filtros as Record<string, unknown>),
+    });
+    return response.data;
+  }
+
+  async getE14OficialUrl(mesaId: string, disposition: 'inline' | 'attachment' = 'inline'): Promise<string> {
+    const response = await api.get<{ url: string }>(`/testigos/escrutinio/e14-oficial/${mesaId}/url`, {
+      params: { disposition },
+    });
+    return response.data.url;
   }
 }
 
