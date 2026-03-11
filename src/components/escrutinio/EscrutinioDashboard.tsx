@@ -7,6 +7,7 @@ import {
   type ConsolidadoEscrutinio,
   type ActaOcrEscrutinio,
   type E14OficialEscrutinio,
+  type DivulgacionData,
   type PaginatedResponse,
 } from '../../services/escrutinioService';
 import { authService, TestigoData } from '../../services/authService';
@@ -17,7 +18,7 @@ import {
   getCachedGeoData,
 } from '../../db/indexeddb';
 
-type TabActiva = 'consolidado' | 'resultados' | 'actas' | 'fotos' | 'novedades' | 'e14oficial';
+type TabActiva = 'consolidado' | 'resultados' | 'actas' | 'fotos' | 'novedades' | 'e14oficial' | 'divulgacion';
 
 interface Props {
   testigoData: TestigoData;
@@ -64,6 +65,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   const [fotos, setFotos] = useState<PaginatedResponse<FotoE14Escrutinio> | null>(null);
   const [incidencias, setIncidencias] = useState<PaginatedResponse<IncidenciaEscrutinio> | null>(null);
   const [e14oficial, setE14oficial] = useState<PaginatedResponse<E14OficialEscrutinio> | null>(null);
+  const [divulgacion, setDivulgacion] = useState<DivulgacionData | null>(null);
 
   // UI states
   const [loading, setLoading] = useState(false);
@@ -163,7 +165,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     setLoading(true);
     setIsCached(false);
     const filtros = buildFiltros();
-    const storeName = `escrutinio-${tabActiva === 'novedades' ? 'incidencias' : tabActiva === 'e14oficial' ? 'e14oficial' : tabActiva}` as const;
+    const storeName = `escrutinio-${tabActiva === 'novedades' ? 'incidencias' : tabActiva === 'e14oficial' ? 'e14oficial' : tabActiva === 'divulgacion' ? 'divulgacion' : tabActiva}` as const;
     const cacheKey = { tab: tabActiva, ...filtros, page };
 
     try {
@@ -179,6 +181,16 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         freshData = await escrutinioService.getFotosE14({ ...filtros, page, limit: 50 });
       } else if (tabActiva === 'e14oficial') {
         freshData = await escrutinioService.getE14Oficial({ ...filtros, page, limit: 30 });
+      } else if (tabActiva === 'divulgacion') {
+        const [estado, resultadosRes] = await Promise.all([
+          escrutinioService.getDivulgacionEstado(eleccionId || undefined),
+          escrutinioService.getDivulgacionResultados({
+            ...(departamentoId && { departamentoId }),
+            ...(municipioId && { municipioId }),
+            ...(puestoVotacionId && { puestoVotacionId }),
+          }),
+        ]);
+        freshData = { estado, resultados: resultadosRes };
       } else {
         freshData = await escrutinioService.getIncidencias({ ...filtros, page, limit: 50 });
       }
@@ -197,7 +209,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       }
     }
     setLoading(false);
-  }, [tabActiva, buildFiltros, page, eleccionId]);
+  }, [tabActiva, buildFiltros, page, eleccionId, departamentoId, municipioId, puestoVotacionId]);
 
   function applyData(tab: TabActiva, data: unknown) {
     if (tab === 'consolidado') setConsolidado(data as ConsolidadoEscrutinio | null);
@@ -205,6 +217,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
     else if (tab === 'actas') setActas(data as PaginatedResponse<ActaOcrEscrutinio> | null);
     else if (tab === 'fotos') setFotos(data as PaginatedResponse<FotoE14Escrutinio> | null);
     else if (tab === 'e14oficial') setE14oficial(data as PaginatedResponse<E14OficialEscrutinio> | null);
+    else if (tab === 'divulgacion') setDivulgacion(data as DivulgacionData | null);
     else setIncidencias(data as PaginatedResponse<IncidenciaEscrutinio> | null);
   }
 
@@ -412,6 +425,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               { key: 'actas', label: 'Actas OCR' },
               { key: 'fotos', label: 'Fotos E14' },
               { key: 'e14oficial', label: 'E-14 Oficial' },
+              { key: 'divulgacion', label: 'Divulgación' },
               { key: 'novedades', label: 'Novedades' },
             ] as const).map(tab => (
               <button
@@ -462,6 +476,9 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
         )}
         {tabActiva === 'e14oficial' && (
           <TabE14Oficial data={e14oficial} loading={loading && !isCached} page={page} onPageChange={setPage} />
+        )}
+        {tabActiva === 'divulgacion' && (
+          <TabDivulgacion data={divulgacion} loading={loading && !isCached} miCandidatoId={miCandidatoId} miListaId={miListaId} />
         )}
       </div>
     </div>
@@ -1035,6 +1052,174 @@ function TabNovedades({ data, loading, page, onPageChange }: {
       )}
 
       <Pagination page={page} totalPages={data.totalPages} total={data.total} onPageChange={onPageChange} />
+    </div>
+  );
+}
+
+// ─── Tab: Divulgación Oficial (Registraduría) ──────────────────────
+
+function TabDivulgacion({ data, loading, miCandidatoId, miListaId }: {
+  data: DivulgacionData | null;
+  loading: boolean;
+  miCandidatoId: string | null;
+  miListaId: string | null;
+}) {
+  if (loading || !data) return null;
+
+  const { estado, resultados } = data;
+
+  // Aggregate results by candidate
+  const candidatoMap = new Map<string, { nombre: string; partido: string; candidatoId: string | null; listaId: string | null; votos: number }>();
+  let totalBlancos = 0;
+  let totalNulos = 0;
+  let totalNoMarcados = 0;
+
+  for (const r of resultados.resultados) {
+    const tipo = (r.tipoVoto || '').toUpperCase();
+    if (tipo === 'BLANCO' || tipo === 'VOTO_BLANCO') {
+      totalBlancos += r.votos;
+      continue;
+    }
+    if (tipo === 'NULO' || tipo === 'VOTO_NULO') {
+      totalNulos += r.votos;
+      continue;
+    }
+    if (tipo === 'NO_MARCADO' || tipo === 'VOTO_NO_MARCADO') {
+      totalNoMarcados += r.votos;
+      continue;
+    }
+
+    const key = r.candidatoId || r.listaId || r.candidato?.nombre || r.lista?.nombre || 'Desconocido';
+    const existing = candidatoMap.get(key);
+    if (existing) {
+      existing.votos += r.votos;
+    } else {
+      candidatoMap.set(key, {
+        nombre: r.candidato?.nombre || r.lista?.nombre || 'Desconocido',
+        partido: r.candidato?.partido || r.lista?.partido || '',
+        candidatoId: r.candidatoId,
+        listaId: r.listaId,
+        votos: r.votos,
+      });
+    }
+  }
+
+  const candidatos = Array.from(candidatoMap.values()).sort((a, b) => b.votos - a.votos);
+  const maxVotos = candidatos.length > 0 ? candidatos[0].votos : 1;
+  const totalVotos = resultados.total;
+
+  return (
+    <div className="space-y-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm border">
+          <p className="text-xs text-gray-500 uppercase font-semibold">Cobertura</p>
+          <p className="text-2xl font-bold text-gray-900">{estado.coberturaPct}%</p>
+          <p className="text-xs text-blue-600 font-semibold">{estado.mesasConResultadoOficial} mesas</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm border">
+          <p className="text-xs text-gray-500 uppercase font-semibold">Total votos</p>
+          <p className="text-2xl font-bold text-gray-900">{totalVotos.toLocaleString('es-CO')}</p>
+          {resultados.boletinNumero != null && (
+            <p className="text-xs text-gray-400">Boletín #{resultados.boletinNumero}</p>
+          )}
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm border">
+          <p className="text-xs text-gray-500 uppercase font-semibold">Comparadas</p>
+          <p className="text-2xl font-bold text-gray-900">{estado.mesasConAmbos}</p>
+          <p className="text-xs text-gray-400">testigo + oficial</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm border">
+          <p className="text-xs text-gray-500 uppercase font-semibold">Discrepancias</p>
+          <p className={`text-2xl font-bold ${estado.mesasConDiscrepancia > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            {estado.mesasConDiscrepancia}
+          </p>
+          <p className="text-xs text-gray-400">&gt;5% diferencia</p>
+        </div>
+      </div>
+
+      {/* Last sync */}
+      {estado.ultimaSincronizacion && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
+          <span className="text-blue-600 text-lg">🔄</span>
+          <p className="text-xs text-blue-700">
+            Última sincronización:{' '}
+            <span className="font-semibold">
+              {new Date(estado.ultimaSincronizacion).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* Candidate ranking */}
+      {candidatos.length === 0 && totalBlancos === 0 && totalNulos === 0 ? (
+        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm border">
+          Sin resultados oficiales de divulgación para estos filtros
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 border-b">
+            <h3 className="text-sm font-bold text-gray-700">Resultados oficiales por candidato</h3>
+          </div>
+          <div className="divide-y">
+            {candidatos.map((c, i) => {
+              const pct = totalVotos > 0 ? ((c.votos / totalVotos) * 100).toFixed(1) : '0.0';
+              const barWidth = maxVotos > 0 ? (c.votos / maxVotos) * 100 : 0;
+              const esMio = (miCandidatoId && c.candidatoId === miCandidatoId)
+                || (miListaId && c.listaId === miListaId);
+
+              return (
+                <div key={c.candidatoId || c.listaId || i} className={`px-4 py-3 ${esMio ? 'bg-purple-50' : ''}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>
+                      <div className="min-w-0">
+                        <p className={`text-sm font-semibold truncate ${esMio ? 'text-purple-900' : 'text-gray-900'}`}>
+                          {c.nombre}
+                        </p>
+                        {c.partido && (
+                          <p className="text-xs text-gray-500 truncate">{c.partido}</p>
+                        )}
+                      </div>
+                      {esMio && (
+                        <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded text-[10px] font-bold flex-shrink-0">MI</span>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <p className="text-sm font-bold text-gray-900">{c.votos.toLocaleString('es-CO')}</p>
+                      <p className="text-xs text-gray-500">{pct}%</p>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${esMio ? 'bg-purple-500' : 'bg-blue-400'}`}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Special vote types */}
+            {(totalBlancos > 0 || totalNulos > 0 || totalNoMarcados > 0) && (
+              <div className="px-4 py-3 bg-gray-50">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Otros votos</p>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  {totalBlancos > 0 && (
+                    <span className="text-gray-600">Blancos: <strong>{totalBlancos.toLocaleString('es-CO')}</strong></span>
+                  )}
+                  {totalNulos > 0 && (
+                    <span className="text-gray-600">Nulos: <strong>{totalNulos.toLocaleString('es-CO')}</strong></span>
+                  )}
+                  {totalNoMarcados > 0 && (
+                    <span className="text-gray-600">No marcados: <strong>{totalNoMarcados.toLocaleString('es-CO')}</strong></span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -35,6 +35,7 @@ export interface CuorumDB extends DBSchema {
   'escrutinio-consolidado': { key: string; value: EscrutinioCacheEntry };
   'escrutinio-actas': { key: string; value: EscrutinioCacheEntry };
   'escrutinio-e14oficial': { key: string; value: EscrutinioCacheEntry };
+  'escrutinio-divulgacion': { key: string; value: EscrutinioCacheEntry };
   'escrutinio-geo': { key: string; value: EscrutinioCacheEntry };
   // @ts-ignore - idb type compatibility
   resultados: {
@@ -157,13 +158,13 @@ export interface CuorumDB extends DBSchema {
   };
 }
 
-const DB_VERSION = 9;
+const DB_VERSION = 10;
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   // Si la instancia cacheada es de una versión anterior (no tiene los stores v5),
   // cerrarla y re-abrir para forzar el upgrade.
-  if (dbInstance && (!dbInstance.objectStoreNames.contains('escrutinio-actas') || !dbInstance.objectStoreNames.contains('e14OcrJobs') || !dbInstance.objectStoreNames.contains('jornada') || !dbInstance.objectStoreNames.contains('escrutinio-e14oficial'))) {
+  if (dbInstance && (!dbInstance.objectStoreNames.contains('escrutinio-actas') || !dbInstance.objectStoreNames.contains('e14OcrJobs') || !dbInstance.objectStoreNames.contains('jornada') || !dbInstance.objectStoreNames.contains('escrutinio-e14oficial') || !dbInstance.objectStoreNames.contains('escrutinio-divulgacion'))) {
     dbInstance.close();
     dbInstance = null;
   }
@@ -247,6 +248,13 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
       if (oldVersion < 9) {
         if (!db.objectStoreNames.contains('escrutinio-e14oficial')) {
           db.createObjectStore('escrutinio-e14oficial', { keyPath: 'cacheKey' });
+        }
+      }
+
+      // v10: Cache store para resultados de divulgación oficial en escrutinio
+      if (oldVersion < 10) {
+        if (!db.objectStoreNames.contains('escrutinio-divulgacion')) {
+          db.createObjectStore('escrutinio-divulgacion', { keyPath: 'cacheKey' });
         }
       }
     },
@@ -427,7 +435,7 @@ export async function getResultadosByMesa(mesaId: string) {
 
 // ─── Escrutinio cache helpers ─────────────────────────────────
 
-type EscrutinioStoreName = 'escrutinio-resultados' | 'escrutinio-fotos' | 'escrutinio-incidencias' | 'escrutinio-consolidado' | 'escrutinio-geo' | 'escrutinio-actas' | 'escrutinio-e14oficial';
+type EscrutinioStoreName = 'escrutinio-resultados' | 'escrutinio-fotos' | 'escrutinio-incidencias' | 'escrutinio-consolidado' | 'escrutinio-geo' | 'escrutinio-actas' | 'escrutinio-e14oficial' | 'escrutinio-divulgacion';
 
 function buildCacheKey(filtros: Record<string, unknown>): string {
   return JSON.stringify(filtros, Object.keys(filtros).sort());
@@ -495,6 +503,7 @@ export async function clearEscrutinioCache() {
       'escrutinio-consolidado',
       'escrutinio-actas',
       'escrutinio-e14oficial',
+      'escrutinio-divulgacion',
       'escrutinio-geo',
     ];
     for (const storeName of stores) {

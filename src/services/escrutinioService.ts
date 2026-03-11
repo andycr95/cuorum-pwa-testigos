@@ -168,6 +168,42 @@ export interface E14OficialEscrutinio {
   };
 }
 
+export interface DivulgacionEstado {
+  ultimaSincronizacion: string | null;
+  totalResultadosOficiales: number;
+  mesasConResultadoOficial: number;
+  mesasConResultadoTestigo: number;
+  mesasConAmbos: number;
+  mesasConDiscrepancia: number;
+  coberturaPct: number;
+}
+
+export interface DivulgacionResultadoItem {
+  id: string;
+  votos: number;
+  totalVotosMesa: number;
+  porcentajeMesa: number;
+  tipoVoto: string;
+  boletinNumero: number | null;
+  candidatoId: string | null;
+  listaId: string | null;
+  mesaId: string | null;
+  candidato: { id: string; nombre: string; partido: string } | null;
+  lista: { id: string; nombre: string; partido: string } | null;
+  municipio: { id: string; nombre: string; departamento: { id: string; nombre: string } } | null;
+}
+
+export interface DivulgacionResultados {
+  total: number;
+  boletinNumero: number | null;
+  resultados: DivulgacionResultadoItem[];
+}
+
+export interface DivulgacionData {
+  estado: DivulgacionEstado;
+  resultados: DivulgacionResultados;
+}
+
 function cleanParams(params: Record<string, unknown>): Record<string, string> {
   const clean: Record<string, string> = {};
   for (const [key, value] of Object.entries(params)) {
@@ -244,6 +280,20 @@ class EscrutinioService {
       params: { disposition },
     });
     return response.data.url;
+  }
+
+  async getDivulgacionEstado(eleccionId?: string): Promise<DivulgacionEstado> {
+    const response = await api.get('/testigos/divulgacion/estado-sync', {
+      params: cleanParams({ eleccionId } as Record<string, unknown>),
+    });
+    return response.data;
+  }
+
+  async getDivulgacionResultados(filters?: { departamentoId?: string; municipioId?: string; puestoVotacionId?: string }): Promise<DivulgacionResultados> {
+    const response = await api.get('/testigos/divulgacion/resultados-candidatos', {
+      params: cleanParams((filters || {}) as Record<string, unknown>),
+    });
+    return response.data;
   }
 }
 
