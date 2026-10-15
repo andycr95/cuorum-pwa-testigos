@@ -1,15 +1,33 @@
 import { useState, useEffect } from 'react';
-import { getDB } from '../db/indexeddb';
+import {
+  getResultadosPendientes,
+  getOcrJobsPendientes,
+  getFotosPendientes,
+  getIncidenciasPendientes,
+  getJornadasPendientes,
+} from '../db/indexeddb';
 
 interface PendingSyncResult {
   pendingCount: number;
-  breakdown: { resultados: number; ocrJobs: number };
+  breakdown: {
+    resultados: number;
+    ocrJobs: number;
+    fotos: number;
+    incidencias: number;
+    jornadas: number;
+  };
 }
 
 export function usePendingSync(intervalMs = 5000): PendingSyncResult {
   const [state, setState] = useState<PendingSyncResult>({
     pendingCount: 0,
-    breakdown: { resultados: 0, ocrJobs: 0 },
+    breakdown: {
+      resultados: 0,
+      ocrJobs: 0,
+      fotos: 0,
+      incidencias: 0,
+      jornadas: 0,
+    },
   });
 
   useEffect(() => {
@@ -17,13 +35,25 @@ export function usePendingSync(intervalMs = 5000): PendingSyncResult {
 
     const count = async () => {
       try {
-        const db = await getDB();
-        const resultados = await db.countFromIndex('resultados', 'by-synced', 0);
-        const ocrJobs = await db.countFromIndex('e14OcrJobs', 'by-synced', 0);
+        const [resultadosArr, ocrJobsArr, fotosArr, incidenciasArr, jornadasArr] =
+          await Promise.all([
+            getResultadosPendientes(),
+            getOcrJobsPendientes(),
+            getFotosPendientes(),
+            getIncidenciasPendientes(),
+            getJornadasPendientes(),
+          ]);
+
+        const resultados = resultadosArr.length;
+        const ocrJobs = ocrJobsArr.length;
+        const fotos = fotosArr.length;
+        const incidencias = incidenciasArr.length;
+        const jornadas = jornadasArr.length;
+
         if (!cancelled) {
           setState({
-            pendingCount: resultados + ocrJobs,
-            breakdown: { resultados, ocrJobs },
+            pendingCount: resultados + ocrJobs + fotos + incidencias + jornadas,
+            breakdown: { resultados, ocrJobs, fotos, incidencias, jornadas },
           });
         }
       } catch {

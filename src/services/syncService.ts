@@ -1,10 +1,13 @@
 import { api } from './api';
+import { jornadaService } from './jornadaService';
 import {
   getPendientes,
   marcarSincronizados,
   logSync,
   getIncidenciasPendientes,
   marcarIncidenciasSincronizadas,
+  getJornadasPendientes,
+  saveJornada,
 } from '../db/indexeddb';
 
 /**
@@ -14,6 +17,7 @@ import {
  * - Verificación de conectividad REAL (no navigator.onLine que es poco confiable)
  * - Backoff exponencial en fallos: 30s → 1min → 2min → 4min → 8min
  * - Sincronización de incidencias/novedades de mesa
+ * - Sincronización de jornadas electorales (checkin / apertura)
  * - Respuesta enriquecida con validación del servidor
  */
 
@@ -64,6 +68,7 @@ export interface SyncResultado {
   resultadosSincronizados: number;
   fotosSincronizadas: number;
   incidenciasSincronizadas: number;
+  jornadasSincronizadas?: number;
   /** Respuesta de validación del servidor (si el backend la provee) */
   validacionServidor?: {
     alertas?: string[];
@@ -71,6 +76,47 @@ export interface SyncResultado {
     rechazados?: number;
   };
   error?: string;
+}
+
+export async function sincronizarJornadas(): Promise<number> {
+  const pendientes = await getJornadasPendientes();
+  let sincronizadas = 0;
+
+  for (const j of pendientes) {
+    if (!j.mesaId) continue;
+
+    try {
+      const estadosConCheckin = ['CHECKIN', 'ABIERTA', 'EN_CONTEO', 'CERRADA', 'FIRMADA'];
+      if (j.checkinAt && estadosConCheckin.includes(j.estado)) {
+        try {
+          await jornadaService.checkin(j.mesaId, j.checkinLat ?? 0, j.checkinLng ?? 0);
+        } catch (err: unknown) {
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          if (status !== 400 && status !== 409) throw err;
+        }
+      }
+
+      if (j.aperturaAt && j.aperturaChecklist) {
+        try {
+          await jornadaService.apertura(j.mesaId, j.aperturaChecklist, j.aperturaObservaciones);
+        } catch (err: unknown) {
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          if (status !== 400 && status !== 409) throw err;
+        }
+      }
+
+      await saveJornada({
+        ...j,
+        synced: 1,
+        updatedAt: new Date().toISOString(),
+      });
+      sincronizadas++;
+    } catch (err) {
+      console.warn(`[Sync] Error sincronizando jornada de mesa ${j.mesaId}:`, err);
+    }
+  }
+
+  return sincronizadas;
 }
 
 export function iniciarMonitoreoConexion() {
@@ -108,6 +154,7 @@ export async function sincronizar(): Promise<SyncResultado> {
       resultadosSincronizados: 0,
       fotosSincronizadas: 0,
       incidenciasSincronizadas: 0,
+      jornadasSincronizadas: 0,
       error: 'Sync en progreso',
     };
   }
@@ -115,23 +162,36 @@ export async function sincronizar(): Promise<SyncResultado> {
   syncInProgress = true;
 
   try {
+    const jornadasPendientes = await getJornadasPendientes();
     const { resultados, fotos } = await getPendientes();
     const incidencias = await getIncidenciasPendientes();
 
-    if (resultados.length === 0 && fotos.length === 0 && incidencias.length === 0) {
+    if (
+      resultados.length === 0 &&
+      fotos.length === 0 &&
+      incidencias.length === 0 &&
+      jornadasPendientes.length === 0
+    ) {
       syncInProgress = false;
       return {
         success: true,
         resultadosSincronizados: 0,
         fotosSincronizadas: 0,
         incidenciasSincronizadas: 0,
+        jornadasSincronizadas: 0,
       };
     }
 
     let resultadosSinc = 0;
     let fotosSinc = 0;
     let incidenciasSinc = 0;
+    let jornadasSinc = 0;
     let validacionServidor: SyncResultado['validacionServidor'];
+
+    // ─── Sync jornadas (checkin / apertura) ───────────────────────
+    if (jornadasPendientes.length > 0) {
+      jornadasSinc = await sincronizarJornadas();
+    }
 
     // ─── Sync resultados de mesa y fotos E-14 ─────────────────────
 
@@ -217,14 +277,14 @@ export async function sincronizar(): Promise<SyncResultado> {
       }
     }
 
-    await logSync('batch_sync', resultadosSinc + fotosSinc + incidenciasSinc, true);
+    await logSync('batch_sync', resultadosSinc + fotosSinc + incidenciasSinc + jornadasSinc, true);
 
     // Reset backoff en éxito
     backoffMs = 0;
     nextRetryAt = 0;
 
     console.log(
-      `[Sync] Completado: ${resultadosSinc} resultados, ${fotosSinc} fotos, ${incidenciasSinc} incidencias`,
+      `[Sync] Completado: ${resultadosSinc} resultados, ${fotosSinc} fotos, ${incidenciasSinc} incidencias, ${jornadasSinc} jornadas`,
     );
 
     syncInProgress = false;
@@ -233,6 +293,7 @@ export async function sincronizar(): Promise<SyncResultado> {
       resultadosSincronizados: resultadosSinc,
       fotosSincronizadas: fotosSinc,
       incidenciasSincronizadas: incidenciasSinc,
+      jornadasSincronizadas: jornadasSinc,
       validacionServidor,
     };
   } catch (error) {
@@ -251,14 +312,18 @@ export async function sincronizar(): Promise<SyncResultado> {
       resultadosSincronizados: 0,
       fotosSincronizadas: 0,
       incidenciasSincronizadas: 0,
+      jornadasSincronizadas: 0,
       error: msg,
     };
   }
 }
 
+export const sincronizarTodo = sincronizar;
+
 export async function getEstadoSync() {
   const { resultados, fotos } = await getPendientes();
   const incidencias = await getIncidenciasPendientes();
+  const jornadasPendientes = await getJornadasPendientes();
   const online = await verificarConectividadReal();
 
   return {
@@ -268,7 +333,12 @@ export async function getEstadoSync() {
       resultados: resultados.length,
       fotos: fotos.length,
       incidencias: incidencias.length,
-      total: resultados.length + fotos.length + incidencias.length,
+      jornadas: jornadasPendientes.length,
+      total:
+        resultados.length +
+        fotos.length +
+        incidencias.length +
+        jornadasPendientes.length,
     },
   };
 }

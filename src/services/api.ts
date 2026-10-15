@@ -30,14 +30,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (res) => res,
     (error) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && !error.config?.url?.includes('/auth/testigos/login')) {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(DATA_KEY);
             localStorage.removeItem(CAMPANA_KEY);
-            // AuthContext handles redirect — avoid full page reload
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = '/login';
-            }
+            window.dispatchEvent(new CustomEvent('cuorum:unauthorized'));
+            window.location.href = '/';
         }
         return Promise.reject(error);
     },

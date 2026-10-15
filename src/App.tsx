@@ -145,16 +145,20 @@ export function App() {
   // Handlers for jornada flow
   const handleCheckinComplete = async (jornada: JornadaMesa) => {
     setJornadaEstado(jornada.estado);
-    try {
-      await guardarJornada({ ...jornada, synced: 1, updatedAt: new Date().toISOString() });
-    } catch { /* IDB is optional */ }
+    if (!jornada.id.startsWith('local_')) {
+      try {
+        await guardarJornada({ ...jornada, synced: 1, updatedAt: new Date().toISOString() });
+      } catch { /* IDB is optional */ }
+    }
   };
 
   const handleAperturaComplete = async (jornada: JornadaMesa) => {
     setJornadaEstado(jornada.estado);
-    try {
-      await guardarJornada({ ...jornada, synced: 1, updatedAt: new Date().toISOString() });
-    } catch { /* IDB is optional */ }
+    if (!jornada.id.startsWith('local_')) {
+      try {
+        await guardarJornada({ ...jornada, synced: 1, updatedAt: new Date().toISOString() });
+      } catch { /* IDB is optional */ }
+    }
   };
 
   const handleMesaCerrada = (codigo: string) => {

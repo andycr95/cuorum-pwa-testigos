@@ -34,10 +34,28 @@ export function PendingSyncBadge() {
                 <span className="text-xs font-black text-gray-900">{breakdown.resultados}</span>
               </div>
             )}
+            {breakdown.fotos > 0 && (
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-xs text-gray-600">Fotos E-14</span>
+                <span className="text-xs font-black text-gray-900">{breakdown.fotos}</span>
+              </div>
+            )}
             {breakdown.ocrJobs > 0 && (
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-xs text-gray-600">Fotos OCR</span>
                 <span className="text-xs font-black text-gray-900">{breakdown.ocrJobs}</span>
+              </div>
+            )}
+            {breakdown.incidencias > 0 && (
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-xs text-gray-600">Incidencias</span>
+                <span className="text-xs font-black text-gray-900">{breakdown.incidencias}</span>
+              </div>
+            )}
+            {breakdown.jornadas > 0 && (
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-xs text-gray-600">Jornadas</span>
+                <span className="text-xs font-black text-gray-900">{breakdown.jornadas}</span>
               </div>
             )}
             <div className="border-t border-gray-100 mt-1.5 pt-1.5 flex items-center justify-between">

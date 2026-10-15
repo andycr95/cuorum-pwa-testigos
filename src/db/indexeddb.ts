@@ -376,6 +376,16 @@ export async function marcarIncidenciasSincronizadas(ids: string[]) {
 
 // ─── Pendientes generales ─────────────────────────────────────
 
+export async function getResultadosPendientes() {
+  const db = await getDB();
+  return db.getAllFromIndex('resultados', 'by-synced', 0);
+}
+
+export async function getFotosPendientes() {
+  const db = await getDB();
+  return db.getAllFromIndex('fotosE14', 'by-synced', 0);
+}
+
 export async function getPendientes() {
   const db = await getDB();
   const resultados = await db.getAllFromIndex('resultados', 'by-synced', 0);
@@ -573,6 +583,14 @@ export async function guardarJornada(
 ) {
   const db = await getDB();
   await db.put('jornada', data);
+}
+
+export const saveJornada = guardarJornada;
+
+export async function getJornadasPendientes(): Promise<CuorumDB['jornada']['value'][]> {
+  const db = await getDB();
+  const all = await db.getAll('jornada');
+  return all.filter((j) => j.synced === 0);
 }
 
 export async function getJornadaByMesa(mesaId: string): Promise<CuorumDB['jornada']['value'] | undefined> {

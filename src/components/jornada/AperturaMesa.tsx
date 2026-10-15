@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { jornadaService, JornadaMesa } from '../../services/jornadaService';
-import { guardarJornada } from '../../db/indexeddb';
+import { guardarJornada, getJornadaByMesa } from '../../db/indexeddb';
 
 interface Props {
   mesaId: string;
@@ -121,11 +121,13 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
       setTimeout(() => onAperturaComplete(jornada), 1200);
     } catch {
       // Offline fallback
+      const prev = await getJornadaByMesa(mesaId).catch(() => undefined);
       const localJornada: JornadaMesa = {
-        id: `local_apertura_${Date.now()}`,
-        mesaId: '',
-        testigoId: '',
-        campanaId: '',
+        ...prev,
+        id: prev?.id || `local_apertura_${Date.now()}`,
+        mesaId,
+        testigoId: prev?.testigoId || '',
+        campanaId: prev?.campanaId || '',
         estado: 'ABIERTA',
         aperturaAt: new Date().toISOString(),
         aperturaChecklist: checklist,
