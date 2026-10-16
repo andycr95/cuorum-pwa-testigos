@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "check:nombres": "bash scripts/check-nombres-prohibidos.sh"
   },
   "dependencies": {
     "axios": "^1.13.5",
