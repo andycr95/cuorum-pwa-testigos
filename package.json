@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "check:nombres": "bash scripts/check-nombres-prohibidos.sh"
+    "check:nombres": "bash scripts/check-nombres-prohibidos.sh",
+    "test:nombres": "bash scripts/check-nombres-prohibidos.test.sh"
   },
   "dependencies": {
     "axios": "^1.13.5",

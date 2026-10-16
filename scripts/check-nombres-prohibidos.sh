@@ -11,11 +11,18 @@ if [ -z "${PATRONES_PROHIBIDOS:-}" ]; then
 fi
 
 fallo=0
-excluir=(':!pnpm-lock.yaml' ':!scripts/check-nombres-prohibidos.sh')
+excluir=(':!pnpm-lock.yaml' ':!scripts/check-nombres-prohibidos.sh' ':!scripts/check-nombres-prohibidos.test.sh')
 while IFS= read -r patron; do
   [ -z "$patron" ] && continue
   # Solo se imprime archivo:línea, nunca el patrón ni el texto coincidente.
-  if git grep -n -I -i -E -e "$patron" -- . "${excluir[@]}" | cut -d: -f1,2 | sed 's/^/Nombre prohibido en /' | grep .; then
+  salida=$(git grep -n -I -i -E -e "$patron" -- . "${excluir[@]}" 2>/dev/null)
+  codigo=$?
+  if [ "$codigo" -eq 0 ]; then
+    echo "$salida" | cut -d: -f1,2 | sed 's/^/Nombre prohibido en /'
+    fallo=1
+  elif [ "$codigo" -gt 1 ]; then
+    # git grep: 1 = sin coincidencias; >1 = error (p. ej. regex inválida). Debe bloquear.
+    echo "::error::Un patrón de PATRONES_PROHIBIDOS es inválido o git grep falló (código $codigo)."
     fallo=1
   fi
 done <<< "$PATRONES_PROHIBIDOS"
