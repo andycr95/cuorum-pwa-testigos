@@ -1,5 +1,4 @@
 import { IconoUrna } from '../ui/Iconos';
-
 interface Eleccion {
   id: string;
   nombre: string;

@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { authService } from '../../services/authService';
+import { authService, mapearErrorAuth } from '../../services/authService';
 import { IconoAlerta } from '../ui/Iconos';
 
 interface LoginPageProps {
@@ -11,33 +11,47 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [cedulaError, setCedulaError] = useState('');
+  const [pinError, setPinError] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setCedulaError('');
+    setPinError('');
 
-    // Validaciones
-    if (!cedula.trim()) {
-      setError('Por favor ingresa tu cédula');
-      return;
+    const cleanCedula = cedula.trim();
+    let hasValidationError = false;
+
+    // Validación de cédula (longitud 5-15, sin recortar caracteres alfanuméricos)
+    if (!cleanCedula) {
+      setCedulaError('Por favor ingresa tu cédula');
+      hasValidationError = true;
+    } else if (cleanCedula.length < 5 || cleanCedula.length > 15) {
+      setCedulaError('La cédula debe tener entre 5 y 15 caracteres');
+      hasValidationError = true;
     }
 
-    if (pin.length !== 6) {
-      setError('El PIN debe tener 6 dígitos');
+    // Validación de PIN (6 dígitos numéricos)
+    if (!pin) {
+      setPinError('Por favor ingresa tu PIN');
+      hasValidationError = true;
+    } else if (pin.length !== 6) {
+      setPinError('El PIN debe tener 6 dígitos');
+      hasValidationError = true;
+    }
+
+    if (hasValidationError) {
       return;
     }
 
     setLoading(true);
 
     try {
-      await authService.login(cedula.trim(), pin);
+      await authService.login(cleanCedula, pin);
       onLoginSuccess();
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Error al iniciar sesión. Intenta nuevamente.');
-      }
+      setError(mapearErrorAuth(err));
     } finally {
       setLoading(false);
     }
@@ -68,7 +82,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Cédula */}
             <div>
               <label htmlFor="cedula" className="block text-sm font-bold text-gray-700 mb-2">
@@ -76,20 +90,42 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               </label>
               <input
                 id="cedula"
+                name="cedula"
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
+                inputMode="text"
+                autoComplete="username"
                 value={cedula}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  setCedula(value);
+                  setCedula(e.target.value.slice(0, 15));
+                  if (cedulaError) setCedulaError('');
+                  if (error) setError('');
+                }}
+                onBlur={() => {
+                  const clean = cedula.trim();
+                  if (clean.length > 0 && (clean.length < 5 || clean.length > 15)) {
+                    setCedulaError('La cédula debe tener entre 5 y 15 caracteres');
+                  }
                 }}
                 placeholder="Ej: 1234567890"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-editorial-red focus:ring-2 focus:ring-red-100 outline-none transition-all text-base font-medium"
+                className={`w-full min-h-[48px] px-4 py-3 border-2 rounded-xl focus:border-editorial-red focus:ring-2 focus:ring-red-100 outline-none transition-all text-base font-medium ${
+                  cedulaError ? 'border-editorial-red bg-red-50/20' : 'border-gray-200'
+                }`}
                 disabled={loading}
-                autoComplete="off"
                 maxLength={15}
+                aria-invalid={Boolean(cedulaError)}
+                aria-describedby={cedulaError ? 'cedula-error' : undefined}
               />
+              {cedulaError && (
+                <p
+                  id="cedula-error"
+                  role="alert"
+                  aria-live="polite"
+                  className="text-xs text-editorial-red font-medium mt-1.5 flex items-center gap-1"
+                >
+                  <IconoAlerta className="w-4 h-4 text-editorial-red flex-shrink-0" />
+                  <span>{cedulaError}</span>
+                </p>
+              )}
             </div>
 
             {/* PIN */}
@@ -99,28 +135,55 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               </label>
               <input
                 id="pin"
+                name="pin"
                 type="password"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                autoComplete="current-password"
                 value={pin}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, '').slice(0, 6);
                   setPin(value);
+                  if (pinError) setPinError('');
+                  if (error) setError('');
+                }}
+                onBlur={() => {
+                  if (pin.length > 0 && pin.length !== 6) {
+                    setPinError('El PIN debe tener 6 dígitos');
+                  }
                 }}
                 placeholder="••••••"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-editorial-red focus:ring-2 focus:ring-red-100 outline-none transition-all text-center text-2xl font-black tracking-[0.5em] font-mono"
+                className={`w-full min-h-[48px] px-4 py-3 border-2 rounded-xl focus:border-editorial-red focus:ring-2 focus:ring-red-100 outline-none transition-all text-center text-2xl font-black tracking-[0.5em] font-mono ${
+                  pinError ? 'border-editorial-red bg-red-50/20' : 'border-gray-200'
+                }`}
                 disabled={loading}
-                autoComplete="off"
                 maxLength={6}
+                aria-invalid={Boolean(pinError)}
+                aria-describedby={pinError ? 'pin-error' : 'pin-ayuda'}
               />
-              <p className="text-xs text-gray-500 mt-2">
+              {pinError && (
+                <p
+                  id="pin-error"
+                  role="alert"
+                  aria-live="polite"
+                  className="text-xs text-editorial-red font-medium mt-1.5 flex items-center gap-1 justify-center"
+                >
+                  <IconoAlerta className="w-4 h-4 text-editorial-red flex-shrink-0" />
+                  <span>{pinError}</span>
+                </p>
+              )}
+              <p id="pin-ayuda" className="text-xs text-gray-600 mt-2">
                 El PIN de 6 dígitos fue enviado a tu email
               </p>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <div
+                role="alert"
+                aria-live="polite"
+                className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3"
+              >
                 <IconoAlerta className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
@@ -130,16 +193,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             <button
               type="submit"
               disabled={loading || !cedula || pin.length !== 6}
-              className="w-full bg-editorial-red hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider text-sm min-h-[48px]"
+              className="w-full min-h-[48px] bg-editorial-red hover:bg-red-700 text-white font-black py-4 px-6 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider text-sm flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-200"
               style={{ letterSpacing: '0.1em' }}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Verificando...
+                  <span>Verificando...</span>
                 </span>
               ) : (
                 'Ingresar al Sistema'

@@ -103,7 +103,7 @@ test('CUO-209: Botones de icono tienen aria-label y tamaño táctil mínimo de 4
 
   const appTsx = fs.readFileSync(path.join(rootDir, 'src/App.tsx'), 'utf8');
   assert.ok(
-    appTsx.includes('aria-label="Cerrar sesion"'),
+    appTsx.includes('aria-label="Cerrar sesion"') || appTsx.includes('aria-label="Cerrar sesión"'),
     'App.tsx debe tener aria-label en botones de cerrar sesion'
   );
   assert.ok(

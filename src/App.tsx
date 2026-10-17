@@ -203,21 +203,31 @@ export function App() {
   // Si no hay mesa seleccionada, mostrar el selector
   if (!selectedMesaId || !mesaSeleccionada) {
     return (
-      <main className="min-h-screen bg-gray-50">
-        <header className="bg-editorial-red px-4 py-6 flex items-center justify-between">
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-            <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-editorial-red px-4 py-3 min-h-[64px] flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+              <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+            </div>
+            <span className="text-white font-bold text-base">Cuorum Testigos</span>
           </div>
-          <button onClick={handleLogout} className="text-white hover:text-white/80 text-xs font-bold uppercase tracking-wider min-h-[44px] min-w-[44px] px-3 py-2 flex items-center" aria-label="Cerrar sesion">
+          <button
+            onClick={handleLogout}
+            className="min-h-[48px] min-w-[48px] px-3 py-2 text-white hover:text-white/90 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-white/40"
+            aria-label="Cerrar sesión"
+          >
             Cerrar Sesión
           </button>
         </header>
-        <SelectorMesa 
-          mesas={listaMesas} 
-          onSelect={setSelectedMesaId} 
-          testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
-        />
-      </main>
+        <main>
+          <SelectorMesa 
+            mesas={listaMesas} 
+            onSelect={setSelectedMesaId} 
+            testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
+            onLogout={handleLogout}
+          />
+        </main>
+      </div>
     );
   }
 
@@ -247,9 +257,7 @@ export function App() {
             </svg>
           </div>
 
-          <h1 className="text-2xl font-black text-gray-900 mb-2">
-            Acta firmada exitosamente
-          </h1>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">Acta firmada exitosamente</h1>
           <p className="text-sm text-gray-500 mb-6">
             Mesa #{mesaSeleccionada.numero} cerrada correctamente
           </p>
@@ -296,7 +304,12 @@ export function App() {
                 </p>
               </div>
             </div>
-            <button onClick={handleLogout} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors" title="Cerrar sesion" aria-label="Cerrar sesion">
+            <button
+              onClick={handleLogout}
+              className="min-h-[48px] min-w-[48px] p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
@@ -330,7 +343,12 @@ export function App() {
                 </p>
               </div>
             </div>
-            <button onClick={handleLogout} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors" title="Cerrar sesion" aria-label="Cerrar sesion">
+            <button
+              onClick={handleLogout}
+              className="min-h-[48px] min-w-[48px] p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
@@ -373,8 +391,9 @@ export function App() {
               {(testigoData.mesas?.length || 0) > 1 && (
                 <button
                   onClick={handleBackToSelector}
-                  className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                  title="Cambiar de mesa" aria-label="Cambiar de mesa"
+                  className="min-h-[48px] min-w-[48px] p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center"
+                  title="Cambiar de mesa"
+                  aria-label="Cambiar de mesa"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -383,8 +402,9 @@ export function App() {
               )}
               <button
                 onClick={handleLogout}
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                title="Cerrar sesion" aria-label="Cerrar sesion"
+                className="min-h-[48px] min-w-[48px] p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center"
+                title="Cerrar sesión"
+                aria-label="Cerrar sesión"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
