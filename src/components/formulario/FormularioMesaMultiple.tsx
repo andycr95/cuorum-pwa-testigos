@@ -15,14 +15,15 @@ import { ProgresoElecciones } from '../jornada/ProgresoElecciones';
 import { WizardCierre } from '../jornada/WizardCierre';
 
 /**
- * FormularioMesaMultiple — Captura de resultados electorales
+ * FormularioMesaMultiple — Pantalla de conteo táctil, legible y estructurada
  *
- * Mejoras v2:
- * - Usa CapturaE14 con compresión real (< 200KB) en lugar de CapturaFoto básico
- * - Confirmación bidireccional post-sync (muestra respuesta del servidor)
- * - Panel de incidencias/novedades integrado
- * - Lock del acta con código de verificación SHA-256
- * - Verificación real de conectividad antes de sync
+ * Mejoras CUO-208:
+ * - Filas de candidato con nombre completo en 2 líneas sin truncamiento, número y partido
+ * - Botones − / + de 56×56 px con valor central grande (≥ 28 px)
+ * - Barra inferior fija con total contado vs sufragantes y botón Guardar siempre visible
+ * - Flujo organizado en pasos («Contar» → «Foto E-14» → «Cerrar») para reducir la altura y enfocar la tarea
+ * - Texto mínimo de 14 px (16 px para ayudas) y contraste AA en todos los estados
+ * - Sin degradados de color según las reglas de diseño institucional de Cuorum
  */
 
 interface Eleccion {
@@ -39,12 +40,14 @@ interface Candidato {
   id: string;
   nombre: string;
   partido: string;
+  numero?: number | string | null;
 }
 
 interface Lista {
   id: string;
   nombre: string;
   partido: string;
+  numero?: number | string | null;
   tipoLista: 'CERRADA' | 'PREFERENTE';
   candidatos: Candidato[];
 }
@@ -89,7 +92,10 @@ export function FormularioMesaMultiple({
   deviceId,
   onMesaCerrada,
 }: FormularioMesaMultipleProps) {
-  const [modoCaptura, setModoCaptura] = useState<'manual' | 'foto'>('manual');
+  // Pasos de la jornada de conteo: 'contar' -> 'foto' -> 'cierre'
+  const [pasoActivo, setPasoActivo] = useState<'contar' | 'foto' | 'cierre'>('contar');
+  const [observacionesPlegadas, setObservacionesPlegadas] = useState(false);
+
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
   const [votosUninominal, setVotosUninominal] = useState<Record<string, number>>({});
   const [votosLista, setVotosLista] = useState<Record<string, number>>({});
@@ -137,13 +143,13 @@ export function FormularioMesaMultiple({
     deviceId,
   });
 
-  // Si hay un job OCR COMPLETADO para la elección actual, forzar tab foto y bloquear manual
+  // Si hay un job OCR COMPLETADO para la elección actual, enfocar paso foto
   const ocrCompletado = ocrJobs.jobs.some(
-    j => (j.estado === 'COMPLETADO' || j.estado === 'CONFIRMADO') && j.eleccionId === eleccionActual,
+    (j) => (j.estado === 'COMPLETADO' || j.estado === 'CONFIRMADO') && j.eleccionId === eleccionActual,
   );
 
   useEffect(() => {
-    if (ocrCompletado) setModoCaptura('foto');
+    if (ocrCompletado) setPasoActivo('foto');
   }, [ocrCompletado]);
 
   // Verificar si ya existen resultados para esta mesa + elección
@@ -154,7 +160,7 @@ export function FormularioMesaMultiple({
       try {
         // 1. Verificar en IndexedDB local
         const locales = await getResultadosByMesa(mesaId);
-        const deEstaEleccion = locales.filter(r => r.eleccionId === eleccionActual);
+        const deEstaEleccion = locales.filter((r) => r.eleccionId === eleccionActual);
 
         if (deEstaEleccion.length > 0 && !cancelled) {
           setResultadosExistentes(deEstaEleccion);
@@ -183,7 +189,6 @@ export function FormularioMesaMultiple({
           // Sin conexión — solo verificamos localmente
         }
 
-        // No hay resultados previos
         if (!cancelled) {
           setYaRegistrado(false);
           setResultadosExistentes([]);
@@ -199,17 +204,8 @@ export function FormularioMesaMultiple({
 
   const eleccion = elecciones.find((e) => e.id === eleccionActual);
 
-  if (!eleccion) {
-    return (
-      <div className="max-w-md mx-auto p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">Error: Elección no encontrada</p>
-        </div>
-      </div>
-    );
-  }
-
-  const calcularTotal = () => {
+  const calcularTotal = useCallback(() => {
+    if (!eleccion) return 0;
     if (eleccion.tipoCargo === 'UNINOMINAL') {
       return Object.values(votosUninominal).reduce((sum, v) => sum + v, 0)
         + votosBlanco + votosNulos + votosNoMarcados;
@@ -217,7 +213,7 @@ export function FormularioMesaMultiple({
     const totalListas = Object.values(votosLista).reduce((sum, v) => sum + v, 0);
     const totalPreferentes = Object.values(votosPreferente).reduce((sum, v) => sum + v, 0);
     return totalListas + totalPreferentes + votosBlanco + votosNulos + votosNoMarcados;
-  };
+  }, [eleccion, votosUninominal, votosLista, votosPreferente, votosBlanco, votosNulos, votosNoMarcados]);
 
   const totalVotos = calcularTotal();
   const hayAlertaFraude = totalVotos > totalSufragantes;
@@ -240,9 +236,12 @@ export function FormularioMesaMultiple({
     setYaRegistrado(false);
     setResultadosExistentes([]);
     setCargandoResultados(true);
+    setPasoActivo('contar');
   }, []);
 
   const handleGuardar = async () => {
+    if (!eleccion) return;
+
     // Alerta si el candidato propio tiene 0 votos
     if (miCandidatoId || miListaId) {
       let propioTieneZero = false;
@@ -253,11 +252,11 @@ export function FormularioMesaMultiple({
       }
       if (propioTieneZero) {
         const nombrePropio = miCandidatoId
-          ? eleccion.candidatos?.find(c => c.id === miCandidatoId)?.nombre
-            || eleccion.listas?.flatMap(l => l.candidatos).find(c => c.id === miCandidatoId)?.nombre
-          : eleccion.listas?.find(l => l.id === miListaId)?.nombre;
+          ? eleccion.candidatos?.find((c) => c.id === miCandidatoId)?.nombre
+            || eleccion.listas?.flatMap((l) => l.candidatos).find((c) => c.id === miCandidatoId)?.nombre
+          : eleccion.listas?.find((l) => l.id === miListaId)?.nombre;
         const confirmar = window.confirm(
-          `Tu candidato/lista "${nombrePropio || 'propio'}" tiene 0 votos en esta mesa. ¿Estás seguro de que es correcto?`
+          `Tu candidato/lista "${nombrePropio || 'propio'}" tiene 0 votos en esta mesa. ¿Estás seguro de que es correcto?`,
         );
         if (!confirmar) return;
       }
@@ -265,13 +264,9 @@ export function FormularioMesaMultiple({
 
     setError(null);
     setGuardando(true);
-
-    // Pausar auto-sync de fondo para evitar que envíe resultados parciales
-    // (sin la foto E-14) si el poller dispara durante el guardado.
     pauseAutoSync();
 
     try {
-      // ─── Paso 1: Recopilar todos los datos en memoria ──────────
       const now = new Date().toISOString();
       const resultadosBatch: Parameters<typeof guardarResultadosYFoto>[0] = [];
 
@@ -370,7 +365,7 @@ export function FormularioMesaMultiple({
         }
       }
 
-      // Fotos E-14 de evidencia (modo manual, pueden ser varias)
+      // Fotos de evidencia
       const fotosData = fotosManual.map((f, i) => ({
         id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
         mesaId,
@@ -380,24 +375,18 @@ export function FormularioMesaMultiple({
         deviceId,
       }));
 
-      // ─── Paso 2: Guardar TODO en una sola transacción IDB ──────
-      // Atómico: el auto-sync de fondo ve todo o nada.
       await guardarResultadosYFoto(resultadosBatch, fotosData.length > 0 ? fotosData : undefined);
-
       setGuardado(true);
 
-      // ─── Paso 3: Sincronizar ───────────────────────────────────
       const online = await verificarConectividadReal();
       if (online) {
         const resultado = await sincronizar();
         setSyncStatus(resultado);
-
-        // ─── Paso 4: Validar resultados ───────────────────────────
         try {
           const validacion = await jornadaService.validar(mesaId, eleccionActual);
           setAlertasValidacion(validacion.alertas);
         } catch {
-          // Validation is optional — don't block the flow
+          // Opcional
         }
       } else {
         setSyncStatus({
@@ -409,7 +398,6 @@ export function FormularioMesaMultiple({
         });
       }
 
-      // Refrescar progreso de elecciones
       setRefreshProgreso((prev) => prev + 1);
     } catch {
       setError('Error al guardar. Los datos se reintentarán automáticamente.');
@@ -430,28 +418,35 @@ export function FormularioMesaMultiple({
     }
   };
 
-  return (
-    <div className="max-w-md mx-auto px-4 py-6">
-      <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
+  if (!eleccion) {
+    return (
+      <div className="max-w-md mx-auto p-4">
+        <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4">
+          <p className="text-red-700 font-semibold">Error: Elección no encontrada</p>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Header Card Info */}
-        <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 px-6 py-6 border-b-2 border-gray-200 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-editorial-red/5 rounded-full -mr-16 -mt-16" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-200/50 rounded-full -ml-12 -mb-12" />
-          <div className="relative flex items-center justify-between gap-4">
+  return (
+    <div className="max-w-md mx-auto px-4 pt-4 pb-32">
+      <div className="bg-white rounded-3xl shadow-xl border-2 border-gray-200 overflow-hidden">
+        {/* Cabecera de Mesa */}
+        <div className="bg-gray-50 px-5 py-4 border-b-2 border-gray-200">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-0.5">
                 Mesa Electoral
               </p>
-              <h2 className="text-4xl font-black text-editorial-black leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <h2 className="text-3xl font-black text-gray-900 leading-none tabular-nums">
                 #{mesaNumero}
               </h2>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-0.5">
                 Sufragantes
               </p>
-              <p className="text-3xl font-black text-editorial-red leading-none drop-shadow-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <p className="text-3xl font-black text-editorial-red leading-none tabular-nums">
                 {totalSufragantes}
               </p>
             </div>
@@ -459,24 +454,23 @@ export function FormularioMesaMultiple({
 
           {/* Badge acta cerrada */}
           {actaCerrada && codigoActa && (
-            <div className="mt-4 px-4 py-3 bg-green-50 border-2 border-green-400 rounded-2xl">
+            <div className="mt-3 px-4 py-3 bg-green-50 border-2 border-green-500 rounded-2xl">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-green-600 font-black text-sm">🔒 Acta cerrada y firmada</span>
+                <span className="text-green-800 font-black text-sm">🔒 Acta cerrada y firmada</span>
               </div>
-              <p className="text-xs text-green-700 font-semibold">
+              <p className="text-sm text-green-900 font-semibold">
                 Código de verificación:{' '}
-                <span className="font-black text-green-900 tracking-widest">{codigoActa}</span>
+                <span className="font-mono font-black tracking-widest">{codigoActa}</span>
               </p>
-              <p className="text-[10px] text-green-600 mt-1">
+              <p className="text-xs text-green-700 mt-1">
                 Guarda este código como comprobante de tu reporte
               </p>
             </div>
           )}
         </div>
 
-        <div className="p-6">
-
-          {/* Progreso de elecciones */}
+        <div className="p-4 sm:p-5">
+          {/* Progreso de elecciones en la mesa */}
           <ProgresoElecciones
             mesaId={mesaId}
             elecciones={elecciones.map((e) => ({ id: e.id, nombre: e.nombre }))}
@@ -498,57 +492,362 @@ export function FormularioMesaMultiple({
             }}
           />
 
-          {/* Tab bar: Manual / Foto E-14 */}
-          <div className="flex gap-2 mb-6">
+          {/* Stepper de Pasos de la Jornada de Conteo */}
+          <div
+            className="flex rounded-2xl bg-gray-100 p-1 mb-5 border border-gray-200"
+            role="tablist"
+            aria-label="Pasos de la jornada de conteo"
+          >
             <button
               type="button"
-              onClick={() => !ocrCompletado && setModoCaptura('manual')}
-              disabled={ocrCompletado}
-              title={ocrCompletado ? 'El acta ya fue procesada por OCR' : undefined}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
-                ocrCompletado
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                  : modoCaptura === 'manual'
-                  ? 'bg-editorial-red text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              role="tab"
+              id="tab-contar"
+              aria-selected={pasoActivo === 'contar'}
+              onClick={() => setPasoActivo('contar')}
+              className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
+                pasoActivo === 'contar'
+                  ? 'bg-editorial-red text-white shadow-sm'
+                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'
               }`}
             >
-              Manual
-              {ocrCompletado && <span className="ml-1 text-xs">🔒</span>}
+              <span>1. Contar</span>
             </button>
             <button
               type="button"
-              onClick={() => setModoCaptura('foto')}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
-                modoCaptura === 'foto'
-                  ? 'bg-editorial-red text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              role="tab"
+              id="tab-foto"
+              aria-selected={pasoActivo === 'foto'}
+              onClick={() => setPasoActivo('foto')}
+              className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
+                pasoActivo === 'foto'
+                  ? 'bg-editorial-red text-white shadow-sm'
+                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'
               }`}
             >
-              Foto E-14
-              {ocrCompletado && <span className="ml-1 text-[10px] text-green-600">✓</span>}
+              <span>2. Foto E-14</span>
+              {fotosManual.length > 0 && (
+                <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">
+                  {fotosManual.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="tab-cierre"
+              aria-selected={pasoActivo === 'cierre'}
+              onClick={() => setPasoActivo('cierre')}
+              className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
+                pasoActivo === 'cierre'
+                  ? 'bg-editorial-red text-white shadow-sm'
+                  : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'
+              }`}
+            >
+              <span>3. Cerrar</span>
             </button>
           </div>
 
-          {/* ── Modo Foto OCR ──────────────────────────────────────── */}
-          {modoCaptura === 'foto' && (
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* PASO 1: CONTAR VOTOS                                       */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {pasoActivo === 'contar' && (
+            <div>
+              {/* Verificando resultados previos */}
+              {cargandoResultados && (
+                <div className="py-8 text-center">
+                  <span className="inline-block w-6 h-6 border-2 border-editorial-red border-t-transparent rounded-full animate-spin mb-2" />
+                  <p className="text-sm text-gray-600 font-semibold">Verificando resultados previos...</p>
+                </div>
+              )}
+
+              {/* Vista de solo lectura si ya fueron registrados */}
+              {!cargandoResultados && yaRegistrado && (
+                <div className="space-y-4 mb-6">
+                  <div className="bg-green-50 border-2 border-green-500 rounded-2xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-green-600 text-white rounded-full flex items-center justify-center font-black flex-shrink-0">
+                        ✓
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-green-900">Resultados ya registrados</p>
+                        <p className="text-xs text-green-700 mt-0.5">
+                          Los resultados para esta elección ya fueron capturados.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resumen */}
+                  <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                      <p className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Votos registrados
+                      </p>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {resultadosExistentes
+                        .filter((r) => r.tipoVoto === 'CANDIDATO' || r.tipoVoto === 'LISTA')
+                        .map((r, i) => (
+                          <div key={i} className="flex items-center justify-between px-4 py-3">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <p className="text-sm font-bold text-gray-900 break-words">{r.candidato}</p>
+                              {r.partido && <p className="text-xs text-gray-600">{r.partido}</p>}
+                            </div>
+                            <span className="text-lg font-black text-editorial-red ml-3 tabular-nums">{r.votos}</span>
+                          </div>
+                        ))}
+                    </div>
+                    {/* Votos especiales registrados */}
+                    <div className="border-t-2 border-dashed border-gray-200 divide-y divide-gray-100 bg-gray-50/50">
+                      <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-700">
+                        <span>Votos en blanco</span>
+                        <span className="font-bold tabular-nums">{resultadosExistentes[0]?.votosBlanco ?? 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-700">
+                        <span>Votos nulos</span>
+                        <span className="font-bold tabular-nums">{resultadosExistentes[0]?.votosNulos ?? 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-4 py-2 text-xs text-gray-700">
+                        <span>No marcados</span>
+                        <span className="font-bold tabular-nums">{resultadosExistentes[0]?.votosNoMarcados ?? 0}</span>
+                      </div>
+                    </div>
+                    {/* Total registrado */}
+                    <div className="px-4 py-3 bg-gray-100 border-t border-gray-200 flex items-center justify-between">
+                      <p className="text-xs font-black text-gray-800 uppercase tracking-wider">Total votos</p>
+                      <span className="text-xl font-black text-gray-900 tabular-nums">
+                        {resultadosExistentes[0]?.totalVotosMesa ?? 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Formulario editable */}
+              {!cargandoResultados && !yaRegistrado && (
+                <>
+                  {/* Alerta de exceso de sufragantes */}
+                  {hayAlertaFraude && (
+                    <div className="mb-4 bg-red-50 border-2 border-red-500 rounded-2xl p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl flex-shrink-0" aria-hidden="true">⚠️</span>
+                        <div>
+                          <p className="font-black text-red-900 text-sm uppercase tracking-wide">
+                            Alerta de escrutinio
+                          </p>
+                          <p className="text-xs sm:text-sm text-red-800 font-semibold leading-snug mt-0.5">
+                            Total de votos ({totalVotos}) supera los sufragantes habilitados ({totalSufragantes}).
+                          </p>
+                          <p className="text-xs text-red-700 mt-1">
+                            Verifique los valores antes de guardar el reporte.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de candidatos uninominales */}
+                  {eleccion.tipoCargo === 'UNINOMINAL' && (
+                    <div className="space-y-3 mb-6" data-testid="seccion-candidatos">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1.5 h-4 bg-editorial-red rounded-full" />
+                        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Candidatos
+                        </h3>
+                      </div>
+                      {eleccion.candidatos?.map((candidato, index) => (
+                        <VoteInput
+                          key={candidato.id}
+                          label={candidato.nombre}
+                          subtitle={candidato.partido}
+                          numero={candidato.numero || index + 1}
+                          value={votosUninominal[candidato.id] || 0}
+                          onChange={(value) => {
+                            setVotosUninominal({ ...votosUninominal, [candidato.id]: value });
+                            setGuardado(false);
+                            setSyncStatus(null);
+                          }}
+                          size="large"
+                          variant="candidate"
+                          disabled={guardado}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Listas colegiadas */}
+                  {(eleccion.tipoCargo === 'LISTA' || eleccion.tipoCargo === 'LISTA_CON_PREFERENTE') && (
+                    <div className="space-y-4 mb-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1.5 h-4 bg-editorial-red rounded-full" />
+                        <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Listas Colegiadas
+                        </h3>
+                      </div>
+                      {eleccion.listas?.map((lista, index) => (
+                        <div key={lista.id} className="border-2 border-gray-200 rounded-2xl p-4 bg-white shadow-sm">
+                          <VoteInput
+                            label={lista.nombre}
+                            subtitle={lista.partido}
+                            numero={lista.numero || index + 1}
+                            value={votosLista[lista.id] || 0}
+                            onChange={(value) => {
+                              setVotosLista({ ...votosLista, [lista.id]: value });
+                              setGuardado(false);
+                              setSyncStatus(null);
+                            }}
+                            size="large"
+                            variant="candidate"
+                            disabled={guardado}
+                          />
+
+                          {/* Voto preferente */}
+                          {eleccion.votoPreferente && lista.tipoLista === 'PREFERENTE' && (
+                            <div className="border-t-2 border-gray-100 pt-3 mt-3 space-y-2">
+                              <p className="text-xs font-bold text-gray-700 mb-2">
+                                Voto preferente por candidato (opcional)
+                              </p>
+                              {lista.candidatos.map((candidato, cIdx) => (
+                                <VoteInput
+                                  key={candidato.id}
+                                  label={candidato.nombre}
+                                  subtitle={`Posición ${cIdx + 1}`}
+                                  numero={cIdx + 1}
+                                  value={votosPreferente[candidato.id] || 0}
+                                  onChange={(value) => {
+                                    setVotosPreferente({ ...votosPreferente, [candidato.id]: value });
+                                    setGuardado(false);
+                                    setSyncStatus(null);
+                                  }}
+                                  disabled={guardado}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Votos especiales */}
+                  <div className="space-y-3 mb-6" data-testid="seccion-votos-especiales">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-4 bg-gray-500 rounded-full" />
+                      <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Votos Especiales
+                      </h3>
+                    </div>
+                    <VoteInput
+                      label="Votos en blanco"
+                      value={votosBlanco}
+                      onChange={(v) => { setVotosBlanco(v); setGuardado(false); setSyncStatus(null); }}
+                      variant="special"
+                      disabled={guardado}
+                    />
+                    <VoteInput
+                      label="Votos nulos"
+                      value={votosNulos}
+                      onChange={(v) => { setVotosNulos(v); setGuardado(false); setSyncStatus(null); }}
+                      variant="special"
+                      disabled={guardado}
+                    />
+                    <VoteInput
+                      label="No marcados"
+                      value={votosNoMarcados}
+                      onChange={(v) => { setVotosNoMarcados(v); setGuardado(false); setSyncStatus(null); }}
+                      variant="special"
+                      disabled={guardado}
+                    />
+                  </div>
+
+                  {/* Sección Plegable: Observaciones Rápidas */}
+                  <div className="mb-6 border-2 border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => setObservacionesPlegadas(!observacionesPlegadas)}
+                      className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors min-h-[48px]"
+                      aria-expanded={observacionesPlegadas}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base" aria-hidden="true">📝</span>
+                        <span className="text-sm font-bold text-gray-800">
+                          Observaciones del conteo (opcional)
+                        </span>
+                        {observaciones && (
+                          <span className="w-2 h-2 rounded-full bg-editorial-red" />
+                        )}
+                      </div>
+                      <span className="text-gray-500 font-bold text-sm">
+                        {observacionesPlegadas ? 'Ocultar' : 'Agregar'}
+                      </span>
+                    </button>
+                    {observacionesPlegadas && (
+                      <div className="p-4 border-t-2 border-gray-100 bg-gray-50/50">
+                        <ObservacionesInput
+                          value={observaciones}
+                          onChange={(v) => {
+                            setObservaciones(v);
+                            setGuardado(false);
+                            setSyncStatus(null);
+                          }}
+                          disabled={guardado}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Acceso directo al paso 2 */}
+                  <div className="pt-1 pb-2">
+                    <button
+                      type="button"
+                      onClick={() => setPasoActivo('foto')}
+                      className="w-full py-3.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors min-h-[48px]"
+                    >
+                      <span>Siguiente: Foto del E-14</span>
+                      <span aria-hidden="true">→</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* PASO 2: FOTO DEL E-14 (EVIDENCIA U OCR)                     */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {pasoActivo === 'foto' && (
             <div className="space-y-4 mb-6">
+              <div className="bg-red-50/60 border-2 border-editorial-red/30 rounded-2xl p-4">
+                <h3 className="text-sm font-black text-gray-900 mb-1">
+                  Fotografía del acta E-14
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-700 leading-snug">
+                  Toma fotos claras y legibles de cada página del formulario E-14 como evidencia de respaldo.
+                </p>
+              </div>
+
               {ocrCompletado ? (
-                <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
-                  <span className="text-2xl flex-shrink-0">✓</span>
+                <div className="bg-green-50 border-2 border-green-500 rounded-2xl p-4 flex items-center gap-3">
+                  <span className="text-2xl flex-shrink-0 text-green-700">✓</span>
                   <div>
-                    <p className="text-sm font-black text-green-800">Fotos del E-14 recibidas</p>
-                    <p className="text-xs text-green-600 mt-0.5">
-                      Revisa y confirma los resultados extraidos abajo.
+                    <p className="text-sm font-black text-green-900">Fotos del E-14 procesadas</p>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      Revisa y confirma los resultados extraídos a continuación.
                     </p>
                   </div>
                 </div>
               ) : (
                 <CapturaMultipleE14
-                  onFotosListas={ocrJobs.guardar}
-                  disabled={ocrJobs.saving}
+                  onFotosListas={(fotos) => {
+                    setFotosManual(fotos);
+                    ocrJobs.guardar(fotos);
+                    setGuardado(false);
+                    setSyncStatus(null);
+                  }}
+                  disabled={ocrJobs.saving || guardado}
                 />
               )}
+
               <EstadoOcrE14
                 jobs={ocrJobs.jobs}
                 onRetry={ocrJobs.syncJobs}
@@ -564,473 +863,169 @@ export function FormularioMesaMultiple({
                 }}
                 eleccionReportada={yaRegistrado}
               />
-            </div>
-          )}
 
-          {/* ── Modo Manual (formulario original) ─────────────────── */}
-          {modoCaptura === 'manual' && (<>
-
-          {/* Verificando resultados previos */}
-          {cargandoResultados && (
-            <div className="py-8 text-center">
-              <span className="inline-block w-6 h-6 border-2 border-editorial-red/40 border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs text-gray-500 font-semibold">Verificando resultados previos...</p>
-            </div>
-          )}
-
-          {/* Resultados ya registrados — vista de solo lectura */}
-          {!cargandoResultados && yaRegistrado && (
-            <div className="space-y-4 mb-6">
-              {/* Banner */}
-              <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
-                    <span className="text-white text-xl">✓</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-green-800">Resultados ya registrados</p>
-                    <p className="text-xs text-green-600 mt-0.5">
-                      Los resultados para esta elección ya fueron capturados. Solo puedes registrar incidentes.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Resumen de resultados */}
-              <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                  <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Resumen de votos registrados</p>
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {resultadosExistentes
-                    .filter(r => r.tipoVoto === 'CANDIDATO' || r.tipoVoto === 'LISTA')
-                    .map((r, i) => (
-                      <div key={i} className="flex items-center justify-between px-4 py-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-800 truncate">{r.candidato}</p>
-                          {r.partido && <p className="text-xs text-gray-500">{r.partido}</p>}
-                        </div>
-                        <span className="text-lg font-black text-editorial-red ml-3">{r.votos}</span>
-                      </div>
-                    ))}
-                </div>
-                {/* Votos especiales */}
-                {((resultadosExistentes[0]?.votosBlanco ?? 0) > 0 ||
-                  (resultadosExistentes[0]?.votosNulos ?? 0) > 0 ||
-                  (resultadosExistentes[0]?.votosNoMarcados ?? 0) > 0) && (
-                  <div className="border-t-2 border-dashed border-gray-200 divide-y divide-gray-100">
-                    {(resultadosExistentes[0]?.votosBlanco ?? 0) > 0 && (
-                      <div className="flex items-center justify-between px-4 py-2">
-                        <p className="text-xs text-gray-500">Votos en blanco</p>
-                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosBlanco}</span>
-                      </div>
-                    )}
-                    {(resultadosExistentes[0]?.votosNulos ?? 0) > 0 && (
-                      <div className="flex items-center justify-between px-4 py-2">
-                        <p className="text-xs text-gray-500">Votos nulos</p>
-                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosNulos}</span>
-                      </div>
-                    )}
-                    {(resultadosExistentes[0]?.votosNoMarcados ?? 0) > 0 && (
-                      <div className="flex items-center justify-between px-4 py-2">
-                        <p className="text-xs text-gray-500">No marcados</p>
-                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosNoMarcados}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* Total */}
-                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                  <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Total votos</p>
-                  <span className="text-xl font-black text-editorial-black">
-                    {resultadosExistentes[0]?.totalVotosMesa ?? 0}
-                  </span>
-                </div>
-              </div>
-
-              {/* Timestamp */}
-              {resultadosExistentes[0]?.capturedAt && (
-                <p className="text-center text-[10px] text-gray-400 font-semibold">
-                  Registrado el {new Date(resultadosExistentes[0].capturedAt).toLocaleString('es-CO')}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* ── Formulario editable (solo si NO hay resultados previos) ── */}
-          {!cargandoResultados && !yaRegistrado && (<>
-
-          {/* Alerta de fraude */}
-          {hayAlertaFraude && (
-            <div className="mb-6 relative overflow-hidden rounded-2xl">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-red-600 to-red-500 animate-pulse" />
-              <div className="relative px-5 py-4 flex items-start gap-3">
-                <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-2xl">⚠️</span>
-                </div>
-                <div className="flex-1 pt-1">
-                  <p className="font-black text-white text-base uppercase tracking-wide mb-1">
-                    ⚡ ALERTA DE FRAUDE
-                  </p>
-                  <p className="text-sm text-red-50 font-semibold leading-snug">
-                    Total de votos (<span className="font-black">{totalVotos}</span>) SUPERA
-                    sufragantes habilitados (<span className="font-black">{totalSufragantes}</span>)
-                  </p>
-                  <p className="text-xs text-red-100 mt-2 font-medium">
-                    ⚠️ Verifique los datos antes de guardar
-                  </p>
-                </div>
+              {/* Botones de navegación entre pasos */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPasoActivo('contar')}
+                  className="flex-1 py-3 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm min-h-[48px]"
+                >
+                  ← Volver a Contar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPasoActivo('cierre')}
+                  className="flex-1 py-3 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold text-sm min-h-[48px]"
+                >
+                  Paso 3: Cerrar acta →
+                </button>
               </div>
             </div>
           )}
 
-          {/* ── Formulario Uninominal ───────────────────────────────── */}
-          {eleccion.tipoCargo === 'UNINOMINAL' && (
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-5 bg-editorial-red rounded-full" />
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Candidatos</p>
-              </div>
-              {eleccion.candidatos?.map((candidato) => (
-                <VoteInput
-                  key={candidato.id}
-                  label={candidato.nombre}
-                  subtitle={candidato.partido}
-                  value={votosUninominal[candidato.id] || 0}
-                  onChange={(value) => {
-                    setVotosUninominal({ ...votosUninominal, [candidato.id]: value });
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* PASO 3: NOVEDADES, OBSERVACIONES Y CIERRE DEL ACTA         */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {pasoActivo === 'cierre' && (
+            <div className="space-y-5 mb-6">
+              {/* Observaciones completas */}
+              <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-4 bg-editorial-red rounded-full" />
+                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Observaciones Generales
+                  </h3>
+                </div>
+                <ObservacionesInput
+                  value={observaciones}
+                  onChange={(v) => {
+                    setObservaciones(v);
                     setGuardado(false);
                     setSyncStatus(null);
                   }}
-                  size="large"
-                  variant="candidate"
                   disabled={guardado}
                 />
-              ))}
-            </div>
-          )}
+              </div>
 
-          {/* ── Formulario Colegiado (Listas) ──────────────────────── */}
-          {(eleccion.tipoCargo === 'LISTA' || eleccion.tipoCargo === 'LISTA_CON_PREFERENTE') && (
-            <div className="space-y-4 mb-6">
-              {eleccion.listas?.map((lista) => (
-                <div key={lista.id} className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-800 truncate">{lista.nombre}</p>
-                      <p className="text-xs text-gray-500">{lista.partido}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500 mb-1">Votos a lista</p>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        value={votosLista[lista.id] || ''}
-                        disabled={guardado}
-                        onChange={(e) => {
-                          const num = parseInt(e.target.value) || 0;
-                          if (num >= 0) {
-                            setVotosLista({ ...votosLista, [lista.id]: num });
-                            setGuardado(false);
-                            setSyncStatus(null);
-                          }
-                        }}
-                        className="w-20 px-3 py-2 border-2 border-gray-300 rounded-lg text-center text-lg font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-50"
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                  {eleccion.votoPreferente && lista.tipoLista === 'PREFERENTE' && (
-                    <div className="border-t border-gray-100 pt-3 space-y-2">
-                      <p className="text-xs font-medium text-gray-600 mb-2">Voto Preferente (opcional)</p>
-                      {lista.candidatos.map((candidato) => (
-                        <div key={candidato.id} className="flex items-center gap-2 text-sm">
-                          <span className="flex-1 text-gray-700 truncate">{candidato.nombre}</span>
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            min="0"
-                            value={votosPreferente[candidato.id] || ''}
-                            disabled={guardado}
-                            onChange={(e) => {
-                              const num = parseInt(e.target.value) || 0;
-                              if (num >= 0) {
-                                setVotosPreferente({ ...votosPreferente, [candidato.id]: num });
-                                setGuardado(false);
-                                setSyncStatus(null);
-                              }
-                            }}
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm font-semibold focus:border-blue-500 focus:outline-none disabled:bg-gray-50"
-                            placeholder="0"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── Separador Votos Especiales ──────────────────────────── */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-dashed border-gray-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Votos Especiales
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-4 mb-6 bg-gray-50 rounded-xl p-4 border border-gray-200">
-            <VoteInput
-              label="Votos en blanco"
-              value={votosBlanco}
-              onChange={(v) => { setVotosBlanco(v); setGuardado(false); setSyncStatus(null); }}
-              variant="special"
-              disabled={guardado}
-            />
-            <VoteInput
-              label="Votos nulos"
-              value={votosNulos}
-              onChange={(v) => { setVotosNulos(v); setGuardado(false); setSyncStatus(null); }}
-              variant="special"
-              disabled={guardado}
-            />
-            <VoteInput
-              label="No marcados"
-              value={votosNoMarcados}
-              onChange={(v) => { setVotosNoMarcados(v); setGuardado(false); setSyncStatus(null); }}
-              variant="special"
-              disabled={guardado}
-            />
-          </div>
-
-          {/* ── Separador Evidencia ─────────────────────────────────── */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-dashed border-gray-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Evidencia y Observaciones
-              </span>
-            </div>
-          </div>
-
-          {/* Captura múltiples fotos E-14 como evidencia */}
-          <div className="mb-6">
-            <CapturaMultipleE14
-              onFotosListas={(fotos) => {
-                setFotosManual(fotos);
-                setGuardado(false);
-                setSyncStatus(null);
-              }}
-              disabled={guardado}
-              title="Fotos del E-14 (evidencia)"
-              submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
-            />
-          </div>
-
-          {/* Observaciones */}
-          <div className="mb-6">
-            <ObservacionesInput
-              value={observaciones}
-              onChange={(v) => {
-                setObservaciones(v);
-                setGuardado(false);
-                setSyncStatus(null);
-              }}
-              disabled={guardado}
-            />
-          </div>
-
-          {/* ── Total de votos ──────────────────────────────────────── */}
-          <div className={`my-4 relative overflow-hidden rounded-3xl border-2 transition-all shadow-xl ${
-            hayAlertaFraude
-              ? 'bg-gradient-to-br from-red-50 via-red-100 to-red-50 border-red-500 shadow-red-200'
-              : totalVotos > 0
-              ? 'bg-gradient-to-br from-editorial-red/5 via-editorial-red/10 to-editorial-red/5 border-editorial-red/40 shadow-red-100'
-              : 'bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 border-gray-300 shadow-gray-200'
-          }`}>
-            <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200">
-              <div
-                className={`h-full transition-all duration-500 ${
-                  hayAlertaFraude
-                    ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-500'
-                    : 'bg-gradient-to-r from-editorial-red via-red-600 to-editorial-red'
-                }`}
-                style={{ width: `${Math.min((totalVotos / totalSufragantes) * 100, 100)}%` }}
+              {/* Panel de incidencias */}
+              <PanelIncidencias
+                mesaId={mesaId}
+                testigoId={testigoId}
+                deviceId={deviceId}
+                mesaNumero={mesaNumero}
               />
-            </div>
 
-            <div className="p-6 text-center">
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-3" style={{ letterSpacing: '0.15em' }}>
-                Total Votos Registrados
-              </p>
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <div className={`text-6xl font-black leading-none transition-all ${
-                  hayAlertaFraude ? 'text-red-600' : totalVotos > 0 ? 'text-editorial-red' : 'text-gray-400'
-                }`} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {totalVotos}
-                </div>
-                <div className="text-left">
-                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">de</p>
-                  <p className="text-3xl font-black text-gray-700 leading-none">{totalSufragantes}</p>
-                </div>
-              </div>
+              {/* Botón Cerrar y Firmar Acta de Mesa */}
+              {!actaCerrada && (
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-4 shadow-sm">
+                  <h3 className="text-sm font-black text-gray-900 mb-1">
+                    Cierre de Acta Electoral
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Al cerrar el acta se genera un código criptográfico de verificación y se bloquean modificaciones.
+                  </p>
 
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 ${
-                hayAlertaFraude ? 'bg-red-100 border-red-400'
-                : totalVotos === totalSufragantes ? 'bg-green-100 border-green-400'
-                : totalVotos > 0 ? 'bg-yellow-100 border-yellow-400'
-                : 'bg-gray-100 border-gray-300'
-              }`}>
-                <div className={`relative w-2.5 h-2.5 rounded-full ${
-                  hayAlertaFraude ? 'bg-red-500'
-                  : totalVotos === totalSufragantes ? 'bg-green-500'
-                  : totalVotos > 0 ? 'bg-yellow-500' : 'bg-gray-400'
-                }`}>
-                  {hayAlertaFraude && <div className="absolute inset-0 rounded-full bg-red-500 animate-ping" />}
+                  <button
+                    type="button"
+                    onClick={() => setShowWizardCierre(true)}
+                    className="w-full py-4 rounded-xl border-2 border-editorial-red text-editorial-red hover:bg-red-50 font-black text-sm uppercase tracking-wide transition-all active:scale-[0.98] min-h-[48px]"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      <span>Cerrar Acta de Mesa</span>
+                    </span>
+                  </button>
+                  <p className="text-sm text-gray-500 font-medium text-center mt-2">
+                    Validación final, firma digital y comprobante para el testigo
+                  </p>
                 </div>
-                <p className={`text-xs font-black uppercase tracking-wider ${
-                  hayAlertaFraude ? 'text-red-700'
-                  : totalVotos === totalSufragantes ? 'text-green-700'
-                  : totalVotos > 0 ? 'text-yellow-700' : 'text-gray-600'
-                }`}>
-                  {hayAlertaFraude ? '⚠️ Excede sufragantes'
-                  : totalVotos === totalSufragantes ? '✓ Mesa completa'
-                  : totalVotos > 0 ? 'En proceso de conteo'
-                  : 'Sin votos registrados'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Botón guardar ───────────────────────────────────────── */}
-          {!actaCerrada && (
-            <button
-              onClick={handleGuardar}
-              disabled={guardado || guardando}
-              className={`relative w-full overflow-hidden rounded-2xl py-5 font-black text-white uppercase tracking-widest text-base transition-all mb-4 ${
-                guardado
-                  ? 'bg-gradient-to-br from-green-500 via-green-600 to-green-500 shadow-2xl shadow-green-200/50'
-                  : hayAlertaFraude
-                  ? 'bg-brand-600 hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
-                  : 'bg-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
-              } disabled:opacity-95 disabled:cursor-not-allowed`}
-              style={{ letterSpacing: '0.1em' }}
-            >
-              {!guardado && !guardando && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ width: '200%' }} />
               )}
-              <span className="relative flex items-center justify-center gap-3 drop-shadow-md">
-                {guardando ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Guardando...</span>
-                  </>
-                ) : guardado ? (
-                  <>
-                    <span className="text-2xl">✓</span>
-                    <span>Resultados Guardados</span>
-                  </>
-                ) : hayAlertaFraude ? (
-                  <>
-                    <span className="text-2xl animate-pulse">⚠️</span>
-                    <span>Guardar con Alerta</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-2xl">📋</span>
-                    <span>Guardar Resultados</span>
-                  </>
-                )}
-              </span>
-            </button>
+
+              {/* Lock local si guardó antes de firmar formalmente */}
+              {guardado && !actaCerrada && (
+                <button
+                  type="button"
+                  onClick={handleCerrarActa}
+                  disabled={cerrando}
+                  className="w-full py-3.5 rounded-xl border-2 border-gray-700 bg-gray-800 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.98] min-h-[48px]"
+                >
+                  {cerrando ? 'Firmando acta...' : '🔒 Firma rápida local'}
+                </button>
+              )}
+
+              {/* Volver a pasos anteriores */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPasoActivo('contar')}
+                  className="flex-1 py-3 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm min-h-[48px]"
+                >
+                  ← Ir a Contar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPasoActivo('foto')}
+                  className="flex-1 py-3 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm min-h-[48px]"
+                >
+                  ← Ir a Foto E-14
+                </button>
+              </div>
+            </div>
           )}
 
-          {/* ── Confirmación post-sync del servidor ─────────────────── */}
+          {/* Confirmación de sincronización con el servidor */}
           {syncStatus && (
-            <div className={`mb-4 px-4 py-4 rounded-2xl border-2 ${
-              syncStatus.success
-                ? 'bg-green-50 border-green-400'
-                : syncStatus.error?.includes('Sin conexión')
-                ? 'bg-blue-50 border-blue-300'
-                : 'bg-orange-50 border-orange-300'
-            }`}>
+            <div
+              className={`mt-4 px-4 py-3 rounded-2xl border-2 ${
+                syncStatus.success
+                  ? 'bg-green-50 border-green-500'
+                  : syncStatus.error?.includes('Sin conexión')
+                  ? 'bg-blue-50 border-blue-400'
+                  : 'bg-amber-50 border-amber-400'
+              }`}
+            >
               {syncStatus.success ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-green-600 text-lg">✅</span>
-                    <p className="text-sm font-black text-green-800">Reporte enviado al servidor</p>
+                    <span className="text-green-700 font-black text-sm">✓ Reporte sincronizado</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-green-700">
-                    <span>📊 {syncStatus.resultadosSincronizados} resultado(s)</span>
-                    <span>📸 {syncStatus.fotosSincronizadas} foto(s)</span>
-                  </div>
-                  {syncStatus.validacionServidor?.alertas && syncStatus.validacionServidor.alertas.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xs font-bold text-orange-700">⚠️ Alertas del servidor:</p>
-                      {syncStatus.validacionServidor.alertas.map((alerta, i) => (
-                        <p key={i} className="text-xs text-orange-600 pl-2">• {alerta}</p>
-                      ))}
-                    </div>
-                  )}
+                  <p className="text-xs text-green-800">
+                    {syncStatus.resultadosSincronizados} resultados y {syncStatus.fotosSincronizadas} fotos transmitidas.
+                  </p>
                 </div>
               ) : syncStatus.error?.includes('Sin conexión') ? (
                 <div className="flex items-start gap-2">
-                  <span className="text-blue-500 text-lg">📱</span>
-                  <div>
-                    <p className="text-sm font-black text-blue-800">Guardado localmente</p>
-                    <p className="text-xs text-blue-600 mt-0.5">Se enviará automáticamente cuando recupere conexión</p>
-                  </div>
+                  <span className="text-blue-700 font-black text-sm">📱 Guardado en el teléfono</span>
+                  <p className="text-xs text-blue-800">
+                    Se enviará automáticamente tan pronto regrese la señal.
+                  </p>
                 </div>
               ) : (
-                <div className="flex items-start gap-2">
-                  <span className="text-orange-500 text-lg">⚠️</span>
-                  <div>
-                    <p className="text-sm font-black text-orange-800">Error al sincronizar</p>
-                    <p className="text-xs text-orange-600 mt-0.5">{syncStatus.error}</p>
-                    <p className="text-xs text-orange-500 mt-1">Los datos están guardados. Se reintentará automáticamente.</p>
-                  </div>
+                <div>
+                  <p className="text-xs font-black text-amber-900">Guardado localmente</p>
+                  <p className="text-xs text-amber-800 mt-0.5">{syncStatus.error}</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── Alertas de validación ───────────────────────────────── */}
+          {/* Alertas de validación de negocio */}
           {alertasValidacion.length > 0 && (
-            <div className="mb-4 space-y-2">
+            <div className="mt-4 space-y-2">
               {alertasValidacion.map((alerta, i) => (
                 <div
                   key={i}
                   className={`px-4 py-3 rounded-2xl border-2 flex items-start gap-2 ${
                     alerta.severidad === 'error'
-                      ? 'bg-red-50 border-red-300'
-                      : 'bg-amber-50 border-amber-300'
+                      ? 'bg-red-50 border-red-400'
+                      : 'bg-amber-50 border-amber-400'
                   }`}
                 >
-                  <svg
-                    className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                      alerta.severidad === 'error' ? 'text-red-500' : 'text-amber-500'
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    {alerta.severidad === 'error' ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    )}
-                  </svg>
                   <p className={`text-xs font-medium ${
-                    alerta.severidad === 'error' ? 'text-red-700' : 'text-amber-700'
+                    alerta.severidad === 'error' ? 'text-red-800' : 'text-amber-800'
                   }`}>
                     {alerta.mensaje}
                   </p>
@@ -1039,67 +1034,14 @@ export function FormularioMesaMultiple({
             </div>
           )}
 
-          {/* ── Lock del acta ───────────────────────────────────────── */}
-          {guardado && !actaCerrada && (
-            <button
-              onClick={handleCerrarActa}
-              disabled={cerrando}
-              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50"
-            >
-              <span className="flex items-center justify-center gap-2">
-                {cerrando ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Firmando...
-                  </>
-                ) : (
-                  <>
-                    <span>🔒</span>
-                    Cerrar y firmar acta
-                  </>
-                )}
-              </span>
-              <p className="text-[10px] text-gray-400 font-normal mt-1 tracking-normal">
-                Genera código de verificación — bloquea ediciones futuras
-              </p>
-            </button>
+          {/* Mensaje de error general */}
+          {error && (
+            <div className="mt-3 p-3 bg-red-50 border-2 border-red-300 rounded-xl">
+              <p className="text-xs text-red-700 text-center font-semibold">{error}</p>
+            </div>
           )}
 
-          </>)}
-
-          </>)}
-          {/* ── end modoCaptura === 'manual' ── */}
-
-          {/* ── Panel de incidencias (siempre visible) ───────────────── */}
-          <div className="mb-6">
-            <PanelIncidencias
-              mesaId={mesaId}
-              testigoId={testigoId}
-              deviceId={deviceId}
-              mesaNumero={mesaNumero}
-            />
-          </div>
-
-          {/* ── Botón Cerrar Acta de Mesa ───────────────────────────── */}
-          {!actaCerrada && (
-            <button
-              type="button"
-              onClick={() => setShowWizardCierre(true)}
-              className="w-full py-4 mb-6 rounded-2xl border-2 border-editorial-red text-editorial-red font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] hover:bg-editorial-red/5"
-            >
-              <span className="flex items-center justify-center gap-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                <span>Cerrar Acta de Mesa</span>
-              </span>
-              <p className="text-[10px] text-editorial-red/60 font-normal mt-1 tracking-normal">
-                Validacion final, firma digital y codigo de verificacion
-              </p>
-            </button>
-          )}
-
-          {/* ── WizardCierre modal ─────────────────────────────────── */}
+          {/* Modal WizardCierre */}
           {showWizardCierre && (
             <WizardCierre
               mesaId={mesaId}
@@ -1114,38 +1056,89 @@ export function FormularioMesaMultiple({
               onCancel={() => setShowWizardCierre(false)}
             />
           )}
+        </div>
+      </div>
 
-          {/* ── Indicador de conexión ───────────────────────────────── */}
-          <div className="flex items-center justify-center">
-            <div className={`relative flex items-center gap-3 px-5 py-3 rounded-full border-2 shadow-lg transition-all ${
-              navigator.onLine
-                ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-300 shadow-green-200/50'
-                : 'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-300 shadow-orange-200/50'
-            }`}>
-              {navigator.onLine && (
-                <div className="absolute inset-0 rounded-full bg-green-400 opacity-20 blur-md animate-pulse" />
-              )}
-              <div className="relative w-3 h-3 flex items-center justify-center">
-                <div className={`absolute inset-0 rounded-full shadow-lg ${
-                  navigator.onLine ? 'bg-green-500' : 'bg-orange-500'
-                }`} />
-                {navigator.onLine && (
-                  <div className="absolute inset-0 rounded-full bg-green-500 animate-ping" />
-                )}
-              </div>
-              <span className={`text-[11px] font-black uppercase tracking-widest ${
-                navigator.onLine ? 'text-green-700' : 'text-orange-700'
-              }`} style={{ letterSpacing: '0.1em' }}>
-                {navigator.onLine ? 'En línea · Sync automática' : 'Sin conexión · Guardado local'}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* BARRA INFERIOR FIJA: TOTAL CONTADO VS SUFRAGANTES Y GUARDAR    */}
+      {/* Siempre visible durante el conteo sin necesidad de scroll      */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <div
+        data-testid="barra-fija-conteo"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-300 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]"
+      >
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-600">
+                Total votos:
+              </span>
+              <span
+                data-testid="total-votos-barra"
+                className={`text-2xl font-black tabular-nums ${
+                  hayAlertaFraude ? 'text-red-600' : 'text-gray-900'
+                }`}
+              >
+                {totalVotos}
+              </span>
+              <span className="text-xs font-bold text-gray-500">
+                / {totalSufragantes}
               </span>
             </div>
+            <p
+              data-testid="estado-conteo-barra"
+              className={`text-xs font-bold truncate mt-0.5 ${
+                hayAlertaFraude
+                  ? 'text-red-600'
+                  : totalVotos === totalSufragantes
+                  ? 'text-green-700'
+                  : totalVotos > 0
+                  ? 'text-amber-700'
+                  : 'text-gray-500'
+              }`}
+            >
+              {hayAlertaFraude
+                ? '⚠️ Excede sufragantes'
+                : totalVotos === totalSufragantes
+                ? '✓ Mesa completa'
+                : totalVotos > 0
+                ? 'En conteo'
+                : 'Sin votos registrados'}
+            </p>
           </div>
 
-          {error && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-xs text-red-600 text-center font-semibold">{error}</p>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleGuardar}
+            disabled={guardado || guardando || yaRegistrado || actaCerrada}
+            data-testid="btn-guardar-barra"
+            className={`min-h-[48px] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wide transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${
+              guardado
+                ? 'bg-green-600 text-white cursor-default'
+                : hayAlertaFraude
+                ? 'bg-editorial-red hover:bg-red-700 text-white'
+                : 'bg-editorial-red hover:bg-red-700 text-white'
+            } disabled:opacity-70 disabled:cursor-not-allowed`}
+          >
+            {guardando ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Guardando...</span>
+              </>
+            ) : guardado ? (
+              <>
+                <span className="text-base">✓</span>
+                <span>Guardado</span>
+              </>
+            ) : hayAlertaFraude ? (
+              <>
+                <span className="text-base" aria-hidden="true">⚠️</span>
+                <span>Guardar</span>
+              </>
+            ) : (
+              <span>Guardar</span>
+            )}
+          </button>
         </div>
       </div>
     </div>

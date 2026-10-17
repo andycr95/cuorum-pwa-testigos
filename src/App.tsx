@@ -291,7 +291,7 @@ export function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-red-200 text-xs truncate max-w-[180px]">
+                <p className="text-white font-medium text-xs truncate max-w-[180px]">
                   {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
                 </p>
               </div>
@@ -325,7 +325,7 @@ export function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-red-200 text-xs truncate max-w-[180px]">
+                <p className="text-white font-medium text-xs truncate max-w-[180px]">
                   {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
                 </p>
               </div>
@@ -360,7 +360,7 @@ export function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-red-200 text-xs truncate max-w-[180px]">
+                <p className="text-white font-medium text-xs truncate max-w-[180px]">
                   {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
                 </p>
               </div>
