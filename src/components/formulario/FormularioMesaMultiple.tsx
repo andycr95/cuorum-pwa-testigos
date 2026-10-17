@@ -39,12 +39,14 @@ interface Candidato {
   id: string;
   nombre: string;
   partido: string;
+  numero?: number | string | null;
 }
 
 interface Lista {
   id: string;
   nombre: string;
   partido: string;
+  numero?: number | string | null;
   tipoLista: 'CERRADA' | 'PREFERENTE';
   candidatos: Candidato[];
 }
@@ -89,7 +91,7 @@ export function FormularioMesaMultiple({
   deviceId,
   onMesaCerrada,
 }: FormularioMesaMultipleProps) {
-  const [modoCaptura, setModoCaptura] = useState<'manual' | 'foto'>('manual');
+  const [pasoActivo, setPasoActivo] = useState<'contar' | 'foto' | 'cierre'>('contar');
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
   const [votosUninominal, setVotosUninominal] = useState<Record<string, number>>({});
   const [votosLista, setVotosLista] = useState<Record<string, number>>({});
@@ -143,7 +145,7 @@ export function FormularioMesaMultiple({
   );
 
   useEffect(() => {
-    if (ocrCompletado) setModoCaptura('foto');
+    if (ocrCompletado) setPasoActivo('foto');
   }, [ocrCompletado]);
 
   // Verificar si ya existen resultados para esta mesa + elección
@@ -240,6 +242,7 @@ export function FormularioMesaMultiple({
     setYaRegistrado(false);
     setResultadosExistentes([]);
     setCargandoResultados(true);
+    setPasoActivo('contar');
   }, []);
 
   const handleGuardar = async () => {
@@ -431,7 +434,7 @@ export function FormularioMesaMultiple({
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6">
+    <div className="max-w-md mx-auto px-4 pt-4 pb-32">
       <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
 
         {/* Header Card Info */}
@@ -440,18 +443,18 @@ export function FormularioMesaMultiple({
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-200/50 rounded-full -ml-12 -mb-12" />
           <div className="relative flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
                 Mesa Electoral
               </p>
-              <h2 className="text-4xl font-black text-editorial-black leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <h2 className="text-4xl font-black text-editorial-black leading-none tabular-nums">
                 #{mesaNumero}
               </h2>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
                 Sufragantes
               </p>
-              <p className="text-3xl font-black text-editorial-red leading-none drop-shadow-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <p className="text-3xl font-black text-editorial-red leading-none tabular-nums">
                 {totalSufragantes}
               </p>
             </div>
@@ -467,7 +470,7 @@ export function FormularioMesaMultiple({
                 Código de verificación:{' '}
                 <span className="font-black text-green-900 tracking-widest">{codigoActa}</span>
               </p>
-              <p className="text-[10px] text-green-600 mt-1">
+              <p className="text-xs text-green-600 mt-1">
                 Guarda este código como comprobante de tu reporte
               </p>
             </div>
@@ -498,40 +501,22 @@ export function FormularioMesaMultiple({
             }}
           />
 
-          {/* Tab bar: Manual / Foto E-14 */}
-          <div className="flex gap-2 mb-6">
-            <button
-              type="button"
-              onClick={() => !ocrCompletado && setModoCaptura('manual')}
-              disabled={ocrCompletado}
-              title={ocrCompletado ? 'El acta ya fue procesada por OCR' : undefined}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
-                ocrCompletado
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                  : modoCaptura === 'manual'
-                  ? 'bg-editorial-red text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Manual
-              {ocrCompletado && <span className="ml-1 text-xs">🔒</span>}
+          {/* Stepper de Pasos de la Jornada de Conteo */}
+          <div className="flex rounded-2xl bg-gray-100 p-1 mb-5 border border-gray-200" role="tablist" aria-label="Pasos de la jornada de conteo">
+            <button type="button" role="tab" id="tab-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+              <span>1. Contar</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setModoCaptura('foto')}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
-                modoCaptura === 'foto'
-                  ? 'bg-editorial-red text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Foto E-14
-              {ocrCompletado && <span className="ml-1 text-[10px] text-green-600">✓</span>}
+            <button type="button" role="tab" id="tab-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+              <span>2. Foto E-14</span>
+              {fotosManual.length > 0 && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length}</span>}
+            </button>
+            <button type="button" role="tab" id="tab-cierre" aria-selected={pasoActivo === 'cierre'} onClick={() => setPasoActivo('cierre')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'cierre' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+              <span>3. Cerrar</span>
             </button>
           </div>
 
           {/* ── Modo Foto OCR ──────────────────────────────────────── */}
-          {modoCaptura === 'foto' && (
+          {pasoActivo === 'foto' && (
             <div className="space-y-4 mb-6">
               {ocrCompletado ? (
                 <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
@@ -567,8 +552,8 @@ export function FormularioMesaMultiple({
             </div>
           )}
 
-          {/* ── Modo Manual (formulario original) ─────────────────── */}
-          {modoCaptura === 'manual' && (<>
+          {/* ── Paso 1: Contar votos ───────────────────────────────── */}
+          {pasoActivo === 'contar' && (<>
 
           {/* Verificando resultados previos */}
           {cargandoResultados && (
@@ -650,7 +635,7 @@ export function FormularioMesaMultiple({
 
               {/* Timestamp */}
               {resultadosExistentes[0]?.capturedAt && (
-                <p className="text-center text-[10px] text-gray-400 font-semibold">
+                <p className="text-center text-xs text-gray-500 font-semibold">
                   Registrado el {new Date(resultadosExistentes[0].capturedAt).toLocaleString('es-CO')}
                 </p>
               )}
@@ -662,10 +647,9 @@ export function FormularioMesaMultiple({
 
           {/* Alerta de fraude */}
           {hayAlertaFraude && (
-            <div className="mb-6 relative overflow-hidden rounded-2xl">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-red-600 to-red-500 animate-pulse" />
+            <div className="mb-6 relative overflow-hidden rounded-2xl bg-red-600 text-white">
               <div className="relative px-5 py-4 flex items-start gap-3">
-                <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                <div className="flex-shrink-0 w-12 h-12 bg-white text-red-600 rounded-full flex items-center justify-center shadow-lg">
                   <span className="text-2xl">⚠️</span>
                 </div>
                 <div className="flex-1 pt-1">
@@ -696,6 +680,7 @@ export function FormularioMesaMultiple({
                   key={candidato.id}
                   label={candidato.nombre}
                   subtitle={candidato.partido}
+                  numero={candidato.numero}
                   value={votosUninominal[candidato.id] || 0}
                   onChange={(value) => {
                     setVotosUninominal({ ...votosUninominal, [candidato.id]: value });
@@ -779,7 +764,7 @@ export function FormularioMesaMultiple({
               <div className="w-full border-t-2 border-dashed border-gray-200" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <span className="bg-white px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
                 Votos Especiales
               </span>
             </div>
@@ -809,32 +794,12 @@ export function FormularioMesaMultiple({
             />
           </div>
 
-          {/* ── Separador Evidencia ─────────────────────────────────── */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-dashed border-gray-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Evidencia y Observaciones
-              </span>
-            </div>
-          </div>
+          {/* Fin paso 1: Contar votos */}
+          </>)}
+          </>)}
 
-          {/* Captura múltiples fotos E-14 como evidencia */}
-          <div className="mb-6">
-            <CapturaMultipleE14
-              onFotosListas={(fotos) => {
-                setFotosManual(fotos);
-                setGuardado(false);
-                setSyncStatus(null);
-              }}
-              disabled={guardado}
-              title="Fotos del E-14 (evidencia)"
-              submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
-            />
-          </div>
-
+          {/* ── Paso 3: Cierre y Observaciones ─────────────────────────── */}
+          {pasoActivo === 'cierre' && (<>
           {/* Observaciones */}
           <div className="mb-6">
             <ObservacionesInput
@@ -847,111 +812,6 @@ export function FormularioMesaMultiple({
               disabled={guardado}
             />
           </div>
-
-          {/* ── Total de votos ──────────────────────────────────────── */}
-          <div className={`my-4 relative overflow-hidden rounded-3xl border-2 transition-all shadow-xl ${
-            hayAlertaFraude
-              ? 'bg-gradient-to-br from-red-50 via-red-100 to-red-50 border-red-500 shadow-red-200'
-              : totalVotos > 0
-              ? 'bg-gradient-to-br from-editorial-red/5 via-editorial-red/10 to-editorial-red/5 border-editorial-red/40 shadow-red-100'
-              : 'bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 border-gray-300 shadow-gray-200'
-          }`}>
-            <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200">
-              <div
-                className={`h-full transition-all duration-500 ${
-                  hayAlertaFraude
-                    ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-500'
-                    : 'bg-gradient-to-r from-editorial-red via-red-600 to-editorial-red'
-                }`}
-                style={{ width: `${Math.min((totalVotos / totalSufragantes) * 100, 100)}%` }}
-              />
-            </div>
-
-            <div className="p-6 text-center">
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-3" style={{ letterSpacing: '0.15em' }}>
-                Total Votos Registrados
-              </p>
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <div className={`text-6xl font-black leading-none transition-all ${
-                  hayAlertaFraude ? 'text-red-600' : totalVotos > 0 ? 'text-editorial-red' : 'text-gray-400'
-                }`} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {totalVotos}
-                </div>
-                <div className="text-left">
-                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">de</p>
-                  <p className="text-3xl font-black text-gray-700 leading-none">{totalSufragantes}</p>
-                </div>
-              </div>
-
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 ${
-                hayAlertaFraude ? 'bg-red-100 border-red-400'
-                : totalVotos === totalSufragantes ? 'bg-green-100 border-green-400'
-                : totalVotos > 0 ? 'bg-yellow-100 border-yellow-400'
-                : 'bg-gray-100 border-gray-300'
-              }`}>
-                <div className={`relative w-2.5 h-2.5 rounded-full ${
-                  hayAlertaFraude ? 'bg-red-500'
-                  : totalVotos === totalSufragantes ? 'bg-green-500'
-                  : totalVotos > 0 ? 'bg-yellow-500' : 'bg-gray-400'
-                }`}>
-                  {hayAlertaFraude && <div className="absolute inset-0 rounded-full bg-red-500 animate-ping" />}
-                </div>
-                <p className={`text-xs font-black uppercase tracking-wider ${
-                  hayAlertaFraude ? 'text-red-700'
-                  : totalVotos === totalSufragantes ? 'text-green-700'
-                  : totalVotos > 0 ? 'text-yellow-700' : 'text-gray-600'
-                }`}>
-                  {hayAlertaFraude ? '⚠️ Excede sufragantes'
-                  : totalVotos === totalSufragantes ? '✓ Mesa completa'
-                  : totalVotos > 0 ? 'En proceso de conteo'
-                  : 'Sin votos registrados'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Botón guardar ───────────────────────────────────────── */}
-          {!actaCerrada && (
-            <button
-              onClick={handleGuardar}
-              disabled={guardado || guardando}
-              className={`relative w-full overflow-hidden rounded-2xl py-5 font-black text-white uppercase tracking-widest text-base transition-all mb-4 ${
-                guardado
-                  ? 'bg-gradient-to-br from-green-500 via-green-600 to-green-500 shadow-2xl shadow-green-200/50'
-                  : hayAlertaFraude
-                  ? 'bg-brand-600 hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
-                  : 'bg-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
-              } disabled:opacity-95 disabled:cursor-not-allowed`}
-              style={{ letterSpacing: '0.1em' }}
-            >
-              {!guardado && !guardando && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ width: '200%' }} />
-              )}
-              <span className="relative flex items-center justify-center gap-3 drop-shadow-md">
-                {guardando ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Guardando...</span>
-                  </>
-                ) : guardado ? (
-                  <>
-                    <span className="text-2xl">✓</span>
-                    <span>Resultados Guardados</span>
-                  </>
-                ) : hayAlertaFraude ? (
-                  <>
-                    <span className="text-2xl animate-pulse">⚠️</span>
-                    <span>Guardar con Alerta</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-2xl">📋</span>
-                    <span>Guardar Resultados</span>
-                  </>
-                )}
-              </span>
-            </button>
-          )}
 
           {/* ── Confirmación post-sync del servidor ─────────────────── */}
           {syncStatus && (
@@ -1044,7 +904,7 @@ export function FormularioMesaMultiple({
             <button
               onClick={handleCerrarActa}
               disabled={cerrando}
-              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50"
+              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-800 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50"
             >
               <span className="flex items-center justify-center gap-2">
                 {cerrando ? (
@@ -1059,18 +919,13 @@ export function FormularioMesaMultiple({
                   </>
                 )}
               </span>
-              <p className="text-[10px] text-gray-400 font-normal mt-1 tracking-normal">
+              <p className="text-xs text-gray-400 font-normal mt-1 tracking-normal">
                 Genera código de verificación — bloquea ediciones futuras
               </p>
             </button>
           )}
 
-          </>)}
-
-          </>)}
-          {/* ── end modoCaptura === 'manual' ── */}
-
-          {/* ── Panel de incidencias (siempre visible) ───────────────── */}
+          {/* ── Panel de incidencias ─────────────────────────────────── */}
           <div className="mb-6">
             <PanelIncidencias
               mesaId={mesaId}
@@ -1093,11 +948,12 @@ export function FormularioMesaMultiple({
                 </svg>
                 <span>Cerrar Acta de Mesa</span>
               </span>
-              <p className="text-[10px] text-editorial-red/60 font-normal mt-1 tracking-normal">
-                Validacion final, firma digital y codigo de verificacion
+              <p className="text-xs text-editorial-red/80 font-normal mt-1 tracking-normal">
+                Validación final, firma digital y comprobante para el testigo
               </p>
             </button>
           )}
+          </>)}
 
           {/* ── WizardCierre modal ─────────────────────────────────── */}
           {showWizardCierre && (
@@ -1119,8 +975,8 @@ export function FormularioMesaMultiple({
           <div className="flex items-center justify-center">
             <div className={`relative flex items-center gap-3 px-5 py-3 rounded-full border-2 shadow-lg transition-all ${
               navigator.onLine
-                ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-300 shadow-green-200/50'
-                : 'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-300 shadow-orange-200/50'
+                ? 'bg-green-50 border-green-300 shadow-green-200/50'
+                : 'bg-orange-50 border-orange-300 shadow-orange-200/50'
             }`}>
               {navigator.onLine && (
                 <div className="absolute inset-0 rounded-full bg-green-400 opacity-20 blur-md animate-pulse" />
@@ -1133,7 +989,7 @@ export function FormularioMesaMultiple({
                   <div className="absolute inset-0 rounded-full bg-green-500 animate-ping" />
                 )}
               </div>
-              <span className={`text-[11px] font-black uppercase tracking-widest ${
+              <span className={`text-xs font-black uppercase tracking-widest ${
                 navigator.onLine ? 'text-green-700' : 'text-orange-700'
               }`} style={{ letterSpacing: '0.1em' }}>
                 {navigator.onLine ? 'En línea · Sync automática' : 'Sin conexión · Guardado local'}
@@ -1146,6 +1002,25 @@ export function FormularioMesaMultiple({
               <p className="text-xs text-red-600 text-center font-semibold">{error}</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── BARRA INFERIOR FIJA: TOTAL CONTADO VS SUFRAGANTES Y GUARDAR ── */}
+      <div data-testid="barra-fija-conteo" className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-300 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-600">Total votos:</span>
+              <span data-testid="total-votos-barra" className={`text-2xl font-black tabular-nums ${hayAlertaFraude ? 'text-red-600' : 'text-gray-900'}`}>{totalVotos}</span>
+              <span className="text-xs font-bold text-gray-500">/ {totalSufragantes}</span>
+            </div>
+            <p data-testid="estado-conteo-barra" className={`text-xs font-bold truncate mt-0.5 ${hayAlertaFraude ? 'text-red-600' : totalVotos === totalSufragantes ? 'text-green-700' : totalVotos > 0 ? 'text-amber-700' : 'text-gray-500'}`}>
+              {hayAlertaFraude ? '⚠️ Excede sufragantes' : totalVotos === totalSufragantes ? '✓ Mesa completa' : totalVotos > 0 ? 'En conteo' : 'Sin votos registrados'}
+            </p>
+          </div>
+          <button type="button" onClick={handleGuardar} disabled={guardado || guardando || yaRegistrado || actaCerrada} data-testid="btn-guardar-barra" className={`min-h-[48px] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wide transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${guardado ? 'bg-green-600 text-white cursor-default' : 'bg-editorial-red hover:bg-red-700 text-white'} disabled:opacity-70 disabled:cursor-not-allowed`}>
+            {guardando ? (<><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>Guardando...</span></>) : guardado ? (<><span className="text-base">✓</span><span>Guardado</span></>) : hayAlertaFraude ? (<><span className="text-base" aria-hidden="true">⚠️</span><span>Guardar</span></>) : (<span>Guardar</span>)}
+          </button>
         </div>
       </div>
     </div>

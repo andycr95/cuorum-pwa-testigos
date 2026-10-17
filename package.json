@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
-    "test:e2e": "node test/capture-and-verify-login.mjs",
+    "test:e2e": "node test/capture-and-verify-conteo.mjs",
     "check:nombres": "bash scripts/check-nombres-prohibidos.sh",
     "test:nombres": "bash scripts/check-nombres-prohibidos.test.sh"
   },
