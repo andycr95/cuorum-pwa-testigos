@@ -1,17 +1,29 @@
-import { chromium } from '/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+const playwrightPath = process.env.PLAYWRIGHT_PATH || 'playwright';
+let chromium;
+try {
+  const pw = await import(playwrightPath);
+  chromium = pw.chromium || pw.default?.chromium || pw.default;
+} catch {
+  const fallback = '/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
+  if (fs.existsSync(fallback)) {
+    const pw = await import(fallback);
+    chromium = pw.chromium || pw.default?.chromium || pw.default;
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
-const vaultCapturasDir = '/srv/cuorum/vault/02-Arquitectura/Diseno-UX-capturas';
+const vaultCapturasDir = process.env.CAPTURAS_DIR ? path.resolve(process.env.CAPTURAS_DIR) : null;
 
-const localLibDir = '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu';
-if (fs.existsSync(localLibDir)) {
+const localLibDir = process.env.PLAYWRIGHT_LIB_DIR || (fs.existsSync('/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu') ? '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu' : null);
+if (localLibDir && fs.existsSync(localLibDir)) {
   process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
 }
 
@@ -295,7 +307,7 @@ async function run() {
     console.log('Capturas con votos guardadas');
 
     // Copiar capturas a la bóveda (usando la vista del viewport móvil 390x844)
-    if (fs.existsSync(vaultCapturasDir)) {
+    if (vaultCapturasDir && fs.existsSync(vaultCapturasDir)) {
       fs.copyFileSync(capturaVacio390Viewport, path.join(vaultCapturasDir, 'pwa-06-conteo-m.png'));
       fs.copyFileSync(capturaVotos390Viewport, path.join(vaultCapturasDir, 'pwa-07-conteo-con-votos-m.png'));
       console.log('✓ Capturas actualizadas en la bóveda: pwa-06-conteo-m.png y pwa-07-conteo-con-votos-m.png');
