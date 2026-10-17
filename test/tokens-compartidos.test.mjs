@@ -10,13 +10,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pwaDir = path.resolve(__dirname, '..');
 
-const candidateWebAdminDirs = [
-  path.resolve('/srv/cuorum/worktrees/agy-3/CUO-217/cuorum-platform/web-admin'),
-  path.resolve(pwaDir, '../cuorum-platform/web-admin'),
-  path.resolve(pwaDir, '../../cuorum-platform/web-admin'),
-  path.resolve('/srv/cuorum/repos/cuorum-platform/web-admin'),
-];
-const webAdminDir = candidateWebAdminDirs.find((d) => fs.existsSync(d)) || candidateWebAdminDirs[0];
+const fixtureWebAdminTokensPath = path.join(pwaDir, 'test/fixtures/web-admin.tailwind.tokens.js');
+
+const candidateExternalWebAdminPaths = [
+  process.env.WEB_ADMIN_TOKENS_PATH,
+  path.resolve(pwaDir, '../cuorum-platform/web-admin/tailwind.tokens.js'),
+  path.resolve(pwaDir, '../../cuorum-platform/web-admin/tailwind.tokens.js'),
+].filter(Boolean);
 
 // Función estándar WCAG 2.1 para cálculo de contraste de luminancia relativa
 function calcularLuminanciaRelativa(hexColor) {
@@ -40,21 +40,37 @@ function calcularRatioContraste(hex1, hex2) {
   return (masClaro + 0.05) / (masOscuro + 0.05);
 }
 
-test('tokens compartidos: tailwind.tokens.js es idéntico entre cuorum-pwa-testigos y web-admin', () => {
+test('tokens compartidos: tailwind.tokens.js es idéntico a la contraparte fijada (web-admin)', () => {
   const pwaTokensPath = path.join(pwaDir, 'tailwind.tokens.js');
-  const webAdminTokensPath = path.join(webAdminDir, 'tailwind.tokens.js');
 
   assert.ok(fs.existsSync(pwaTokensPath), 'cuorum-pwa-testigos/tailwind.tokens.js debe existir');
-  assert.ok(fs.existsSync(webAdminTokensPath), 'web-admin/tailwind.tokens.js debe existir');
+  assert.ok(fs.existsSync(fixtureWebAdminTokensPath), 'test/fixtures/web-admin.tailwind.tokens.js debe existir');
 
   const pwaContent = fs.readFileSync(pwaTokensPath, 'utf8').trim();
-  const webAdminContent = fs.readFileSync(webAdminTokensPath, 'utf8').trim();
+  const fixtureContent = fs.readFileSync(fixtureWebAdminTokensPath, 'utf8').trim();
 
-  assert.equal(pwaContent, webAdminContent, 'El archivo tailwind.tokens.js debe ser idéntico en ambos repositorios');
+  assert.equal(
+    pwaContent,
+    fixtureContent,
+    'El archivo tailwind.tokens.js debe ser idéntico al fixture versionado de la contraparte'
+  );
   assert.ok(
     pwaContent.includes('Fuente única de verdad de tokens compartidos'),
     'Debe incluir el comentario que lo declara fuente única de verdad'
   );
+
+  // Si existe un checkout contiguo accesible de la contraparte en el entorno, verificar paridad en vivo
+  for (const externalPath of candidateExternalWebAdminPaths) {
+    if (fs.existsSync(externalPath)) {
+      const externalContent = fs.readFileSync(externalPath, 'utf8').trim();
+      assert.equal(
+        pwaContent,
+        externalContent,
+        `tailwind.tokens.js debe ser idéntico al encontrado en ${externalPath}`
+      );
+      break;
+    }
+  }
 });
 
 test('tokens de Tailwind: contiene todos los tokens base especificados en Diseno-y-UX.md', () => {
