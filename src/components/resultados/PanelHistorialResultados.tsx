@@ -198,9 +198,7 @@ export function PanelHistorialResultados({ mesaId, elecciones, mesaNumero }: Pro
             </div>
           ) : totalEntradas === 0 ? (
             <div className="py-8 text-center">
-              <div className="flex justify-center mb-2">
-                <IconoDocumento className="w-8 h-8 text-blue-400" />
-              </div>
+              <IconoDocumento className="w-8 h-8 text-blue-400 mx-auto mb-2" />
               <p className="text-sm font-semibold text-gray-700">Sin resultados enviados aun</p>
               <p className="text-xs text-gray-600 mt-1">Los resultados que captures apareceran aqui</p>
             </div>

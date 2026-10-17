@@ -115,7 +115,7 @@ export function CapturaFoto({
               <p className="text-base font-black text-gray-800 group-hover:text-editorial-red transition-colors">
                 {capturando ? 'Procesando...' : 'Tomar foto del E-14'}
               </p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 Toca para abrir la cámara
               </p>
             </div>

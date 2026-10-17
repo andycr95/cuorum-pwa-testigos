@@ -41,20 +41,7 @@ interface TipoConfig {
   color: string;
 }
 
-function renderIconoTipo(tipo: TipoIncidencia, className = 'w-5 h-5') {
-  switch (tipo) {
-    case 'INTIMIDACION':
-    case 'VIOLENCIA':
-      return <IconoAlerta className={className} />;
-    case 'MATERIALES_FALTANTES':
-    case 'IRREGULARIDAD_ACTA':
-      return <IconoDocumento className={className} />;
-    case 'JURADO_AUSENTE':
-    case 'OTRO':
-    default:
-      return <IconoNovedad className={className} />;
-  }
-}
+const renderIconoTipo = (tipo: TipoIncidencia, className = 'w-5 h-5') => (tipo === 'INTIMIDACION' || tipo === 'VIOLENCIA') ? <IconoAlerta className={className} /> : (tipo === 'MATERIALES_FALTANTES' || tipo === 'IRREGULARIDAD_ACTA') ? <IconoDocumento className={className} /> : <IconoNovedad className={className} />;
 
 const TIPOS: TipoConfig[] = [
   { tipo: 'MATERIALES_FALTANTES', label: 'Materiales faltantes', color: 'bg-yellow-100 border-yellow-400 text-yellow-800' },
@@ -217,8 +204,7 @@ export function PanelIncidencias({
           <button
             type="button"
             onClick={() => setToast(null)}
-            className="text-white/70 hover:text-white font-black text-base min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="Cerrar notificación"
+            className="text-white/70 hover:text-white font-black text-base min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Cerrar notificación"
           >
             ✕
           </button>
@@ -301,9 +287,7 @@ export function PanelIncidencias({
                 </div>
               ) : incidencias.length === 0 ? (
                 <div className="py-8 text-center">
-                  <div className="flex justify-center mb-2">
-                    <IconoDocumento className="w-8 h-8 text-orange-400" />
-                  </div>
+                  <IconoDocumento className="w-8 h-8 text-orange-400 mx-auto mb-2" />
                   <p className="text-sm font-semibold text-gray-500">Sin novedades registradas</p>
                   <button
                     type="button"
@@ -343,10 +327,7 @@ export function PanelIncidencias({
                           </div>
                           <p className="text-xs mt-0.5 leading-relaxed">{inc.descripcion}</p>
                           {tienefoto && (
-                            <p className="text-[10px] mt-1 font-semibold opacity-70 flex items-center gap-1">
-                              <IconoCamara className="w-3 h-3 shrink-0" />
-                              Con foto de evidencia
-                            </p>
+                            <p className="text-[10px] mt-1 font-semibold opacity-70">Con foto de evidencia</p>
                           )}
                         </div>
                       </div>

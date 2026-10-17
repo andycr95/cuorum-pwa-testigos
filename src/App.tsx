@@ -169,20 +169,20 @@ export function App() {
   // Loading state
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center" aria-busy="true">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="relative w-16 h-16 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red border-t-transparent animate-spin"></div>
           </div>
-          <h1 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">Verificando sesión</h1>
+          <p className="text-sm font-semibold text-gray-700 tracking-wide">VERIFICANDO SESIÓN</p>
           <div className="mt-2 flex items-center justify-center gap-1">
             <div className="w-1.5 h-1.5 bg-editorial-red rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-1.5 h-1.5 bg-editorial-red rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
             <div className="w-1.5 h-1.5 bg-editorial-red rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -203,45 +203,36 @@ export function App() {
   // Si no hay mesa seleccionada, mostrar el selector
   if (!selectedMesaId || !mesaSeleccionada) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-editorial-red px-4 py-4 flex items-center justify-between shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
-            </div>
-            <span className="text-white font-bold text-base">Cuorum Testigos</span>
+      <main className="min-h-screen bg-gray-50">
+        <header className="bg-editorial-red px-4 py-6 flex items-center justify-between">
+          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+            <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-white hover:text-white/80 text-xs font-bold uppercase tracking-wider min-h-[44px] min-w-[44px] px-3 py-2 flex items-center"
-            aria-label="Cerrar sesión"
-          >
+          <button onClick={handleLogout} className="text-white hover:text-white/80 text-xs font-bold uppercase tracking-wider min-h-[44px] min-w-[44px] px-3 py-2 flex items-center" aria-label="Cerrar sesion">
             Cerrar Sesión
           </button>
         </header>
-        <main>
-          <SelectorMesa 
-            mesas={listaMesas} 
-            onSelect={setSelectedMesaId} 
-            testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
-          />
-        </main>
-      </div>
+        <SelectorMesa 
+          mesas={listaMesas} 
+          onSelect={setSelectedMesaId} 
+          testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
+        />
+      </main>
     );
   }
 
   // Jornada loading state
   if (jornadaLoading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center" aria-busy="true">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="relative w-16 h-16 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red border-t-transparent animate-spin"></div>
           </div>
-          <h1 className="text-sm font-semibold text-gray-700 tracking-wide uppercase">Cargando jornada</h1>
+          <p className="text-sm font-semibold text-gray-700 tracking-wide">CARGANDO JORNADA</p>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -259,7 +250,7 @@ export function App() {
           <h1 className="text-2xl font-black text-gray-900 mb-2">
             Acta firmada exitosamente
           </h1>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-gray-500 mb-6">
             Mesa #{mesaSeleccionada.numero} cerrada correctamente
           </p>
 
@@ -279,7 +270,7 @@ export function App() {
 
           <button
             onClick={handleLogout}
-            className="w-full py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:bg-red-700 active:scale-[0.97] transition-all min-h-[48px]"
+            className="w-full py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:shadow-lg active:scale-[0.97] transition-all"
           >
             Cerrar sesion
           </button>
@@ -291,7 +282,7 @@ export function App() {
   // PENDIENTE — Show CheckinTestigo
   if (jornadaEstado === 'PENDIENTE') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-gray-50">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -305,34 +296,27 @@ export function App() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-              title="Cerrar sesion"
-              aria-label="Cerrar sesion"
-            >
+            <button onClick={handleLogout} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors" title="Cerrar sesion" aria-label="Cerrar sesion">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
           </div>
         </header>
-        <main>
-          <CheckinTestigo
-            mesaData={mesaSeleccionada}
-            testigoId={testigoData.testigo.id}
-            campanaId={authService.getCampanaId() || ''}
-            onCheckinComplete={handleCheckinComplete}
-          />
-        </main>
-      </div>
+        <CheckinTestigo
+          mesaData={mesaSeleccionada}
+          testigoId={testigoData.testigo.id}
+          campanaId={authService.getCampanaId() || ''}
+          onCheckinComplete={handleCheckinComplete}
+        />
+      </main>
     );
   }
 
   // CHECKIN — Show AperturaMesa
   if (jornadaEstado === 'CHECKIN') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-gray-50">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -346,32 +330,25 @@ export function App() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-              title="Cerrar sesion"
-              aria-label="Cerrar sesion"
-            >
+            <button onClick={handleLogout} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors" title="Cerrar sesion" aria-label="Cerrar sesion">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
           </div>
         </header>
-        <main>
-          <AperturaMesa
-            mesaId={mesaSeleccionada.id}
-            mesaNumero={mesaSeleccionada.numero}
-            onAperturaComplete={handleAperturaComplete}
-          />
-        </main>
-      </div>
+        <AperturaMesa
+          mesaId={mesaSeleccionada.id}
+          mesaNumero={mesaSeleccionada.numero}
+          onAperturaComplete={handleAperturaComplete}
+        />
+      </main>
     );
   }
 
   // ABIERTA / EN_CONTEO — Show FormularioMesaMultiple (existing main flow)
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-50">
       <OfflineBanner />
       {/* Header compacto */}
       <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg">
@@ -397,8 +374,7 @@ export function App() {
                 <button
                   onClick={handleBackToSelector}
                   className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                  title="Cambiar de mesa"
-                  aria-label="Cambiar de mesa"
+                  title="Cambiar de mesa" aria-label="Cambiar de mesa"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -408,8 +384,7 @@ export function App() {
               <button
                 onClick={handleLogout}
                 className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                title="Cerrar sesion"
-                aria-label="Cerrar sesion"
+                title="Cerrar sesion" aria-label="Cerrar sesion"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -421,17 +396,15 @@ export function App() {
       </header>
 
       {/* Formulario */}
-      <main>
-        <FormularioMesaMultiple
-          mesaId={mesaSeleccionada.id}
-          testigoId={testigoData.testigo.id}
-          mesaNumero={mesaSeleccionada.numero}
-          totalSufragantes={mesaSeleccionada.totalSufragantes}
-          elecciones={testigoData.elecciones}
-          deviceId={testigoData.deviceId}
-          onMesaCerrada={handleMesaCerrada}
-        />
-      </main>
-    </div>
+      <FormularioMesaMultiple
+        mesaId={mesaSeleccionada.id}
+        testigoId={testigoData.testigo.id}
+        mesaNumero={mesaSeleccionada.numero}
+        totalSufragantes={mesaSeleccionada.totalSufragantes}
+        elecciones={testigoData.elecciones}
+        deviceId={testigoData.deviceId}
+        onMesaCerrada={handleMesaCerrada}
+      />
+    </main>
   );
 }

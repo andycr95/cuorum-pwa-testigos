@@ -66,7 +66,7 @@ export function SelectorEleccion({
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-1 h-5 bg-editorial-red rounded-full"></div>
-        <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
           Seleccione Tarjetón
         </label>
       </div>

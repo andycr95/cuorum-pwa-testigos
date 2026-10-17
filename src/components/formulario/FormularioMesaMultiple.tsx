@@ -13,7 +13,7 @@ import { authService } from '../../services/authService';
 import { jornadaService, AlertaValidacion } from '../../services/jornadaService';
 import { ProgresoElecciones } from '../jornada/ProgresoElecciones';
 import { WizardCierre } from '../jornada/WizardCierre';
-import { IconoAlerta, IconoCandado, IconoDocumento, IconoCheck, IconoCamara } from '../ui/Iconos';
+import { IconoAlerta, IconoCandado, IconoDocumento, IconoCheck } from '../ui/Iconos';
 
 /**
  * FormularioMesaMultiple — Captura de resultados electorales
@@ -441,7 +441,7 @@ export function FormularioMesaMultiple({
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-200/50 rounded-full -ml-12 -mb-12" />
           <div className="relative flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black text-gray-600 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
                 Mesa Electoral
               </p>
               <h2 className="text-4xl font-black text-editorial-black leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -449,7 +449,7 @@ export function FormularioMesaMultiple({
               </h2>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-black text-gray-600 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
                 Sufragantes
               </p>
               <p className="text-3xl font-black text-editorial-red leading-none drop-shadow-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -462,9 +462,7 @@ export function FormularioMesaMultiple({
           {actaCerrada && codigoActa && (
             <div className="mt-4 px-4 py-3 bg-green-50 border-2 border-green-400 rounded-2xl">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-green-600 font-black text-sm flex items-center gap-1.5">
-                  <IconoCandado className="w-4 h-4 inline" /> Acta cerrada y firmada
-                </span>
+                <span className="text-green-600 font-black text-sm"><IconoCandado className="w-4 h-4 inline mr-1" />Acta cerrada y firmada</span>
               </div>
               <p className="text-xs text-green-700 font-semibold">
                 Código de verificación:{' '}
@@ -663,7 +661,7 @@ export function FormularioMesaMultiple({
           {/* ── Formulario editable (solo si NO hay resultados previos) ── */}
           {!cargandoResultados && !yaRegistrado && (<>
 
-          {/* Alerta de exceso de sufragantes */}
+          {/* Alerta de fraude */}
           {hayAlertaFraude && (
             <div className="mb-6 relative overflow-hidden rounded-2xl bg-red-600">
               <div className="relative px-5 py-4 flex items-start gap-3">
@@ -672,14 +670,14 @@ export function FormularioMesaMultiple({
                 </div>
                 <div className="flex-1 pt-1">
                   <p className="font-black text-white text-base uppercase tracking-wide mb-1">
-                    ALERTA DE ESCRUTINIO
+                    ALERTA DE FRAUDE
                   </p>
                   <p className="text-sm text-red-50 font-semibold leading-snug">
                     Total de votos (<span className="font-black">{totalVotos}</span>) SUPERA
                     sufragantes habilitados (<span className="font-black">{totalSufragantes}</span>)
                   </p>
-                  <p className="text-xs text-red-100 mt-2 font-medium flex items-center gap-1.5">
-                    <IconoAlerta className="w-3.5 h-3.5 inline" /> Verifique los datos antes de guardar
+                  <p className="text-xs text-red-100 mt-2 font-medium">
+                    Verifique los datos antes de guardar
                   </p>
                 </div>
               </div>
@@ -691,7 +689,7 @@ export function FormularioMesaMultiple({
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-1 h-5 bg-editorial-red rounded-full" />
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">Candidatos</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Candidatos</p>
               </div>
               {eleccion.candidatos?.map((candidato) => (
                 <VoteInput
@@ -870,7 +868,7 @@ export function FormularioMesaMultiple({
             </div>
 
             <div className="p-6 text-center">
-              <p className="text-[11px] font-black text-gray-600 uppercase tracking-widest mb-3" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-3" style={{ letterSpacing: '0.15em' }}>
                 Total Votos Registrados
               </p>
               <div className="flex items-center justify-center gap-4 mb-4">
@@ -880,7 +878,7 @@ export function FormularioMesaMultiple({
                   {totalVotos}
                 </div>
                 <div className="text-left">
-                  <p className="text-xs text-gray-600 font-bold uppercase tracking-wide">de</p>
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">de</p>
                   <p className="text-3xl font-black text-gray-700 leading-none">{totalSufragantes}</p>
                 </div>
               </div>
@@ -898,26 +896,15 @@ export function FormularioMesaMultiple({
                 }`}>
                   {hayAlertaFraude && <div className="absolute inset-0 rounded-full bg-red-500 animate-ping" />}
                 </div>
-                <p className={`text-xs font-black uppercase tracking-wider flex items-center gap-1 ${
+                <p className={`text-xs font-black uppercase tracking-wider ${
                   hayAlertaFraude ? 'text-red-700'
                   : totalVotos === totalSufragantes ? 'text-green-700'
                   : totalVotos > 0 ? 'text-yellow-700' : 'text-gray-600'
                 }`}>
-                  {hayAlertaFraude ? (
-                    <>
-                      <IconoAlerta className="w-3.5 h-3.5 inline" />
-                      <span>Excede sufragantes</span>
-                    </>
-                  ) : totalVotos === totalSufragantes ? (
-                    <>
-                      <IconoCheck className="w-3.5 h-3.5 inline" />
-                      <span>Mesa completa</span>
-                    </>
-                  ) : totalVotos > 0 ? (
-                    'En proceso de conteo'
-                  ) : (
-                    'Sin votos registrados'
-                  )}
+                  {hayAlertaFraude ? 'Excede sufragantes'
+                  : totalVotos === totalSufragantes ? '✓ Mesa completa'
+                  : totalVotos > 0 ? 'En proceso de conteo'
+                  : 'Sin votos registrados'}
                 </p>
               </div>
             </div>
@@ -980,13 +967,11 @@ export function FormularioMesaMultiple({
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-green-700">
                     <span>{syncStatus.resultadosSincronizados} resultado(s)</span>
-                    <span className="flex items-center gap-1"><IconoCamara className="w-3.5 h-3.5 inline" /> {syncStatus.fotosSincronizadas} foto(s)</span>
+                    <span>{syncStatus.fotosSincronizadas} foto(s)</span>
                   </div>
                   {syncStatus.validacionServidor?.alertas && syncStatus.validacionServidor.alertas.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-xs font-bold text-orange-700 flex items-center gap-1">
-                        <IconoAlerta className="w-3.5 h-3.5 inline" /> Alertas del servidor:
-                      </p>
+                      <p className="text-xs font-bold text-orange-700">Alertas del servidor:</p>
                       {syncStatus.validacionServidor.alertas.map((alerta, i) => (
                         <p key={i} className="text-xs text-orange-600 pl-2">• {alerta}</p>
                       ))}
@@ -1056,7 +1041,7 @@ export function FormularioMesaMultiple({
             <button
               onClick={handleCerrarActa}
               disabled={cerrando}
-              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-900 hover:bg-black text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg min-h-[48px]"
+              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-900 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50"
             >
               <span className="flex items-center justify-center gap-2">
                 {cerrando ? (
@@ -1097,10 +1082,12 @@ export function FormularioMesaMultiple({
             <button
               type="button"
               onClick={() => setShowWizardCierre(true)}
-              className="w-full py-4 mb-6 rounded-2xl border-2 border-editorial-red text-editorial-red font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] hover:bg-editorial-red/5 min-h-[48px]"
+              className="w-full py-4 mb-6 rounded-2xl border-2 border-editorial-red text-editorial-red font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] hover:bg-editorial-red/5"
             >
               <span className="flex items-center justify-center gap-2">
-                <IconoCandado className="w-5 h-5 text-editorial-red" />
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
                 <span>Cerrar Acta de Mesa</span>
               </span>
               <p className="text-[10px] text-editorial-red font-normal mt-1 tracking-normal">

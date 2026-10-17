@@ -180,7 +180,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
               <h2 className="text-xl font-black text-gray-900">
                 Apertura de Mesa #{mesaNumero}
               </h2>
-              <p className="text-xs text-gray-600 font-medium">
+              <p className="text-xs text-gray-500 font-medium">
                 Verifica las condiciones de la mesa
               </p>
             </div>
@@ -225,7 +225,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
                   {item.label}
                 </p>
                 {item.required && !checklist[item.key] && (
-                  <p className="text-[10px] text-red-700 font-bold uppercase tracking-wider mt-0.5">
+                  <p className="text-[10px] text-editorial-red font-bold uppercase tracking-wider mt-0.5">
                     Requerido
                   </p>
                 )}
@@ -243,9 +243,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
             <label htmlFor="observaciones-apertura" className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
               Observaciones (opcional)
             </label>
-            <textarea
-              id="observaciones-apertura"
-              aria-label="Observaciones adicionales sobre la mesa"
+            <textarea id="observaciones-apertura"
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value.slice(0, 500))}
               placeholder="Notas adicionales sobre el estado de la mesa..."

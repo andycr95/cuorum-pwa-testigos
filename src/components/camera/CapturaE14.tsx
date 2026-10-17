@@ -185,7 +185,7 @@ export function CapturaE14({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full" />
-        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
           Foto del E-14 (Opcional)
         </p>
       </div>
@@ -209,7 +209,7 @@ export function CapturaE14({
             <p className="text-base font-black text-gray-800 group-hover:text-editorial-red transition-colors">
               {procesando ? 'Comprimiendo imagen...' : 'Tomar foto del E-14'}
             </p>
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               {procesando
                 ? 'Optimizando para transmisión 2G'
                 : 'Compresión automática < 200 KB · Escala de grises'}

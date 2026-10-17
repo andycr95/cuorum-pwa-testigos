@@ -1,5 +1,4 @@
 import { MesaData } from '../../services/authService';
-import { IconoAlerta } from '../ui/Iconos';
 
 interface SelectorMesaProps {
   mesas: MesaData[];
@@ -14,7 +13,7 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre }: SelectorMesaPro
         <h1 className="text-2xl font-black text-gray-900 leading-tight uppercase tracking-tight">
           ¡Hola, {testigoNombre.split(' ')[0]}!
         </h1>
-        <p className="text-gray-600 text-sm mt-1 font-medium">
+        <p className="text-gray-500 text-sm mt-1 font-medium">
           Selecciona la mesa que vas a reportar en este momento:
         </p>
       </div>
@@ -55,7 +54,7 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre }: SelectorMesaPro
             <div className="mt-4 pt-4 border-t border-gray-50 flex items-center gap-4">
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wide">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
                   {mesa.totalSufragantes} Potenciales
                 </span>
               </div>
@@ -71,9 +70,8 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre }: SelectorMesaPro
       </div>
 
       <div className="mt-12 p-6 bg-red-50 rounded-2xl border-2 border-red-100">
-        <p className="text-[11px] text-red-700 font-black uppercase tracking-widest text-center flex items-center justify-center gap-1.5">
-          <IconoAlerta className="w-4 h-4 text-red-700" />
-          <span>RECUERDA</span>
+        <p className="text-[11px] text-red-700 font-black uppercase tracking-widest text-center">
+          RECUERDA
         </p>
         <p className="text-xs text-red-800 text-center mt-2 leading-relaxed font-medium">
           Solo puedes reportar los datos oficiales del acta E-14 una vez haya finalizado el conteo en la mesa.

@@ -114,7 +114,7 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
           <h2 className="text-2xl font-black text-gray-900 mb-2">
             Confirma tu presencia
           </h2>
-          <p className="text-sm text-gray-600 font-medium">
+          <p className="text-sm text-gray-500 font-medium">
             Registra tu llegada al puesto de votacion
           </p>
         </div>
@@ -129,7 +129,7 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
               <p className="text-base font-black text-gray-900">
                 {mesaData.puesto.nombre}
               </p>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-500 mt-1">
                 {mesaData.puesto.direccion}
               </p>
             </div>

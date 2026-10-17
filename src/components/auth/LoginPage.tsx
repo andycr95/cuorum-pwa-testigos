@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { authService } from '../../services/authService';
-import { IconoAlerta, IconoEmail } from '../ui/Iconos';
+import { IconoAlerta } from '../ui/Iconos';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -54,7 +54,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <h1 className="text-3xl font-black text-editorial-black tracking-tight uppercase" style={{ letterSpacing: '0.05em' }}>
             Cuorum Testigos
           </h1>
-          <p className="text-sm text-gray-600 font-semibold uppercase tracking-wider mt-2" style={{ letterSpacing: '0.1em' }}>
+          <p className="text-sm text-gray-500 font-semibold uppercase tracking-wider mt-2" style={{ letterSpacing: '0.1em' }}>
             Sistema Oficial de Reporte
           </p>
         </div>
@@ -63,7 +63,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 p-8">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Iniciar Sesión</h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-500">
               Ingresa tus credenciales para acceder al sistema de reporte electoral.
             </p>
           </div>
@@ -113,7 +113,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 autoComplete="off"
                 maxLength={6}
               />
-              <p className="text-xs text-gray-600 mt-2">
+              <p className="text-xs text-gray-500 mt-2">
                 El PIN de 6 dígitos fue enviado a tu email
               </p>
             </div>
@@ -151,7 +151,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <div className="mt-6 pt-6 border-t-2 border-gray-100">
             <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
               <p className="text-xs text-blue-700 font-medium">
-                <span className="font-bold flex items-center gap-1.5 mb-0.5"><IconoEmail className="w-4 h-4 inline-block" /> ¿No recibiste tu PIN?</span>
+                <strong>¿No recibiste tu PIN?</strong><br />
                 Contacta al coordinador de tu campaña para que te reenvíe las credenciales.
               </p>
             </div>

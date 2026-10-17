@@ -64,12 +64,11 @@ export function VoteInput({
 
       {/* Input Container - Premium Depth */}
       <div className="flex items-center gap-2">
-        {/* Botón Decrementar */}
+        {/* Botón Decrementar - Con sombra */}
         <button
           type="button"
           onClick={decrement}
-          disabled={disabled || value === 0}
-          aria-label={`Disminuir votos de ${label}`}
+          disabled={disabled || value === 0} aria-label={`Disminuir votos de ${label}`}
           className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg min-w-[44px] min-h-[44px] ${
             isLarge
               ? 'w-12 h-12 text-xl'
@@ -83,7 +82,7 @@ export function VoteInput({
           −
         </button>
 
-        {/* Display de Número */}
+        {/* Display de Número - Efecto "Stamp" Premium */}
         <div className="relative">
           <input
             type="number"
@@ -92,8 +91,7 @@ export function VoteInput({
             max="9999"
             value={value || ''}
             onChange={handleChange}
-            disabled={disabled}
-            aria-label={`Votos de ${label}`}
+            disabled={disabled} aria-label={`Votos de ${label}`}
             className={`text-center font-black border-3 rounded-2xl transition-all focus:outline-none focus:ring-4 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
               isLarge
                 ? 'w-24 h-12 text-3xl'
@@ -119,12 +117,11 @@ export function VoteInput({
           )}
         </div>
 
-        {/* Botón Incrementar */}
+        {/* Botón Incrementar - Con sombra */}
         <button
           type="button"
           onClick={increment}
-          disabled={disabled || value >= 9999}
-          aria-label={`Aumentar votos de ${label}`}
+          disabled={disabled || value >= 9999} aria-label={`Aumentar votos de ${label}`}
           className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg min-w-[44px] min-h-[44px] ${
             isLarge
               ? 'w-12 h-12 text-xl'

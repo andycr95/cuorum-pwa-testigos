@@ -21,15 +21,14 @@ export function ObservacionesInput({
       {/* Título de la sección */}
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full"></div>
-        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
           Observaciones (Opcional)
         </p>
       </div>
 
       {/* Textarea */}
       <div className="relative">
-        <textarea
-          aria-label="Observaciones sobre la mesa"
+        <textarea aria-label="Observaciones sobre la mesa"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
@@ -42,7 +41,7 @@ export function ObservacionesInput({
         {/* Contador de caracteres */}
         <div className="absolute bottom-3 right-3 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-md border border-gray-200">
           <p className={`text-xs font-bold ${
-            remaining < 50 ? 'text-orange-600' : 'text-gray-600'
+            remaining < 50 ? 'text-orange-600' : 'text-gray-500'
           }`}>
             {remaining} / {maxLength}
           </p>
