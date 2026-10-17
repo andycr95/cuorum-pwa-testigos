@@ -6,15 +6,17 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
-const vaultCapturasDir = '/srv/cuorum/vault/02-Arquitectura/Diseno-UX-capturas';
+const screenshotsDir = process.env.CAPTURAS_DIR || path.join(rootDir, 'test', 'screenshots');
+const extraCapturasDir = process.env.EXTRA_CAPTURAS_DIR;
 
-const localLibDir = '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu';
-if (fs.existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
+const playwrightModule = process.env.PLAYWRIGHT_PATH || 'playwright';
+let chromium;
+try {
+  const mod = await import(playwrightModule);
+  chromium = mod.chromium || mod.default?.chromium || mod;
+} catch (err) {
+  throw new Error(`No se pudo cargar Playwright desde "${playwrightModule}". Define PLAYWRIGHT_PATH o instala playwright: ${err.message}`);
 }
-
-const { chromium } = await import('/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs');
 
 if (!fs.existsSync(screenshotsDir)) {
   fs.mkdirSync(screenshotsDir, { recursive: true });
@@ -135,8 +137,8 @@ async function run() {
     await page.screenshot({ path: capInstallMobile });
     console.log('Captura diálogo de instalación móvil guardada:', capInstallMobile);
 
-    if (fs.existsSync(vaultCapturasDir)) {
-      fs.copyFileSync(capInstallMobile, path.join(vaultCapturasDir, 'pwa-cuo204-instalable-m.png'));
+    if (extraCapturasDir && fs.existsSync(extraCapturasDir)) {
+      fs.copyFileSync(capInstallMobile, path.join(extraCapturasDir, 'pwa-cuo204-instalable-m.png'));
     }
 
     // ─── VERIFICACIÓN 5: Modo offline con Service Worker ─────────
@@ -158,8 +160,8 @@ async function run() {
     const capOffline = path.join(screenshotsDir, 'pwa-cuo204-offline-fuente-m.png');
     await page.screenshot({ path: capOffline });
     console.log('Captura modo offline guardada:', capOffline);
-    if (fs.existsSync(vaultCapturasDir)) {
-      fs.copyFileSync(capOffline, path.join(vaultCapturasDir, 'pwa-cuo204-offline-fuente-m.png'));
+    if (extraCapturasDir && fs.existsSync(extraCapturasDir)) {
+      fs.copyFileSync(capOffline, path.join(extraCapturasDir, 'pwa-cuo204-offline-fuente-m.png'));
     }
 
     // ─── VERIFICACIÓN 6: Vista de escritorio 1440 px ──────────────
@@ -173,8 +175,8 @@ async function run() {
     const capDesktop = path.join(screenshotsDir, 'pwa-cuo204-instalable-d.png');
     await pageDesktop.screenshot({ path: capDesktop });
     console.log('Captura escritorio guardada:', capDesktop);
-    if (fs.existsSync(vaultCapturasDir)) {
-      fs.copyFileSync(capDesktop, path.join(vaultCapturasDir, 'pwa-cuo204-instalable-d.png'));
+    if (extraCapturasDir && fs.existsSync(extraCapturasDir)) {
+      fs.copyFileSync(capDesktop, path.join(extraCapturasDir, 'pwa-cuo204-instalable-d.png'));
     }
 
     console.log('✅ Todas las verificaciones de Playwright y criterios de aceptación pasaron exitosamente.');

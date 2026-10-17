@@ -6,12 +6,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-const localLibDir = '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu';
-if (fs.existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
+const playwrightModule = process.env.PLAYWRIGHT_PATH || 'playwright';
+let chromium;
+try {
+  const mod = await import(playwrightModule);
+  chromium = mod.chromium || mod.default?.chromium || mod;
+} catch (err) {
+  throw new Error(`No se pudo cargar Playwright desde "${playwrightModule}". Define PLAYWRIGHT_PATH o instala playwright: ${err.message}`);
 }
-
-const { chromium } = await import('/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs');
 
 const rawSvg = fs.readFileSync(path.join(rootDir, 'public', 'logo.svg'), 'utf8');
 // Replace red fill with white fill

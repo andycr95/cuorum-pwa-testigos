@@ -4,15 +4,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
+import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const distDir = path.join(rootDir, 'dist');
 
-// Ensure dist exists before testing
+// Ensure dist exists before testing; build automatically if needed
 if (!fs.existsSync(distDir) || !fs.existsSync(path.join(distDir, 'manifest.webmanifest'))) {
-  throw new Error('dist/ no está compilado. Ejecuta "pnpm build" antes de correr las pruebas.');
+  execSync('pnpm run build', { cwd: rootDir, stdio: 'pipe' });
 }
 
 const manifestPath = path.join(distDir, 'manifest.webmanifest');
