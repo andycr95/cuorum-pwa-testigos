@@ -105,7 +105,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     setCedulaError('La cédula debe tener entre 5 y 15 caracteres');
                   }
                 }}
-                placeholder="Ej: 1234567890 o TEST-TES-001"
+                placeholder="Ej: 1234567890"
                 className={`w-full min-h-[48px] px-4 py-3 border-2 rounded-xl focus:border-editorial-red focus:ring-2 focus:ring-red-100 outline-none transition-all text-base font-medium ${
                   cedulaError ? 'border-editorial-red bg-red-50/20' : 'border-gray-200'
                 }`}

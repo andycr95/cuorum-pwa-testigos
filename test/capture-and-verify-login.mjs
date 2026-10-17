@@ -1,19 +1,17 @@
-import { chromium } from '/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
 import { spawn, execSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+const playwrightPath = process.env.PLAYWRIGHT_PATH || 'playwright';
+const playwright = await import(playwrightPath);
+const chromium = playwright.chromium || playwright.default?.chromium || playwright.default;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
-const vaultCapturasDir = '/srv/cuorum/vault/02-Arquitectura/Diseno-UX-capturas';
-
-const localLibDir = '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu';
-if (fs.existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
-}
+const capturasDir = process.env.CAPTURAS_DIR ? path.resolve(process.env.CAPTURAS_DIR) : null;
 
 if (!fs.existsSync(screenshotsDir)) {
   fs.mkdirSync(screenshotsDir, { recursive: true });
@@ -38,10 +36,7 @@ async function run() {
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    env: {
-      ...process.env,
-      LD_LIBRARY_PATH: `/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu:${process.env.LD_LIBRARY_PATH || ''}`,
-    },
+    env: process.env,
   });
 
   try {
@@ -101,9 +96,8 @@ async function run() {
     await page.screenshot({ path: capLoginM });
     console.log('Captura guardada:', capLoginM);
 
-    // Copiar a bóveda
-    if (fs.existsSync(vaultCapturasDir)) {
-      fs.copyFileSync(capLoginM, path.join(vaultCapturasDir, 'pwa-01-login-m.png'));
+    if (capturasDir && fs.existsSync(capturasDir)) {
+      fs.copyFileSync(capLoginM, path.join(capturasDir, 'pwa-01-login-m.png'));
     }
 
     // ─── VERIFICACIÓN 3: Accesibilidad axe-core en LoginPage ──────────
@@ -177,8 +171,8 @@ async function run() {
     const capErrorM = path.join(screenshotsDir, 'pwa-02-despues-login-m.png');
     await page.screenshot({ path: capErrorM });
     console.log('Captura guardada:', capErrorM);
-    if (fs.existsSync(vaultCapturasDir)) {
-      fs.copyFileSync(capErrorM, path.join(vaultCapturasDir, 'pwa-02-despues-login-m.png'));
+    if (capturasDir && fs.existsSync(capturasDir)) {
+      fs.copyFileSync(capErrorM, path.join(capturasDir, 'pwa-02-despues-login-m.png'));
     }
 
     // ─── VERIFICACIÓN 6: SelectorMesa y botón «Cerrar sesión» >= 48 px ──
@@ -280,8 +274,8 @@ async function run() {
     const capSelectorM = path.join(screenshotsDir, 'pwa-03-selector-mesa-m.png');
     await page.screenshot({ path: capSelectorM });
     console.log('Captura guardada:', capSelectorM);
-    if (fs.existsSync(vaultCapturasDir)) {
-      fs.copyFileSync(capSelectorM, path.join(vaultCapturasDir, 'pwa-03-selector-mesa-m.png'));
+    if (capturasDir && fs.existsSync(capturasDir)) {
+      fs.copyFileSync(capSelectorM, path.join(capturasDir, 'pwa-03-selector-mesa-m.png'));
     }
 
     // ─── VERIFICACIÓN 7: Vista escritorio 1440 px ─────────────────────
@@ -294,6 +288,9 @@ async function run() {
     const capLoginD = path.join(screenshotsDir, 'pwa-01-login-d.png');
     await pageDesktop.screenshot({ path: capLoginD });
     console.log('Captura escritorio guardada:', capLoginD);
+    if (capturasDir && fs.existsSync(capturasDir)) {
+      fs.copyFileSync(capLoginD, path.join(capturasDir, 'pwa-01-login-d.png'));
+    }
 
     console.log('✅ Todas las verificaciones de Playwright y criterios de aceptación pasaron exitosamente.');
   } finally {
