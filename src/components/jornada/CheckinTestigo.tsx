@@ -102,7 +102,7 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
     <div className="max-w-md mx-auto px-4 py-8">
       <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
         {/* Header */}
-        <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 px-6 py-8 text-center border-b-2 border-gray-200">
+        <div className="bg-gray-50 px-6 py-8 text-center border-b-2 border-gray-200">
           {/* Map Pin Icon */}
           <div className="w-20 h-20 mx-auto mb-6 bg-editorial-red/10 rounded-full flex items-center justify-center">
             <svg className="w-10 h-10 text-editorial-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -114,7 +114,7 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
           <h2 className="text-2xl font-black text-gray-900 mb-2">
             Confirma tu presencia
           </h2>
-          <p className="text-sm text-gray-500 font-medium">
+          <p className="text-sm text-gray-600 font-medium">
             Registra tu llegada al puesto de votacion
           </p>
         </div>
@@ -123,13 +123,13 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
         <div className="px-6 py-5">
           {mesaData.puesto && (
             <div className="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-200">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-1" style={{ letterSpacing: '0.15em' }}>
                 Puesto de votacion
               </p>
               <p className="text-base font-black text-gray-900">
                 {mesaData.puesto.nombre}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-600 mt-1">
                 {mesaData.puesto.direccion}
               </p>
             </div>
@@ -138,7 +138,7 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
           <div className="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest" style={{ letterSpacing: '0.15em' }}>
+                <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest" style={{ letterSpacing: '0.15em' }}>
                   Mesa asignada
                 </p>
                 <p className="text-3xl font-black text-gray-900 mt-1">
@@ -146,7 +146,7 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest" style={{ letterSpacing: '0.15em' }}>
+                <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest" style={{ letterSpacing: '0.15em' }}>
                   Sufragantes
                 </p>
                 <p className="text-3xl font-black text-editorial-red mt-1">
@@ -180,12 +180,9 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
           <button
             onClick={handleCheckin}
             disabled={loading}
-            className="relative w-full overflow-hidden rounded-2xl py-5 font-black text-white uppercase tracking-widest text-base transition-all bg-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="relative w-full overflow-hidden rounded-2xl py-5 font-black text-white uppercase tracking-widest text-base transition-all bg-editorial-red hover:bg-red-700 active:scale-[0.97] shadow-xl disabled:opacity-70 disabled:cursor-not-allowed min-h-[48px]"
             style={{ letterSpacing: '0.1em' }}
           >
-            {!loading && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ width: '200%' }} />
-            )}
             <span className="relative flex items-center justify-center gap-3">
               {loading ? (
                 <>

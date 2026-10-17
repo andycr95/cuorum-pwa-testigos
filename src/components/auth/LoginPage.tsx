@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { authService } from '../../services/authService';
+import { IconoAlerta, IconoEmail } from '../ui/Iconos';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -43,26 +44,26 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-gray-50 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo y Header */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-editorial-red-50 to-red-700 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-red-900/30">
+          <div className="w-20 h-20 bg-editorial-red rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
             <img src="/logo.svg" alt="Cuorum" className="w-12 h-12" />
           </div>
           <h1 className="text-3xl font-black text-editorial-black tracking-tight uppercase" style={{ letterSpacing: '0.05em' }}>
             Cuorum Testigos
           </h1>
-          <p className="text-sm text-gray-500 font-semibold uppercase tracking-wider mt-2" style={{ letterSpacing: '0.1em' }}>
+          <p className="text-sm text-gray-600 font-semibold uppercase tracking-wider mt-2" style={{ letterSpacing: '0.1em' }}>
             Sistema Oficial de Reporte
           </p>
         </div>
 
         {/* Card de Login */}
-        <div className="bg-white rounded-2xl shadow-2xl shadow-gray-200 border-2 border-gray-100 p-8">
+        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 p-8">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Iniciar Sesión</h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600">
               Ingresa tus credenciales para acceder al sistema de reporte electoral.
             </p>
           </div>
@@ -112,7 +113,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 autoComplete="off"
                 maxLength={6}
               />
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-600 mt-2">
                 El PIN de 6 dígitos fue enviado a tu email
               </p>
             </div>
@@ -120,7 +121,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             {/* Error Message */}
             {error && (
               <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
-                <span className="text-xl flex-shrink-0">⚠️</span>
+                <IconoAlerta className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
             )}
@@ -129,7 +130,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             <button
               type="submit"
               disabled={loading || !cedula || pin.length !== 6}
-              className="w-full bg-gradient-to-br from-editorial-red to-red-700 text-white font-black py-4 rounded-xl shadow-xl shadow-red-900/30 hover:shadow-2xl hover:shadow-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider text-sm"
+              className="w-full bg-editorial-red hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider text-sm min-h-[48px]"
               style={{ letterSpacing: '0.1em' }}
             >
               {loading ? (
@@ -150,7 +151,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <div className="mt-6 pt-6 border-t-2 border-gray-100">
             <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
               <p className="text-xs text-blue-700 font-medium">
-                <strong>📧 ¿No recibiste tu PIN?</strong><br />
+                <span className="font-bold flex items-center gap-1.5 mb-0.5"><IconoEmail className="w-4 h-4 inline-block" /> ¿No recibiste tu PIN?</span>
                 Contacta al coordinador de tu campaña para que te reenvíe las credenciales.
               </p>
             </div>
@@ -158,10 +159,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-gray-600 mt-6">
           Sistema Seguro de Reporte Electoral • Cuorum {new Date().getFullYear()}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

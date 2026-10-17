@@ -8,6 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test": "node --test test/tokens-y-accesibilidad.test.mjs && bash scripts/check-nombres-prohibidos.test.sh",
+    "test:a11y": "node test/axe-audit-and-screenshots.mjs",
     "check:nombres": "bash scripts/check-nombres-prohibidos.sh",
     "test:nombres": "bash scripts/check-nombres-prohibidos.test.sh"
   },

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { getResultadosByMesa } from '../../db/indexeddb';
+import { IconoDocumento } from '../ui/Iconos';
 
 interface ResultadoRemoto {
   id: string;
@@ -158,7 +159,7 @@ export function PanelHistorialResultados({ mesaId, elecciones, mesaNumero }: Pro
         className="w-full flex items-center justify-between px-5 py-4 bg-blue-600 active:opacity-90 transition-opacity"
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">📋</span>
+          <IconoDocumento className="w-6 h-6 text-white shrink-0" />
           <div className="text-left">
             <p className="text-sm font-black text-white uppercase tracking-wide">
               Historial de Resultados
@@ -197,9 +198,11 @@ export function PanelHistorialResultados({ mesaId, elecciones, mesaNumero }: Pro
             </div>
           ) : totalEntradas === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-3xl mb-2">📋</p>
-              <p className="text-sm font-semibold text-gray-500">Sin resultados enviados aun</p>
-              <p className="text-xs text-gray-400 mt-1">Los resultados que captures apareceran aqui</p>
+              <div className="flex justify-center mb-2">
+                <IconoDocumento className="w-8 h-8 text-blue-400" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700">Sin resultados enviados aun</p>
+              <p className="text-xs text-gray-600 mt-1">Los resultados que captures apareceran aqui</p>
             </div>
           ) : (
             Array.from(gruposPorEleccion.entries()).map(([eleccionId, { sesiones, nombre }]) => (
