@@ -12,54 +12,16 @@ export interface ResultadoEstadoEnvio {
   texto: string;
 }
 
-/**
- * Formatea la hora actual como hh:mm en formato 24h
- */
 export function formatearHoraActual(fecha = new Date()): string {
-  return fecha.toLocaleTimeString('es-CO', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+  return fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-/**
- * Determina el estado de envío y el texto correspondiente (CUO-207)
- * - isSyncing -> 'Enviando…'
- * - pendingCount > 0 -> 'Guardado en el teléfono (n pendientes)'
- * - !isOnline -> 'Sin internet' (como estado propio)
- * - isOnline -> 'Enviado ✓ hh:mm'
- */
-export function resolverEstadoEnvio({
-  isOnline,
-  pendingCount,
-  isSyncing,
-  lastSyncTime,
-}: ResolverEstadoEnvioParams): ResultadoEstadoEnvio {
-  if (isSyncing) {
-    return {
-      estado: 'ENVIANDO',
-      texto: 'Enviando…',
-    };
+export function resolverEstadoEnvio(p: ResolverEstadoEnvioParams): ResultadoEstadoEnvio {
+  if (p.isSyncing) return { estado: 'ENVIANDO', texto: 'Enviando…' };
+  if (p.pendingCount > 0) {
+    const suf = p.pendingCount === 1 ? '1 pendiente' : `${p.pendingCount} pendientes`;
+    return { estado: 'PENDIENTE', texto: `Guardado en el teléfono (${suf})` };
   }
-
-  if (pendingCount > 0) {
-    const sufijo = pendingCount === 1 ? '1 pendiente' : `${pendingCount} pendientes`;
-    return {
-      estado: 'PENDIENTE',
-      texto: `Guardado en el teléfono (${sufijo})`,
-    };
-  }
-
-  if (!isOnline) {
-    return {
-      estado: 'OFFLINE',
-      texto: 'Sin internet',
-    };
-  }
-
-  return {
-    estado: 'ENVIADO',
-    texto: `Enviado ✓ ${lastSyncTime}`,
-  };
+  if (!p.isOnline) return { estado: 'OFFLINE', texto: 'Sin internet' };
+  return { estado: 'ENVIADO', texto: `Enviado ✓ ${p.lastSyncTime}` };
 }
