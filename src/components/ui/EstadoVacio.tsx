@@ -18,15 +18,6 @@ export interface EstadoVacioProps {
   className?: string;
 }
 
-/**
- * Componente EstadoVacio / ErrorAccion para la PWA de testigos
- * 
- * Satisface los principios de UX del Día D:
- * - Título claro y conciso
- * - Explicación orientadora en una frase en lenguaje común
- * - Una acción primaria destacada con objetivo táctil >= 48px
- * - Colores editoriales planos (rojo #DC2626), sin degradados ni códigos técnicos
- */
 export function EstadoVacio({
   titulo,
   mensaje,
@@ -38,10 +29,7 @@ export function EstadoVacio({
   className = '',
 }: EstadoVacioProps) {
   const renderIcono = () => {
-    if (iconoPersonalizado) {
-      return iconoPersonalizado;
-    }
-
+    if (iconoPersonalizado) return iconoPersonalizado;
     if (tipo === 'error') {
       return (
         <div className="w-16 h-16 rounded-2xl bg-red-50 border-2 border-red-200 flex items-center justify-center text-editorial-red">
@@ -51,7 +39,6 @@ export function EstadoVacio({
         </div>
       );
     }
-
     if (tipo === 'advertencia') {
       return (
         <div className="w-16 h-16 rounded-2xl bg-amber-50 border-2 border-amber-200 flex items-center justify-center text-amber-600">
@@ -61,7 +48,6 @@ export function EstadoVacio({
         </div>
       );
     }
-
     if (tipo === 'info') {
       return (
         <div className="w-16 h-16 rounded-2xl bg-blue-50 border-2 border-blue-200 flex items-center justify-center text-blue-600">
@@ -71,8 +57,6 @@ export function EstadoVacio({
         </div>
       );
     }
-
-    // Default 'vacio'
     return (
       <div className="w-16 h-16 rounded-2xl bg-gray-50 border-2 border-gray-200 flex items-center justify-center text-gray-500">
         <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -82,23 +66,14 @@ export function EstadoVacio({
     );
   };
 
+  const btnClasePrimaria = "w-full min-h-[48px] py-3.5 px-6 rounded-2xl font-black text-white uppercase tracking-wide text-xs bg-editorial-red hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2";
+  const btnClaseSecundaria = "w-full min-h-[48px] py-3 px-6 rounded-2xl font-bold text-gray-700 text-xs border-2 border-gray-200 hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2";
+
   return (
-    <div
-      role={tipo === 'error' ? 'alert' : 'status'}
-      className={`w-full bg-white border-2 border-gray-200 rounded-3xl p-6 text-center shadow-sm ${className}`}
-    >
-      <div className="flex justify-center mb-4">
-        {renderIcono()}
-      </div>
-
-      <h3 className="text-xl font-black text-gray-900 leading-tight mb-2 tracking-tight">
-        {titulo}
-      </h3>
-
-      <p className="text-sm font-medium text-gray-600 mb-6 leading-relaxed max-w-sm mx-auto">
-        {mensaje}
-      </p>
-
+    <div role={tipo === 'error' ? 'alert' : 'status'} className={`w-full bg-white border-2 border-gray-200 rounded-3xl p-6 text-center shadow-sm ${className}`}>
+      <div className="flex justify-center mb-4">{renderIcono()}</div>
+      <h3 className="text-xl font-black text-gray-900 leading-tight mb-2 tracking-tight">{titulo}</h3>
+      <p className="text-sm font-medium text-gray-600 mb-6 leading-relaxed max-w-sm mx-auto">{mensaje}</p>
       {detalleEstado && (
         <div className="mb-6 px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-center gap-2">
           <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -107,45 +82,17 @@ export function EstadoVacio({
           <span>{detalleEstado}</span>
         </div>
       )}
-
       <div className="space-y-3">
         {accionPrincipal.href ? (
-          <a
-            href={accionPrincipal.href}
-            aria-label={accionPrincipal.ariaLabel || accionPrincipal.texto}
-            className="w-full min-h-[48px] py-3.5 px-6 rounded-2xl font-black text-white uppercase tracking-wide text-xs bg-editorial-red hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-          >
-            {accionPrincipal.texto}
-          </a>
+          <a href={accionPrincipal.href} aria-label={accionPrincipal.ariaLabel || accionPrincipal.texto} className={btnClasePrimaria}>{accionPrincipal.texto}</a>
         ) : (
-          <button
-            type="button"
-            onClick={accionPrincipal.onClick}
-            aria-label={accionPrincipal.ariaLabel || accionPrincipal.texto}
-            className="w-full min-h-[48px] py-3.5 px-6 rounded-2xl font-black text-white uppercase tracking-wide text-xs bg-editorial-red hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-          >
-            {accionPrincipal.texto}
-          </button>
+          <button type="button" onClick={accionPrincipal.onClick} aria-label={accionPrincipal.ariaLabel || accionPrincipal.texto} className={btnClasePrimaria}>{accionPrincipal.texto}</button>
         )}
-
         {accionSecundaria && (
           accionSecundaria.href ? (
-            <a
-              href={accionSecundaria.href}
-              aria-label={accionSecundaria.ariaLabel || accionSecundaria.texto}
-              className="w-full min-h-[48px] py-3 px-6 rounded-2xl font-bold text-gray-700 text-xs border-2 border-gray-200 hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              {accionSecundaria.texto}
-            </a>
+            <a href={accionSecundaria.href} aria-label={accionSecundaria.ariaLabel || accionSecundaria.texto} className={btnClaseSecundaria}>{accionSecundaria.texto}</a>
           ) : (
-            <button
-              type="button"
-              onClick={accionSecundaria.onClick}
-              aria-label={accionSecundaria.ariaLabel || accionSecundaria.texto}
-              className="w-full min-h-[48px] py-3 px-6 rounded-2xl font-bold text-gray-700 text-xs border-2 border-gray-200 hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              {accionSecundaria.texto}
-            </button>
+            <button type="button" onClick={accionSecundaria.onClick} aria-label={accionSecundaria.ariaLabel || accionSecundaria.texto} className={btnClaseSecundaria}>{accionSecundaria.texto}</button>
           )
         )}
       </div>
@@ -153,5 +100,4 @@ export function EstadoVacio({
   );
 }
 
-/** Alias semántico ErrorAccion */
 export const ErrorAccion = EstadoVacio;
