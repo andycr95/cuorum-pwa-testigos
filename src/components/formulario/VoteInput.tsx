@@ -56,40 +56,22 @@ export function VoteInput({
   const isSpecial = variant === 'special';
 
   return (
-    <div
-      data-testid="vote-input-row"
-      className={`rounded-2xl border-2 transition-all p-3.5 shadow-sm bg-white ${
-        value > 0
-          ? isSpecial
-            ? 'border-gray-400 bg-gray-50/60'
-            : 'border-editorial-red/60 bg-red-50/30'
-          : 'border-gray-200 hover:border-gray-300'
-      }`}
-    >
+    <div data-testid="vote-input-row" className={`rounded-2xl border-2 transition-all p-3.5 shadow-sm bg-white ${value > 0 ? (isSpecial ? 'border-gray-400 bg-gray-50/60' : 'border-editorial-red/60 bg-red-50/30') : 'border-gray-200 hover:border-gray-300'}`}>
       {/* Cabecera: Número, nombre completo (en 2 líneas sin truncate) y partido */}
       <div className="flex items-start justify-between gap-3 mb-2.5">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             {numero !== undefined && numero !== null && (
-              <span
-                data-testid="candidato-numero"
-                className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-black bg-gray-100 text-gray-800 rounded-md border border-gray-300 flex-shrink-0"
-              >
+              <span data-testid="candidato-numero" className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-black bg-gray-100 text-gray-800 rounded-md border border-gray-300 flex-shrink-0">
                 #{numero}
               </span>
             )}
-            <p
-              data-testid="candidato-nombre"
-              className="font-bold text-gray-900 text-base leading-snug break-words"
-            >
+            <p data-testid="candidato-nombre" className="font-bold text-gray-900 text-base leading-snug break-words">
               {label}
             </p>
           </div>
           {subtitle && (
-            <p
-              data-testid="candidato-partido"
-              className="text-xs text-gray-600 font-medium break-words"
-            >
+            <p data-testid="candidato-partido" className="text-xs text-gray-600 font-medium break-words">
               {subtitle}
             </p>
           )}
@@ -104,11 +86,7 @@ export function VoteInput({
           disabled={disabled || value === 0}
           aria-label={`Disminuir votos para ${label}`}
           data-testid="btn-decrement"
-          className={`w-14 h-14 min-w-[56px] min-h-[56px] flex items-center justify-center rounded-2xl font-black text-2xl transition-all active:scale-90 border-2 select-none ${
-            isSpecial
-              ? 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-400 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50'
-              : 'bg-red-50 hover:bg-red-100 active:bg-red-200 text-editorial-red border-red-300 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50'
-          } disabled:cursor-not-allowed`}
+          className={`w-14 h-14 min-w-[56px] min-h-[56px] flex items-center justify-center rounded-2xl font-black text-2xl transition-all active:scale-90 border-2 select-none ${isSpecial ? 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-400 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50' : 'bg-red-50 hover:bg-red-100 active:bg-red-200 text-editorial-red border-red-300 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50'} disabled:cursor-not-allowed`}
         >
           −
         </button>
@@ -125,13 +103,7 @@ export function VoteInput({
             aria-label={`Votos para ${label}`}
             placeholder="0"
             data-testid="input-votos"
-            className={`w-24 h-14 text-center text-3xl font-black rounded-2xl border-2 transition-all focus:outline-none focus:ring-2 tabular-nums ${
-              value > 0
-                ? isSpecial
-                  ? 'border-gray-600 bg-white text-gray-900 focus:ring-gray-300'
-                  : 'border-editorial-red bg-white text-editorial-red focus:ring-editorial-red/30'
-                : 'border-gray-300 bg-white text-gray-900 focus:ring-gray-200 placeholder:text-gray-400'
-            } disabled:opacity-75 disabled:cursor-not-allowed`}
+            className={`w-24 h-14 text-center text-3xl font-black rounded-2xl border-2 transition-all focus:outline-none focus:ring-2 tabular-nums ${value > 0 ? (isSpecial ? 'border-gray-600 bg-white text-gray-900 focus:ring-gray-300' : 'border-editorial-red bg-white text-editorial-red focus:ring-editorial-red/30') : 'border-gray-300 bg-white text-gray-900 focus:ring-gray-200 placeholder:text-gray-400'} disabled:opacity-75 disabled:cursor-not-allowed`}
           />
         </div>
 
@@ -141,11 +113,7 @@ export function VoteInput({
           disabled={disabled || value >= 9999}
           aria-label={`Aumentar votos para ${label}`}
           data-testid="btn-increment"
-          className={`w-14 h-14 min-w-[56px] min-h-[56px] flex items-center justify-center rounded-2xl font-black text-2xl transition-all active:scale-90 border-2 select-none ${
-            isSpecial
-              ? 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-400 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50'
-              : 'bg-red-50 hover:bg-red-100 active:bg-red-200 text-editorial-red border-red-300 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50'
-          } disabled:cursor-not-allowed`}
+          className={`w-14 h-14 min-w-[56px] min-h-[56px] flex items-center justify-center rounded-2xl font-black text-2xl transition-all active:scale-90 border-2 select-none ${isSpecial ? 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-gray-400 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50' : 'bg-red-50 hover:bg-red-100 active:bg-red-200 text-editorial-red border-red-300 disabled:opacity-40 disabled:border-gray-200 disabled:text-gray-400 disabled:bg-gray-50'} disabled:cursor-not-allowed`}
         >
           +
         </button>

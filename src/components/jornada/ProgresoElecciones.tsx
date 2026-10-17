@@ -52,7 +52,7 @@ export function ProgresoElecciones({
 
   // Determine reported status per election
   const getReportado = (eleccionId: string): boolean => {
-    if (progreso?.elecciones) {
+    if (progreso) {
       const e = progreso.elecciones.find((el) => el.id === eleccionId);
       return e?.reportado ?? false;
     }
@@ -67,7 +67,7 @@ export function ProgresoElecciones({
     <div className="mb-5">
       {/* Progress Header */}
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest" style={{ letterSpacing: '0.15em' }}>
           Progreso
         </p>
         <p className="text-xs font-bold text-gray-600">
@@ -99,7 +99,7 @@ export function ProgresoElecciones({
                   ? 'bg-editorial-red text-white shadow-md shadow-red-200'
                   : reported
                   ? 'bg-green-100 text-green-700 border border-green-300'
-                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200'
               }`}
             >
               {reported ? (
