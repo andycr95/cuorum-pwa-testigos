@@ -385,6 +385,9 @@ export function FormularioMesaMultiple({
       await guardarResultadosYFoto(resultadosBatch, fotosData.length > 0 ? fotosData : undefined);
 
       setGuardado(true);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cuorum:sync-status'));
+      }
 
       // ─── Paso 3: Sincronizar ───────────────────────────────────
       const online = await verificarConectividadReal();
@@ -395,7 +398,7 @@ export function FormularioMesaMultiple({
         // ─── Paso 4: Validar resultados ───────────────────────────
         try {
           const validacion = await jornadaService.validar(mesaId, eleccionActual);
-          setAlertasValidacion(validacion.alertas);
+          setAlertasValidacion(validacion?.alertas || []);
         } catch {
           // Validation is optional — don't block the flow
         }
@@ -910,24 +913,22 @@ export function FormularioMesaMultiple({
             </div>
           </div>
 
-          {/* ── Botón guardar ───────────────────────────────────────── */}
+          {/* ── Botón guardar (CUO-207: 56 px de alto, estado Guardado, sin degradados) ── */}
           {!actaCerrada && (
             <button
+              type="button"
               onClick={handleGuardar}
               disabled={guardado || guardando}
-              className={`relative w-full overflow-hidden rounded-2xl py-5 font-black text-white uppercase tracking-widest text-base transition-all mb-4 ${
+              data-testid="btn-guardar-resultados"
+              className={`w-full h-14 min-h-[56px] rounded-xl font-bold text-white uppercase text-sm tracking-wide transition-all mb-4 shadow-md flex items-center justify-center gap-2 select-none ${
                 guardado
-                  ? 'bg-gradient-to-br from-green-500 via-green-600 to-green-500 shadow-2xl shadow-green-200/50'
+                  ? 'bg-[#15803D] hover:bg-[#166534] cursor-default'
                   : hayAlertaFraude
-                  ? 'bg-brand-600 hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
-                  : 'bg-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-2xl shadow-red-300/50'
-              } disabled:opacity-95 disabled:cursor-not-allowed`}
-              style={{ letterSpacing: '0.1em' }}
+                  ? 'bg-editorial-red hover:bg-red-700 active:scale-[0.98]'
+                  : 'bg-editorial-red hover:bg-red-700 active:scale-[0.98]'
+              } disabled:opacity-90 disabled:cursor-not-allowed`}
             >
-              {!guardado && !guardando && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ width: '200%' }} />
-              )}
-              <span className="relative flex items-center justify-center gap-3 drop-shadow-md">
+              <span className="flex items-center justify-center gap-2">
                 {guardando ? (
                   <>
                     <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -935,17 +936,17 @@ export function FormularioMesaMultiple({
                   </>
                 ) : guardado ? (
                   <>
-                    <span className="text-2xl">✓</span>
-                    <span>Resultados Guardados</span>
+                    <span className="text-lg">✓</span>
+                    <span>Guardado</span>
                   </>
                 ) : hayAlertaFraude ? (
                   <>
-                    <span className="text-2xl animate-pulse">⚠️</span>
+                    <span className="text-lg" aria-hidden="true">⚠️</span>
                     <span>Guardar con Alerta</span>
                   </>
                 ) : (
                   <>
-                    <span className="text-2xl">📋</span>
+                    <span className="text-lg" aria-hidden="true">📋</span>
                     <span>Guardar Resultados</span>
                   </>
                 )}
@@ -1003,7 +1004,7 @@ export function FormularioMesaMultiple({
           )}
 
           {/* ── Alertas de validación ───────────────────────────────── */}
-          {alertasValidacion.length > 0 && (
+          {alertasValidacion && alertasValidacion.length > 0 && (
             <div className="mb-4 space-y-2">
               {alertasValidacion.map((alerta, i) => (
                 <div
@@ -1115,31 +1116,6 @@ export function FormularioMesaMultiple({
             />
           )}
 
-          {/* ── Indicador de conexión ───────────────────────────────── */}
-          <div className="flex items-center justify-center">
-            <div className={`relative flex items-center gap-3 px-5 py-3 rounded-full border-2 shadow-lg transition-all ${
-              navigator.onLine
-                ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-300 shadow-green-200/50'
-                : 'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-300 shadow-orange-200/50'
-            }`}>
-              {navigator.onLine && (
-                <div className="absolute inset-0 rounded-full bg-green-400 opacity-20 blur-md animate-pulse" />
-              )}
-              <div className="relative w-3 h-3 flex items-center justify-center">
-                <div className={`absolute inset-0 rounded-full shadow-lg ${
-                  navigator.onLine ? 'bg-green-500' : 'bg-orange-500'
-                }`} />
-                {navigator.onLine && (
-                  <div className="absolute inset-0 rounded-full bg-green-500 animate-ping" />
-                )}
-              </div>
-              <span className={`text-[11px] font-black uppercase tracking-widest ${
-                navigator.onLine ? 'text-green-700' : 'text-orange-700'
-              }`} style={{ letterSpacing: '0.1em' }}>
-                {navigator.onLine ? 'En línea · Sync automática' : 'Sin conexión · Guardado local'}
-              </span>
-            </div>
-          </div>
 
           {error && (
             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
