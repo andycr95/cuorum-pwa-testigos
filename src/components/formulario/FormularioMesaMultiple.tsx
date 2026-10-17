@@ -675,12 +675,12 @@ export function FormularioMesaMultiple({
                 <div className="w-1 h-5 bg-editorial-red rounded-full" />
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Candidatos</p>
               </div>
-              {eleccion.candidatos?.map((candidato, index) => (
+              {eleccion.candidatos?.map((candidato) => (
                 <VoteInput
                   key={candidato.id}
                   label={candidato.nombre}
                   subtitle={candidato.partido}
-                  numero={candidato.numero || index + 1}
+                  numero={candidato.numero}
                   value={votosUninominal[candidato.id] || 0}
                   onChange={(value) => {
                     setVotosUninominal({ ...votosUninominal, [candidato.id]: value });

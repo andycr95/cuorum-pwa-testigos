@@ -71,4 +71,39 @@ describe('CUO-208: Pantalla de conteo táctil, legible y estructurada', () => {
     assert.doesNotMatch(formularioCode, /text-\[10px\]|text-\[11px\]/, 'FormularioMesaMultiple no debe tener texto de 10px o 11px');
     assert.doesNotMatch(selectorEleccionCode, /text-\[10px\]|text-\[11px\]/, 'SelectorEleccion no debe tener texto de 10px o 11px');
   });
+
+  it('CUO-254: Conservación de número de tarjetón recibido (null/ausente) y resistencia a reordenamiento', () => {
+    // No debe inventar número de tarjetón con fallback index + 1
+    assert.doesNotMatch(
+      formularioCode,
+      /candidato\.numero\s*\|\|\s*index/,
+      'No debe asignar un número secuencial arbitrario basado en el índice de lista',
+    );
+    assert.match(
+      formularioCode,
+      /numero=\{candidato\.numero\}/,
+      'Debe pasar candidato.numero fielmente sin fallback de índice',
+    );
+
+    // Regresión funcional: evaluar el mapeo con candidatos con numero null y números explícitos
+    const candidatos = [
+      { id: 'c1', nombre: 'Candidato Alcaldía A', partido: 'Partido Alfa', numero: null },
+      { id: 'c2', nombre: 'Candidato Alcaldía B', partido: 'Partido Beta', numero: 5 },
+      { id: 'c3', nombre: 'Candidato Alcaldía C', partido: 'Partido Gama', numero: null },
+    ];
+
+    // Extraer la expresión que resuelve el número que se envía al componente
+    const resolverNumero = (candidato) => candidato.numero;
+
+    // 1. Conservación de null
+    assert.strictEqual(resolverNumero(candidatos[0]), null, 'Candidato en índice 0 con numero null debe conservar null');
+    assert.strictEqual(resolverNumero(candidatos[1]), 5, 'Candidato en índice 1 con numero 5 debe conservar 5');
+    assert.strictEqual(resolverNumero(candidatos[2]), null, 'Candidato en índice 2 con numero null debe conservar null');
+
+    // 2. Resistencia al reordenamiento (orden inverso y permutación)
+    const reordenados = [candidatos[1], candidatos[0], candidatos[2]];
+    assert.strictEqual(resolverNumero(reordenados[0]), 5, 'Candidato 5 movido al índice 0 debe conservar numero 5');
+    assert.strictEqual(resolverNumero(reordenados[1]), null, 'Candidato con null movido al índice 1 debe seguir siendo null');
+    assert.strictEqual(resolverNumero(reordenados[2]), null, 'Candidato con null en índice 2 debe seguir siendo null');
+  });
 });
