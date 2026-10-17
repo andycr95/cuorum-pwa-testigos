@@ -63,9 +63,23 @@ export function usePendingSync(intervalMs = 5000): PendingSyncResult {
 
     count();
     const id = setInterval(count, intervalMs);
+
+    const handleRefresh = () => {
+      count();
+    };
+
+    window.addEventListener('cuorum:sync-status', handleRefresh);
+    window.addEventListener('cuorum:sync-state', handleRefresh);
+    window.addEventListener('online', handleRefresh);
+    window.addEventListener('offline', handleRefresh);
+
     return () => {
       cancelled = true;
       clearInterval(id);
+      window.removeEventListener('cuorum:sync-status', handleRefresh);
+      window.removeEventListener('cuorum:sync-state', handleRefresh);
+      window.removeEventListener('online', handleRefresh);
+      window.removeEventListener('offline', handleRefresh);
     };
   }, [intervalMs]);
 
