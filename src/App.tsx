@@ -291,7 +291,7 @@ export function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-red-200 text-xs truncate max-w-[180px]">
+                <p className="text-white font-medium text-xs truncate max-w-[180px]">
                   {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
                 </p>
               </div>
@@ -360,13 +360,13 @@ export function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-red-200 text-xs truncate max-w-[180px]">
+                <p className="text-white font-medium text-xs truncate max-w-[180px]">
                   {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-white/15 rounded-md text-xs font-semibold tabular-nums">
+              <span className="px-2.5 py-1 bg-black/25 text-white rounded-md text-xs font-bold tabular-nums">
                 Mesa #{mesaSeleccionada.numero}
               </span>
               <PendingSyncBadge />
@@ -404,6 +404,7 @@ export function App() {
         elecciones={testigoData.elecciones}
         deviceId={testigoData.deviceId}
         onMesaCerrada={handleMesaCerrada}
+        onVolverSelector={handleBackToSelector}
       />
     </div>
   );
