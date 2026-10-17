@@ -262,7 +262,7 @@ function RevisionOcrInline({ job, onConfirmar, eleccionReportada }: {
 
       setConfirmado(true);
     } catch (err: any) {
-      setError(formatearErrorAmigable(err?.response?.data?.error || err?.message, 'Error al confirmar los resultados'));
+      setError(formatearErrorAmigable(err, 'Error al confirmar los resultados'));
     } finally {
       setLoading(false);
     }

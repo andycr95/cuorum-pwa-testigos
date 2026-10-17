@@ -1,4 +1,3 @@
-import { chromium } from '/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -7,19 +6,23 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
-const vaultCapturasDir = '/srv/cuorum/vault/02-Arquitectura/Diseno-UX-capturas';
-
-const localLibDir = '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu';
-if (fs.existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
-}
+const screenshotsDir = process.env.CAPTURAS_DIR || path.join(rootDir, 'test', 'screenshots');
+const vaultCapturasDir = process.env.VAULT_CAPTURAS_DIR;
 
 if (!fs.existsSync(screenshotsDir)) {
   fs.mkdirSync(screenshotsDir, { recursive: true });
 }
 
 async function run() {
+  let chromium;
+  try {
+    const playwrightModule = process.env.PLAYWRIGHT_PATH || 'playwright';
+    ({ chromium } = await import(playwrightModule));
+  } catch (err) {
+    console.warn('Playwright no está instalado en este entorno. Se omiten capturas e2e:', err?.message || err);
+    return;
+  }
+
   console.log('Iniciando vite preview en puerto 4703...');
   const server = spawn('npx', ['vite', 'preview', '--port', '4703', '--strictPort'], {
     cwd: rootDir,
@@ -32,14 +35,18 @@ async function run() {
   await new Promise((resolve) => setTimeout(resolve, 2500));
 
   console.log('Lanzando Chromium headless...');
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    env: {
-      ...process.env,
-      LD_LIBRARY_PATH: `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`,
-    },
-  });
+  let browser;
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      env: process.env,
+    });
+  } catch (err) {
+    console.warn('No fue posible inicializar Chromium en este entorno:', err?.message || err);
+    server.kill('SIGTERM');
+    return;
+  }
 
   try {
     const context = await browser.newContext({
@@ -188,9 +195,10 @@ async function run() {
 
     // Captura Escenario 1 (390 px)
     const cap1Local = path.join(screenshotsDir, 'pwa-cuo206-sin-elecciones-390px.png');
-    const cap1Vault = path.join(vaultCapturasDir, 'pwa-cuo206-sin-elecciones-390px.png');
     await page.screenshot({ path: cap1Local, fullPage: true });
-    fs.copyFileSync(cap1Local, cap1Vault);
+    if (vaultCapturasDir && fs.existsSync(vaultCapturasDir)) {
+      fs.copyFileSync(cap1Local, path.join(vaultCapturasDir, 'pwa-cuo206-sin-elecciones-390px.png'));
+    }
     console.log('✓ Captura 1 guardada:', cap1Local);
 
     // Auditoría de accesibilidad axe-core en Escenario 1
@@ -394,12 +402,12 @@ async function run() {
 
     // Captura Escenario 2 (390 px)
     const cap2Local = path.join(screenshotsDir, 'pwa-cuo206-error-ocr-390px.png');
-    const cap2Vault = path.join(vaultCapturasDir, 'pwa-cuo206-error-ocr-390px.png');
-    const cap2Legacy = path.join(vaultCapturasDir, 'pwa-12b-foto-enviada-m.png');
     await page2.screenshot({ path: cap2Local, fullPage: true });
-    fs.copyFileSync(cap2Local, cap2Vault);
-    fs.copyFileSync(cap2Local, cap2Legacy);
-    console.log('✓ Captura 2 guardada en test y bóveda:', cap2Local);
+    if (vaultCapturasDir && fs.existsSync(vaultCapturasDir)) {
+      fs.copyFileSync(cap2Local, path.join(vaultCapturasDir, 'pwa-cuo206-error-ocr-390px.png'));
+      fs.copyFileSync(cap2Local, path.join(vaultCapturasDir, 'pwa-12b-foto-enviada-m.png'));
+    }
+    console.log('✓ Captura 2 guardada:', cap2Local);
 
     // Auditoría de accesibilidad axe-core en Escenario 2
     console.log('Evaluando accesibilidad axe-core en escenario error de OCR...');

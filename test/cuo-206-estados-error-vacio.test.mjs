@@ -71,6 +71,48 @@ describe('CUO-206: Sanitización de errores sin códigos HTTP ni inglés', () =>
     }
   });
 
+  it('preserva mensajes útiles de validación y dominio sin ocultar cifras legítimas', () => {
+    const validacionSuma = 'La suma (305) supera los 300 sufragantes';
+    assert.equal(
+      formatearErrorAmigable(validacionSuma),
+      validacionSuma,
+      'Debe preservar mensajes con cifras numéricas de validación',
+    );
+
+    const mensajeVotos = '500 votos registrados en la mesa';
+    assert.equal(
+      formatearErrorAmigable(mensajeVotos),
+      mensajeVotos,
+      'No debe confundir números en el texto con códigos de error HTTP',
+    );
+
+    const axiosValidation = {
+      response: {
+        status: 400,
+        data: { error: 'La suma (305) supera los 300 sufragantes' },
+      },
+    };
+    assert.equal(
+      formatearErrorAmigable(axiosValidation),
+      'La suma (305) supera los 300 sufragantes',
+      'Debe extraer y retornar el mensaje de dominio de response.data',
+    );
+  });
+
+  it('decide por response.status o err.code cuando no hay mensaje de dominio', () => {
+    const err500 = { response: { status: 500 } };
+    const res500 = formatearErrorAmigable(err500);
+    assert.ok(res500.includes('servidor') && res500.includes('teléfono'));
+
+    const err404 = { response: { status: 404 } };
+    const res404 = formatearErrorAmigable(err404);
+    assert.ok(res404.includes('coordinador') || res404.includes('disponible'));
+
+    const errNet = { code: 'ERR_NETWORK' };
+    const resNet = formatearErrorAmigable(errNet);
+    assert.ok(resNet.includes('conexión') && resNet.includes('teléfono'));
+  });
+
   it('proporciona constantes orientadoras para OCR con estado de foto guardada', () => {
     assert.equal(
       MENSAJES_OCR.FOTO_GUARDADA,
@@ -193,5 +235,24 @@ describe('CUO-206: Error de OCR con foto guardada en el teléfono', () => {
       /formatearErrorAmigable\(err, 'No fue posible conectar con el servidor'\)/,
       'Debe sanitizar el error en useOcrJobsE14 antes de persistirlo',
     );
+  });
+});
+
+describe('CUO-206: Higiene de repo público (sin rutas internas ni usuarios de la VM)', () => {
+  it('package.json no contiene rutas internas de la VM ni de la bóveda', () => {
+    const pkgPath = path.join(rootDir, 'package.json');
+    const pkgContent = fs.readFileSync(pkgPath, 'utf8');
+
+    assert.doesNotMatch(pkgContent, /\/home\/agentes/, 'package.json no debe incluir /home/agentes');
+    assert.doesNotMatch(pkgContent, /\/srv\/cuorum/, 'package.json no debe incluir /srv/cuorum');
+  });
+
+  it('scripts de test/e2e no contienen rutas absolutas de la VM hardcodeadas', () => {
+    const captureScriptPath = path.join(rootDir, 'test', 'capture-and-verify-error-vacio.mjs');
+    if (fs.existsSync(captureScriptPath)) {
+      const scriptContent = fs.readFileSync(captureScriptPath, 'utf8');
+      assert.doesNotMatch(scriptContent, /\/home\/agentes/, 'El script e2e no debe incluir /home/agentes');
+      assert.doesNotMatch(scriptContent, /\/srv\/cuorum/, 'El script e2e no debe incluir /srv/cuorum');
+    }
   });
 });
