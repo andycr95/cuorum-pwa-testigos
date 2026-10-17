@@ -199,3 +199,48 @@ test('7. Transacción de guardarResultadosYFoto permanece intacta en IndexedDB',
     'Debe incluir fotosE14 en la misma transacción IDB',
   );
 });
+
+test('8. Regresión de arranque (CUO-253): sin historial de sincronización, cola 0 y online muestra estado neutral sin inventar fecha de envío', () => {
+  // Con lastSyncTime = null (arranque en frío sin sync previa)
+  const arranqueNull = resolverEstadoEnvio({
+    isOnline: true,
+    pendingCount: 0,
+    isSyncing: false,
+    lastSyncTime: null,
+  });
+  assert.notEqual(arranqueNull.estado, 'ENVIADO', 'No debe mostrar ENVIADO sin fecha de sincronización confirmada');
+  assert.equal(arranqueNull.estado, 'ONLINE');
+  assert.equal(arranqueNull.texto, 'En línea');
+
+  // Con lastSyncTime = undefined
+  const arranqueUndefined = resolverEstadoEnvio({
+    isOnline: true,
+    pendingCount: 0,
+    isSyncing: false,
+    lastSyncTime: undefined,
+  });
+  assert.notEqual(arranqueUndefined.estado, 'ENVIADO');
+  assert.equal(arranqueUndefined.estado, 'ONLINE');
+  assert.equal(arranqueUndefined.texto, 'En línea');
+
+  // Con lastSyncTime = ''
+  const arranqueVacio = resolverEstadoEnvio({
+    isOnline: true,
+    pendingCount: 0,
+    isSyncing: false,
+    lastSyncTime: '',
+  });
+  assert.notEqual(arranqueVacio.estado, 'ENVIADO');
+  assert.equal(arranqueVacio.estado, 'ONLINE');
+  assert.equal(arranqueVacio.texto, 'En línea');
+
+  // Comprobar que BarraEstadoSync.tsx no inicializa con formatearHoraActual como fallback en el render de arranque
+  const barraCode = fs.readFileSync(
+    path.join(rootDir, 'src', 'components', 'sync', 'BarraEstadoSync.tsx'),
+    'utf-8',
+  );
+  assert.ok(
+    !barraCode.includes('getLastSyncTime() || formatearHoraActual()'),
+    'BarraEstadoSync no debe fabricar la hora actual en el arranque si getLastSyncTime es null',
+  );
+});

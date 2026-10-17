@@ -1,4 +1,3 @@
-import { chromium } from '/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -8,11 +7,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
-const vaultCapturasDir = '/srv/cuorum/vault/02-Arquitectura/Diseno-UX-capturas';
+const vaultCapturasDir = process.env.EXTRA_CAPTURAS_DIR || null;
 
-const localLibDir = '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu';
-if (fs.existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
+const playwrightPath = process.env.PLAYWRIGHT_PATH || 'playwright';
+const { chromium } = await import(playwrightPath);
+
+if (process.env.LOCAL_LIB_DIR && fs.existsSync(process.env.LOCAL_LIB_DIR)) {
+  process.env.LD_LIBRARY_PATH = `${process.env.LOCAL_LIB_DIR}:${process.env.LD_LIBRARY_PATH || ''}`;
 }
 
 if (!fs.existsSync(screenshotsDir)) {
@@ -50,7 +51,7 @@ async function run() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
     env: {
       ...process.env,
-      LD_LIBRARY_PATH: `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`,
+      LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH || '',
     },
   });
 

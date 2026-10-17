@@ -1,10 +1,10 @@
-export type EstadoEnvio = 'ENVIANDO' | 'PENDIENTE' | 'OFFLINE' | 'ENVIADO';
+export type EstadoEnvio = 'ENVIANDO' | 'PENDIENTE' | 'OFFLINE' | 'ENVIADO' | 'ONLINE' | 'NEUTRAL';
 
 export interface ResolverEstadoEnvioParams {
   isOnline: boolean;
   pendingCount: number;
   isSyncing: boolean;
-  lastSyncTime: string;
+  lastSyncTime?: string | null;
 }
 
 export interface ResultadoEstadoEnvio {
@@ -23,5 +23,6 @@ export function resolverEstadoEnvio(p: ResolverEstadoEnvioParams): ResultadoEsta
     return { estado: 'PENDIENTE', texto: `Guardado en el teléfono (${suf})` };
   }
   if (!p.isOnline) return { estado: 'OFFLINE', texto: 'Sin internet' };
-  return { estado: 'ENVIADO', texto: `Enviado ✓ ${p.lastSyncTime}` };
+  if (p.lastSyncTime) return { estado: 'ENVIADO', texto: `Enviado ✓ ${p.lastSyncTime}` };
+  return { estado: 'ONLINE', texto: 'En línea' };
 }

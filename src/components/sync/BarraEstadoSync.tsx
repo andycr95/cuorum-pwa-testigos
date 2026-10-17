@@ -14,7 +14,7 @@ export interface BarraEstadoEnvioProps {
   isOnline?: boolean;
   pendingCount?: number;
   isSyncing?: boolean;
-  lastSyncTime?: string;
+  lastSyncTime?: string | null;
 }
 
 const ESTILOS: Record<EstadoEnvio, string> = {
@@ -22,14 +22,16 @@ const ESTILOS: Record<EstadoEnvio, string> = {
   PENDIENTE: 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]',
   OFFLINE: 'bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]',
   ENVIADO: 'bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]',
+  ONLINE: 'bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]',
+  NEUTRAL: 'bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]',
 };
 
 export function BarraEstadoEnvio(props: BarraEstadoEnvioProps) {
   const onlineHook = useOnlineStatus();
   const pendingHook = usePendingSync(2000);
   const [syncingState, setSyncingState] = useState(false);
-  const [syncTimeState, setSyncTimeState] = useState<string>(
-    () => getLastSyncTime() || formatearHoraActual()
+  const [syncTimeState, setSyncTimeState] = useState<string | null>(
+    () => getLastSyncTime()
   );
 
   useEffect(() => {
@@ -68,6 +70,9 @@ export function BarraEstadoEnvio(props: BarraEstadoEnvioProps) {
       )}
       {estado === 'ENVIADO' && (
         <svg data-testid="icono-enviado" className="w-4 h-4 flex-shrink-0 text-[#15803D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+      )}
+      {(estado === 'ONLINE' || estado === 'NEUTRAL') && (
+        <span data-testid="icono-online" className="w-2.5 h-2.5 rounded-full bg-[#15803D] flex-shrink-0" aria-hidden="true" />
       )}
       <span data-testid="texto-estado-envio" className="truncate tracking-wide">{texto}</span>
     </div>
