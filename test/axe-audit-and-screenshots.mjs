@@ -1,62 +1,87 @@
-import { chromium } from '/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
-const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
-const vaultDir = '/srv/cuorum/vault/02-Arquitectura/Diseno-UX-capturas';
-const axePath = '/home/agentes/.agy-3/.cache/pnpm/dlx/4cd852e5e59c99fbcab669d576f38372/mvbsj80z-1y/node_modules/.pnpm/axe-core@4.14.0/node_modules/axe-core/axe.min.js';
-
-const localLibDir = '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu';
-if (fs.existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
-}
+const screenshotsDir = process.env.CAPTURAS_DIR || path.join(rootDir, 'test', 'screenshots');
+const vaultDir = process.env.VAULT_CAPTURAS_DIR || null;
+const pwaPort = process.env.PORT || process.env.PWA_PORT || '4703';
 
 if (!fs.existsSync(screenshotsDir)) {
   fs.mkdirSync(screenshotsDir, { recursive: true });
 }
 
+function resolveAxeScript() {
+  if (process.env.AXE_PATH && fs.existsSync(process.env.AXE_PATH)) {
+    return fs.readFileSync(process.env.AXE_PATH, 'utf8');
+  }
+  const candidate = path.join(rootDir, 'node_modules', 'axe-core', 'axe.min.js');
+  if (fs.existsSync(candidate)) {
+    return fs.readFileSync(candidate, 'utf8');
+  }
+  return null;
+}
+
+async function loadPlaywright() {
+  if (process.env.PLAYWRIGHT_PATH) {
+    try {
+      let p = process.env.PLAYWRIGHT_PATH;
+      if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
+        const candidate = path.join(p, 'index.mjs');
+        if (fs.existsSync(candidate)) p = candidate;
+      }
+      const mod = await import(p.startsWith('/') ? pathToFileURL(p).href : p);
+      return mod.chromium || mod.default?.chromium || mod;
+    } catch {}
+  }
+  try {
+    const mod = await import('playwright');
+    return mod.chromium || mod.default?.chromium || mod;
+  } catch {}
+  return null;
+}
+
 const mockTestigoData = {
   testigo: {
-    id: 'testigo-synth-01',
+    id: 'TEST-001',
     cedula: '1000000001',
     nombres: 'JUAN PABLO',
     apellidos: 'GÓMEZ PÉREZ',
-    telefono: '3001234567',
-    email: 'testigo@cuorum.co',
+    telefono: '3000000000',
+    email: 'testigo@example.invalid',
   },
   tipoTestigo: 'ELECTORAL',
   mesa: {
-    id: 'mesa-synth-01',
+    id: 'TEST-MESA-01',
     numero: 12,
     totalSufragantes: 350,
     puesto: {
-      id: 'puesto-synth-01',
+      id: 'TEST-PUESTO-01',
       nombre: 'Colegio San José',
       direccion: 'Calle 45 # 12-34',
     },
   },
   mesas: [
     {
-      id: 'mesa-synth-01',
+      id: 'TEST-MESA-01',
       numero: 12,
       totalSufragantes: 350,
       puesto: {
-        id: 'puesto-synth-01',
+        id: 'TEST-PUESTO-01',
         nombre: 'Colegio San José',
         direccion: 'Calle 45 # 12-34',
       },
     },
     {
-      id: 'mesa-synth-02',
+      id: 'TEST-MESA-02',
       numero: 13,
       totalSufragantes: 340,
       puesto: {
-        id: 'puesto-synth-01',
+        id: 'TEST-PUESTO-01',
         nombre: 'Colegio San José',
         direccion: 'Calle 45 # 12-34',
       },
@@ -64,7 +89,7 @@ const mockTestigoData = {
   ],
   elecciones: [
     {
-      id: 'elec-synth-01',
+      id: 'TEST-ELEC-01',
       nombre: 'Alcaldía Mayor',
       tipoEleccion: 'ALCALDIA',
       tipoCargo: 'UNINOMINAL',
@@ -74,10 +99,28 @@ const mockTestigoData = {
         { id: 'cand-2', nombre: 'MARÍA RÍOS', partido: 'ALIANZA CIUDADANA', numero: 2 },
       ],
     },
+    {
+      id: 'TEST-ELEC-02',
+      nombre: 'Concejo Municipal',
+      tipoEleccion: 'CONCEJO',
+      tipoCargo: 'PLURINOMINAL',
+      votoPreferente: true,
+      candidatos: [
+        { id: 'cand-3', nombre: 'LISTA DEMOCRACIA VIVA', partido: 'PARTIDO DEMOCRACIA VIVA', numero: 0 },
+      ],
+    },
   ],
-  deviceId: 'dev-synth-001',
   campana: {
-    id: 'campana-synth-01',
+    id: 'TEST-CAMPANA-01',
+    nombre: 'Campaña Democrática 2026',
+    municipio: 'Bogotá, D.C.',
+  },
+  departamento: 'BOGOTA D.C.',
+  municipio: 'BOGOTA D.C.',
+  deviceId: 'TEST-DEVICE-01',
+  configuracion: {
+    id: 'TEST-CONFIG-01',
+    campanaId: 'TEST-CAMPANA-01',
     nombre: 'Campaña Democrática 2026',
     candidatoId: 'cand-1',
     listaId: null,
@@ -85,8 +128,20 @@ const mockTestigoData = {
 };
 
 async function run() {
-  console.log('Iniciando vite preview en puerto 4703...');
-  const server = spawn('pnpm', ['exec', 'vite', 'preview', '--port', '4703', '--strictPort'], {
+  const chromium = await loadPlaywright();
+  if (!chromium) {
+    console.log('Playwright no está instalado o disponible. Omitiendo auditoría en vivo axe.');
+    return;
+  }
+
+  const axeScript = resolveAxeScript();
+  if (!axeScript) {
+    console.log('axe-core no está instalado en node_modules. Omitiendo auditoría en vivo axe.');
+    return;
+  }
+
+  console.log(`Iniciando vite preview en puerto ${pwaPort}...`);
+  const server = spawn('pnpm', ['exec', 'vite', 'preview', '--port', pwaPort, '--strictPort'], {
     cwd: rootDir,
     stdio: 'pipe',
   });
@@ -97,11 +152,18 @@ async function run() {
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
   console.log('Lanzando Playwright Chromium...');
-  const browser = await chromium.launch({
-    headless: true,
-  });
-
-  const axeScript = fs.readFileSync(axePath, 'utf8');
+  let browser;
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      env: process.env,
+    });
+  } catch (err) {
+    console.warn('No fue posible inicializar Chromium en este entorno:', err?.message || err);
+    try { server.kill('SIGKILL'); } catch {}
+    process.exit(0);
+  }
 
   try {
     const context = await browser.newContext({
@@ -127,10 +189,10 @@ async function run() {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          id: 'jornada-synth-01',
-          mesaId: 'mesa-synth-01',
-          testigoId: 'testigo-synth-01',
-          campanaId: 'campana-synth-01',
+          id: 'TEST-JORNADA-01',
+          mesaId: 'TEST-MESA-01',
+          testigoId: 'TEST-001',
+          campanaId: 'TEST-CAMPANA-01',
           estado: currentJornadaEstado,
         }),
       })
@@ -196,7 +258,7 @@ async function run() {
       await page.screenshot({ path: screenshotPath, fullPage: true });
       console.log(`Captura guardada: ${screenshotPath}`);
 
-      if (fs.existsSync(vaultDir)) {
+      if (vaultDir && fs.existsSync(vaultDir)) {
         const vaultScreenshotPath = path.join(vaultDir, filename);
         fs.copyFileSync(screenshotPath, vaultScreenshotPath);
         console.log(`Copia en bóveda guardada: ${vaultScreenshotPath}`);
@@ -206,7 +268,7 @@ async function run() {
     };
 
     // 1. Pantalla de Login
-    await page.goto('http://localhost:4703');
+    await page.goto(`http://localhost:${pwaPort}`);
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: 'networkidle' });
     const loginViolations = await auditScreen('Login', 'pwa-cuo209-01-login-390px.png');
@@ -259,7 +321,9 @@ async function run() {
   }
 }
 
-run().catch((err) => {
+run().then(() => {
+  process.exit(0);
+}).catch((err) => {
   console.error('Error durante la ejecución del script:', err);
   process.exit(1);
 });

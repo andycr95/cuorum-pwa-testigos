@@ -192,7 +192,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !cedula || pin.length !== 6}
+              disabled={loading}
               className="w-full min-h-[48px] bg-editorial-red hover:bg-red-700 text-white font-black py-4 px-6 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider text-sm flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-200"
               style={{ letterSpacing: '0.1em' }}
             >

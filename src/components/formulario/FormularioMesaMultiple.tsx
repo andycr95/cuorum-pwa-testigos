@@ -14,6 +14,8 @@ import { jornadaService, AlertaValidacion } from '../../services/jornadaService'
 import { ProgresoElecciones } from '../jornada/ProgresoElecciones';
 import { WizardCierre } from '../jornada/WizardCierre';
 import { IconoAlerta, IconoCandado, IconoDocumento, IconoCheck } from '../ui/Iconos';
+import { EstadoVacio } from '../ui/EstadoVacio';
+import { formatearErrorAmigable } from '../../utils/formatoError';
 
 /**
  * FormularioMesaMultiple — Captura de resultados electorales
@@ -70,6 +72,7 @@ interface FormularioMesaMultipleProps {
   elecciones: Eleccion[];
   deviceId: string;
   onMesaCerrada?: (codigo: string) => void;
+  onVolverSelector?: () => void;
 }
 
 /** Genera un código de verificación de 8 chars para el acta cerrada */
@@ -89,6 +92,7 @@ export function FormularioMesaMultiple({
   elecciones,
   deviceId,
   onMesaCerrada,
+  onVolverSelector,
 }: FormularioMesaMultipleProps) {
   const [modoCaptura, setModoCaptura] = useState<'manual' | 'foto'>('manual');
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
@@ -198,14 +202,45 @@ export function FormularioMesaMultiple({
     return () => { cancelled = true; };
   }, [mesaId, eleccionActual]);
 
-  const eleccion = elecciones.find((e) => e.id === eleccionActual);
+  // Caso sin elecciones asignadas a la mesa
+  if (elecciones.length === 0) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-8">
+        <EstadoVacio
+          tipo="vacio"
+          titulo="Sin elecciones asignadas"
+          mensaje="Tu mesa aún no tiene elecciones asignadas. Avisa a tu coordinador."
+          accionPrincipal={{
+            texto: 'Volver al selector de mesa',
+            onClick: onVolverSelector || (() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
+              }
+            }),
+          }}
+        />
+      </div>
+    );
+  }
+
+  const eleccion = elecciones.find((e) => e.id === eleccionActual) || elecciones[0];
 
   if (!eleccion) {
     return (
-      <div className="max-w-md mx-auto p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">Error: Elección no encontrada</p>
-        </div>
+      <div className="max-w-md mx-auto px-4 py-8">
+        <EstadoVacio
+          tipo="advertencia"
+          titulo="Elección no encontrada"
+          mensaje="No se encontró la elección seleccionada para esta mesa. Avisa a tu coordinador."
+          accionPrincipal={{
+            texto: 'Volver al selector de mesa',
+            onClick: onVolverSelector || (() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
+              }
+            }),
+          }}
+        />
       </div>
     );
   }
@@ -988,11 +1023,11 @@ export function FormularioMesaMultiple({
                 </div>
               ) : (
                 <div className="flex items-start gap-2">
-                  <IconoAlerta className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                  <IconoAlerta className="w-5 h-5 text-orange-600 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-black text-orange-800">Error al sincronizar</p>
-                    <p className="text-xs text-orange-600 mt-0.5">{syncStatus.error}</p>
-                    <p className="text-xs text-orange-500 mt-1">Los datos están guardados. Se reintentará automáticamente.</p>
+                    <p className="text-xs text-orange-700 mt-0.5">{formatearErrorAmigable(syncStatus.error)}</p>
+                    <p className="text-xs text-orange-700 mt-1">Los datos están guardados en tu teléfono. Se reintentará automáticamente.</p>
                   </div>
                 </div>
               )}

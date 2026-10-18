@@ -97,7 +97,7 @@ test('CUO-209: Botones de icono tienen aria-label y tamaño táctil mínimo de 4
     'CapturaMultipleE14 debe tener aria-label para eliminar foto'
   );
   assert.ok(
-    multipleE14.includes('min-w-[44px] min-h-[44px]'),
+    multipleE14.includes('min-w-[48px] min-h-[48px]') || multipleE14.includes('min-w-[44px] min-h-[44px]'),
     'Botones de foto deben medir al menos 44x44px'
   );
 

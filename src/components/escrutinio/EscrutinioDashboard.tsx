@@ -311,7 +311,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
                 {isOnline ? 'En l\u00ednea' : 'Sin conexi\u00f3n'}
               </span>
               {isCached && (
-                <span className="text-orange-500 text-xs font-medium">Datos en cach\u00e9</span>
+                <span className="text-orange-700 text-xs font-medium">Datos en cach\u00e9</span>
               )}
 
               {/* Bot\u00f3n de filtros */}

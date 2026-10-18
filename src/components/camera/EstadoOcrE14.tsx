@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { CuorumDB } from '../../db/indexeddb';
+import { formatearErrorAmigable, MENSAJES_OCR } from '../../utils/formatoError';
 
 type OcrJobEntry = CuorumDB['e14OcrJobs']['value'];
 
@@ -101,6 +102,64 @@ export function EstadoOcrE14({ jobs, onRetry, onSync, syncing = false, onConfirm
           );
         }
 
+        if (job.estado === 'ERROR') {
+          return (
+            <div
+              key={job.id}
+              role="alert"
+              className="bg-white border-2 border-red-200 rounded-2xl p-4 shadow-sm space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-editorial-red flex-shrink-0 mt-0.5">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-black text-gray-900 leading-tight">
+                        Error al enviar foto
+                      </p>
+                      <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-bold rounded-full">
+                        Sin sincronizar
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {job.fotos.length} foto{job.fotos.length !== 1 ? 's' : ''} · {new Date(job.capturedAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+
+                {onRetry && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="min-h-[44px] px-3.5 py-2 bg-editorial-red text-white text-xs font-bold rounded-xl hover:bg-red-700 active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    <span>Reintentar</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Estado claro de la foto: guardada en el teléfono */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs font-semibold text-emerald-900 flex items-center gap-2">
+                <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                <span>{MENSAJES_OCR.FOTO_GUARDADA}</span>
+              </div>
+
+              {/* Mensaje de error no técnico si existe detalle adicional */}
+              {job.lastSyncError && (
+                <p className="text-xs text-gray-600 pl-1 leading-relaxed">
+                  {formatearErrorAmigable(job.lastSyncError)}
+                </p>
+              )}
+            </div>
+          );
+        }
+
         const cfg = ESTADO_CONFIG[job.estado] || ESTADO_CONFIG.PENDIENTE;
         return (
           <div
@@ -112,8 +171,6 @@ export function EstadoOcrE14({ jobs, onRetry, onSync, syncing = false, onConfirm
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
               ) : job.estado === 'COMPLETADO' || job.estado === 'CONFIRMADO' ? (
                 <span className="text-base flex-shrink-0">✓</span>
-              ) : job.estado === 'ERROR' ? (
-                <span className="text-base flex-shrink-0">!</span>
               ) : (
                 <span className="text-base flex-shrink-0">·</span>
               )}
@@ -122,18 +179,8 @@ export function EstadoOcrE14({ jobs, onRetry, onSync, syncing = false, onConfirm
                 <p className="text-[10px] opacity-70 mt-0.5">
                   {job.fotos.length} foto{job.fotos.length !== 1 ? 's' : ''} · {new Date(job.capturedAt).toLocaleTimeString()}
                 </p>
-                {job.estado === 'ERROR' && job.lastSyncError && (
-                  <p className="text-[10px] text-red-600 font-medium mt-0.5 leading-tight">
-                    {job.lastSyncError}
-                  </p>
-                )}
               </div>
             </div>
-            {job.estado === 'ERROR' && onRetry && (
-              <button type="button" onClick={onRetry} className="text-xs font-bold underline flex-shrink-0 ml-2">
-                Reintentar
-              </button>
-            )}
           </div>
         );
       })}
@@ -215,7 +262,7 @@ function RevisionOcrInline({ job, onConfirmar, eleccionReportada }: {
 
       setConfirmado(true);
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Error al confirmar');
+      setError(formatearErrorAmigable(err, 'Error al confirmar los resultados'));
     } finally {
       setLoading(false);
     }

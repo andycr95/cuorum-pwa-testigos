@@ -321,7 +321,7 @@ export function PanelIncidencias({
                               {inc.synced === 1 ? (
                                 <span className="text-green-600 font-black text-xs" title="Sincronizado con servidor">✓</span>
                               ) : (
-                                <span className="text-orange-500 font-bold text-xs" title="Pendiente de sincronización">Pendiente</span>
+                                <span className="text-orange-700 font-bold text-xs" title="Pendiente de sincronización">Pendiente</span>
                               )}
                             </div>
                           </div>
