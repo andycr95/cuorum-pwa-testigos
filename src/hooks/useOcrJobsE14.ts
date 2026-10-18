@@ -8,6 +8,7 @@ import {
   type CuorumDB,
 } from '../db/indexeddb';
 import { api } from '../services/api';
+import { formatearErrorAmigable } from '../utils/formatoError';
 
 type OcrJobEntry = CuorumDB['e14OcrJobs']['value'];
 
@@ -136,7 +137,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
           startPolling();
         } catch (err) {
           await updateOcrJobEstado(job.id, 'ERROR', {
-            lastSyncError: err instanceof Error ? err.message : 'Error de conexión',
+            lastSyncError: formatearErrorAmigable(err, 'No fue posible conectar con el servidor'),
           });
         }
       }
