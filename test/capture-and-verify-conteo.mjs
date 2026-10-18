@@ -8,12 +8,8 @@ let chromium;
 try {
   const pw = await import(playwrightPath);
   chromium = pw.chromium || pw.default?.chromium || pw.default;
-} catch {
-  const fallback = '/home/agentes/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs';
-  if (fs.existsSync(fallback)) {
-    const pw = await import(fallback);
-    chromium = pw.chromium || pw.default?.chromium || pw.default;
-  }
+} catch (e) {
+  console.error('No se pudo importar playwright:', e);
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,9 +18,8 @@ const rootDir = path.resolve(__dirname, '..');
 const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
 const vaultCapturasDir = process.env.CAPTURAS_DIR ? path.resolve(process.env.CAPTURAS_DIR) : null;
 
-const localLibDir = process.env.PLAYWRIGHT_LIB_DIR || (fs.existsSync('/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu') ? '/home/agentes/.local/lib/extracted/usr/lib/x86_64-linux-gnu' : null);
-if (localLibDir && fs.existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = `${localLibDir}:${process.env.LD_LIBRARY_PATH || ''}`;
+if (process.env.PLAYWRIGHT_LIB_DIR && fs.existsSync(process.env.PLAYWRIGHT_LIB_DIR)) {
+  process.env.LD_LIBRARY_PATH = `${process.env.PLAYWRIGHT_LIB_DIR}:${process.env.LD_LIBRARY_PATH || ''}`;
 }
 
 if (!fs.existsSync(screenshotsDir)) {
@@ -119,11 +114,11 @@ async function run() {
         JSON.stringify({
           testigo: {
             id: 'testigo-01',
-            cedula: '90000001',
+            cedula: 'TEST-TES-001',
             nombres: 'Testigo Sintético',
             apellidos: 'Demo Uno',
-            telefono: '3001234567',
-            email: 'testigo@campanademo.co',
+            telefono: '3000000000',
+            email: 'testigo@example.invalid',
           },
           tipoTestigo: 'ELECTORAL',
           mesa: {

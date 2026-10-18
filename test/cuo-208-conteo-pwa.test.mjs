@@ -58,11 +58,32 @@ describe('CUO-208: Pantalla de conteo táctil, legible y estructurada', () => {
     assert.match(formularioCode, /pb-32|pb-28/, 'El contenedor debe tener padding inferior para no solapar la barra');
   });
 
-  it('FormularioMesaMultiple: flujo organizado en pasos («Contar» → «Foto E-14» → «Cerrar»)', () => {
+  it('FormularioMesaMultiple: flujo organizado en pasos («Contar» → «Foto E-14» → «Cerrar») con aria-controls y tabpanels', () => {
     assert.match(formularioCode, /pasoActivo === 'contar'/, 'Debe tener paso de conteo');
     assert.match(formularioCode, /pasoActivo === 'foto'/, 'Debe tener paso de fotos');
     assert.match(formularioCode, /pasoActivo === 'cierre'/, 'Debe tener paso de cierre y observaciones');
     assert.match(formularioCode, /role="tablist"/, 'Debe proveer selector accesible de pasos');
+
+    // Accesibilidad de pestañas y paneles
+    assert.match(formularioCode, /id="tab-contar"[^>]*aria-controls="panel-contar"/, 'Pestaña contar debe tener aria-controls');
+    assert.match(formularioCode, /id="tab-foto"[^>]*aria-controls="panel-foto"/, 'Pestaña foto debe tener aria-controls');
+    assert.match(formularioCode, /id="tab-cierre"[^>]*aria-controls="panel-cierre"/, 'Pestaña cierre debe tener aria-controls');
+    assert.match(formularioCode, /id="panel-contar"[^>]*role="tabpanel"/, 'Panel contar debe tener role="tabpanel"');
+    assert.match(formularioCode, /id="panel-foto"[^>]*role="tabpanel"/, 'Panel foto debe tener role="tabpanel"');
+    assert.match(formularioCode, /id="panel-cierre"[^>]*role="tabpanel"/, 'Panel cierre debe tener role="tabpanel"');
+  });
+
+  it('FormularioMesaMultiple: captura de fotos E-14 visible en paso foto y alimenta setFotosManual', () => {
+    assert.match(
+      formularioCode,
+      /<CapturaMultipleE14[\s\S]*?onFotosListas=\{[\s\S]*?setFotosManual/,
+      'CapturaMultipleE14 debe estar presente en el paso de foto y llamar a setFotosManual',
+    );
+    assert.match(
+      formularioCode,
+      /fotosManual\.length > 0[\s\S]*?fotosManual\.length/,
+      'La pestaña 2. Foto E-14 debe mostrar la insignia numérica con el conteo de fotos adjuntas',
+    );
   });
 
   it('Tipografía y contraste: ningún texto menor a 12/14 px ni ayudas en 10 px', () => {

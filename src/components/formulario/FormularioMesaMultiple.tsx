@@ -503,22 +503,22 @@ export function FormularioMesaMultiple({
 
           {/* Stepper de Pasos de la Jornada de Conteo */}
           <div className="flex rounded-2xl bg-gray-100 p-1 mb-5 border border-gray-200" role="tablist" aria-label="Pasos de la jornada de conteo">
-            <button type="button" role="tab" id="tab-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+            <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
               <span>1. Contar</span>
             </button>
-            <button type="button" role="tab" id="tab-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+            <button type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
               <span>2. Foto E-14</span>
               {fotosManual.length > 0 && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length}</span>}
             </button>
-            <button type="button" role="tab" id="tab-cierre" aria-selected={pasoActivo === 'cierre'} onClick={() => setPasoActivo('cierre')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'cierre' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+            <button type="button" role="tab" id="tab-cierre" aria-controls="panel-cierre" aria-selected={pasoActivo === 'cierre'} onClick={() => setPasoActivo('cierre')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'cierre' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
               <span>3. Cerrar</span>
             </button>
           </div>
 
-          {/* ── Modo Foto OCR ──────────────────────────────────────── */}
+          {/* ── Paso 2: Foto E-14 (Evidencia y OCR) ─────────────────── */}
           {pasoActivo === 'foto' && (
-            <div className="space-y-4 mb-6">
-              {ocrCompletado ? (
+            <div id="panel-foto" role="tabpanel" aria-labelledby="tab-foto" className="space-y-4 mb-6">
+              {ocrCompletado && (
                 <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
                   <span className="text-2xl flex-shrink-0">✓</span>
                   <div>
@@ -528,12 +528,18 @@ export function FormularioMesaMultiple({
                     </p>
                   </div>
                 </div>
-              ) : (
-                <CapturaMultipleE14
-                  onFotosListas={ocrJobs.guardar}
-                  disabled={ocrJobs.saving}
-                />
               )}
+              <CapturaMultipleE14
+                onFotosListas={(fotos) => {
+                  setFotosManual(fotos);
+                  setGuardado(false);
+                  setSyncStatus(null);
+                  ocrJobs.guardar(fotos);
+                }}
+                disabled={guardado || ocrJobs.saving}
+                title="Fotos del E-14 (evidencia)"
+                submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
+              />
               <EstadoOcrE14
                 jobs={ocrJobs.jobs}
                 onRetry={ocrJobs.syncJobs}
@@ -553,7 +559,8 @@ export function FormularioMesaMultiple({
           )}
 
           {/* ── Paso 1: Contar votos ───────────────────────────────── */}
-          {pasoActivo === 'contar' && (<>
+          {pasoActivo === 'contar' && (
+            <div id="panel-contar" role="tabpanel" aria-labelledby="tab-contar">
 
           {/* Verificando resultados previos */}
           {cargandoResultados && (
@@ -796,22 +803,24 @@ export function FormularioMesaMultiple({
 
           {/* Fin paso 1: Contar votos */}
           </>)}
-          </>)}
+          </div>
+          )}
 
           {/* ── Paso 3: Cierre y Observaciones ─────────────────────────── */}
-          {pasoActivo === 'cierre' && (<>
-          {/* Observaciones */}
-          <div className="mb-6">
-            <ObservacionesInput
-              value={observaciones}
-              onChange={(v) => {
-                setObservaciones(v);
-                setGuardado(false);
-                setSyncStatus(null);
-              }}
-              disabled={guardado}
-            />
-          </div>
+          {pasoActivo === 'cierre' && (
+            <div id="panel-cierre" role="tabpanel" aria-labelledby="tab-cierre">
+            {/* Observaciones */}
+            <div className="mb-6">
+              <ObservacionesInput
+                value={observaciones}
+                onChange={(v) => {
+                  setObservaciones(v);
+                  setGuardado(false);
+                  setSyncStatus(null);
+                }}
+                disabled={guardado}
+              />
+            </div>
 
           {/* ── Confirmación post-sync del servidor ─────────────────── */}
           {syncStatus && (
@@ -953,7 +962,8 @@ export function FormularioMesaMultiple({
               </p>
             </button>
           )}
-          </>)}
+          </div>
+          )}
 
           {/* ── WizardCierre modal ─────────────────────────────────── */}
           {showWizardCierre && (
