@@ -1,8 +1,62 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  /* Tokens del Sistema de Diseño Base Cuorum (CUO-217) */
+  --color-brand-600: #DC2626;
+  --color-brand-700: #B91C1C;
+  --color-brand-50: #FEF2F2;
+
+  --color-ink-900: #111827;
+  --color-ink-600: #4B5563;
+
+  --color-line-300: #D1D5DB;
+
+  --color-surface: #FFFFFF;
+  --color-canvas: #F9FAFB;
+
+  --color-ok-700: #15803D;
+  --color-ok-50: #F0FDF4;
+
+  --color-warn-700: #B45309;
+  --color-warn-50: #FFFBEB;
+
+  --color-err-700: #B91C1C;
+  --color-err-50: #FEF2F2;
+
+  --color-info-700: #1D4ED8;
+  --color-info-50: #EFF6FF;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-btn: 8px;
+  --radius-field: 8px;
+  --radius-card: 12px;
+  --radius-modal: 12px;
+  --radius-badge: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.06);
+
+  --touch-web: 40px;
+  --touch-mobile: 44px;
+  --touch-pwa: 48px;
+  --touch-conteo: 56px;
+
+  --focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px #B91C1C;
+
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;

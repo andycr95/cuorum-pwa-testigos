@@ -72,6 +72,10 @@ export interface LoginResponse {
   };
 }
 
+import { mapearErrorAuth } from './authErrors';
+
+export { mapearErrorAuth };
+
 class AuthService {
   private readonly TOKEN_KEY = 'cuorum_testigo_token';
   private readonly DATA_KEY = 'cuorum_testigo_data';
@@ -107,10 +111,8 @@ class AuthService {
 
       return data;
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Error de conexión. Verifica tu internet.');
+      const mensaje = mapearErrorAuth(error);
+      throw new Error(mensaje);
     }
   }
 
