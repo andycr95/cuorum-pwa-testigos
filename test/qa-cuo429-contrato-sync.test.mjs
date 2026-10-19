@@ -35,7 +35,7 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (url.startsWith('file:') && url.endsWith('.ts')) {
-      const source = readFileSync(fileURLToPath(url),'utf8');
+      const source = process.env.QA_SYNC_PARSER_OVERRIDE && url.endsWith('/src/services/syncResponseLogic.ts') ? readFileSync(process.env.QA_SYNC_PARSER_OVERRIDE,'utf8') : readFileSync(fileURLToPath(url),'utf8');
       return {format:'module',source:ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText,shortCircuit:true};
     }
     return nextLoad(url,context);
@@ -107,4 +107,33 @@ test('Control positivo: el servicio real sí persiste un rechazo plano de incide
   s.responses['/testigos/incidencias']={aceptados:['i-ok'],rechazados:[{id:'i-rechazada',error:'Error sintetico'}]};
   const result=await sincronizar();
   assert.equal(result.success,false);assert.equal(s.incidencias[0].synced,1);assert.equal(s.incidencias[1].synced,0);assert.equal(s.incidencias[1].lastSyncError,'Error sintetico');
+});
+
+const observar = (result) => {
+  const s=globalThis.__qaSync;
+  const rows=[...s.resultados,...s.fotos,...s.incidencias];
+  const banner=resolverEstadoEnvio({isOnline:true,pendingCount:rows.filter(x=>x.synced===0).length,isSyncing:false,lastSyncTime:getLastSyncTime(),error:getLastSyncError()});
+  console.log('CUO433_OBSERVADO',JSON.stringify({result,rows:rows.map(({id,synced,lastSyncError})=>({id,synced,lastSyncError})),lastSyncTime:getLastSyncTime(),banner}));
+  return banner;
+};
+test('CUO-433: un contador legacy parcial no confirma el resto del lote',async()=>{
+  const s=globalThis.__qaSync;s.resultados=[item('r-uno'),item('r-sin-acuse')];
+  s.responses['/testigos/sync']={resultados:[{id:'id-servidor-no-correlacionable'}],resumen:{resultadosSincronizados:1}};
+  const result=await sincronizar(); const banner=observar(result);
+  assert.equal(s.resultados[1].synced,0,'el segundo resultado no tiene acuse');
+  assert.equal(result.success,false);assert.notEqual(banner.estado,'ENVIADO');assert.equal(getLastSyncTime(),null);
+});
+test('CUO-433: rechazar otro ID no acepta el ID enviado sin acuse',async()=>{
+  const s=globalThis.__qaSync;s.resultados=[item('r-sin-acuse')];
+  s.responses['/testigos/sync']={rechazados:{resultados:[{id:'r-ajeno-al-lote',error:'Error sintético'}]}};
+  const result=await sincronizar();const banner=observar(result);
+  assert.equal(s.resultados[0].synced,0,'no hay aceptados ni acuse del resultado local');
+  assert.equal(result.success,false);assert.notEqual(banner.estado,'ENVIADO');assert.equal(getLastSyncTime(),null);
+});
+test('CUO-433: un rechazo conocido no confirma los demás IDs sin aceptación explícita',async()=>{
+  const s=globalThis.__qaSync;s.resultados=[item('r-rechazado'),item('r-sin-acuse')];
+  s.responses['/testigos/sync']={rechazados:{resultados:[{id:'r-rechazado',error:'Error sintético'}]}};
+  const result=await sincronizar();observar(result);
+  assert.equal(s.resultados[0].synced,0);
+  assert.equal(s.resultados[1].synced,0,'la ausencia en rechazados no confirma el resultado');
 });

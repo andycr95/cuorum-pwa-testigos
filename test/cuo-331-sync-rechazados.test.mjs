@@ -47,8 +47,9 @@ describe('CUO-331: PWA no mostrar «Enviado ✓» ni marcar sincronizado lo que 
       { id: 'res-mesa-3' },
     ];
 
-    it('Respuesta exitosa sin rechazos marca todos los IDs como aceptados', () => {
+    it('Respuesta exitosa sin rechazos marca todos los IDs explícitamente aceptados', () => {
       const resp = {
+        aceptados: ['res-mesa-1', 'res-mesa-2', 'res-mesa-3'],
         resultados: [{ id: 'srv-1' }, { id: 'srv-2' }, { id: 'srv-3' }],
         rechazados: [],
         alertas: [],
@@ -60,8 +61,9 @@ describe('CUO-331: PWA no mostrar «Enviado ✓» ni marcar sincronizado lo que 
       assert.equal(resultado.tieneRechazos, false);
     });
 
-    it('Respuesta con rechazados como array de IDs (strings) aísla rechazados y conserva aceptados', () => {
+    it('Respuesta con rechazados y aceptados aísla rechazados y conserva aceptados explícitos', () => {
       const resp = {
+        aceptados: ['res-mesa-1', 'res-mesa-3'],
         rechazados: ['res-mesa-2'],
       };
 
@@ -73,8 +75,9 @@ describe('CUO-331: PWA no mostrar «Enviado ✓» ni marcar sincronizado lo que 
       assert.equal(resultado.tieneRechazos, true);
     });
 
-    it('Respuesta con rechazados con mensaje legible preserva el motivo exacto del servidor', () => {
+    it('Respuesta con rechazados con mensaje legible preserva el motivo exacto del servidor y confirma aceptados explícitos', () => {
       const resp = {
+        aceptados: ['res-mesa-2'],
         rechazados: [
           { id: 'res-mesa-1', error: 'Total votos supera el censo electoral de la mesa' },
           { id: 'res-mesa-3', motivo: 'Mesa ya reportada por otro jurado' },
@@ -117,9 +120,10 @@ describe('CUO-331: PWA no mostrar «Enviado ✓» ni marcar sincronizado lo que 
       assert.equal(resultado.tieneRechazos, true);
     });
 
-    it('Mapeo de fotos rechazadas con fotosRechazadas o rechazadosFotos', () => {
+    it('Mapeo de fotos rechazadas con fotosRechazadas o rechazadosFotos preservando aceptadas explícitas', () => {
       const fotosPrueba = [{ id: 'foto-1' }, { id: 'foto-2' }];
       const resp = {
+        fotosAceptadas: ['foto-2'],
         fotosRechazadas: [{ id: 'foto-1', error: 'Imagen borrosa no cumple resolución mínima' }],
       };
 
@@ -128,6 +132,40 @@ describe('CUO-331: PWA no mostrar «Enviado ✓» ni marcar sincronizado lo que 
       assert.equal(resultado.rejectedItems.length, 1);
       assert.equal(resultado.rejectedItems[0].id, 'foto-1');
       assert.equal(resultado.rejectedItems[0].error, 'Imagen borrosa no cumple resolución mínima');
+      assert.equal(resultado.tieneRechazos, true);
+    });
+
+    it('Ausencia en rechazados NO confirma un ID si no viene en aceptados (permanece pendiente con error)', () => {
+      const resp = {
+        rechazados: ['res-mesa-2'],
+      };
+      const resultado = procesarRespuestaSync(itemsPrueba, resp, 'resultado');
+      assert.deepEqual(resultado.acceptedIds, []);
+      assert.equal(resultado.rejectedItems.length, 3);
+      assert.equal(resultado.rejectedItems.find((r) => r.id === 'res-mesa-2')?.error, 'Rechazado por el servidor');
+      assert.equal(resultado.rejectedItems.find((r) => r.id === 'res-mesa-1')?.error, 'Respuesta sin confirmación del servidor');
+      assert.equal(resultado.tieneRechazos, true);
+    });
+
+    it('Contador legacy o IDs no correlacionables no confirman ítems locales sin acuse explícito', () => {
+      const resp = {
+        resultados: [{ id: 'id-servidor-no-correlacionable' }],
+        resumen: { resultadosSincronizados: 1 },
+      };
+      const resultado = procesarRespuestaSync(itemsPrueba, resp, 'resultado');
+      assert.deepEqual(resultado.acceptedIds, []);
+      assert.equal(resultado.rejectedItems.length, 3);
+      assert.equal(resultado.tieneRechazos, true);
+    });
+
+    it('Rechazar un ID ajeno al lote no confirma el ID enviado sin acuse', () => {
+      const resp = {
+        rechazados: [{ id: 'id-ajeno-al-lote', error: 'Error sintético' }],
+      };
+      const resultado = procesarRespuestaSync([{ id: 'res-mesa-1' }], resp, 'resultado');
+      assert.deepEqual(resultado.acceptedIds, []);
+      assert.equal(resultado.rejectedItems.length, 1);
+      assert.equal(resultado.rejectedItems[0].id, 'res-mesa-1');
       assert.equal(resultado.tieneRechazos, true);
     });
   });

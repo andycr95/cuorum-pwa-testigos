@@ -188,69 +188,33 @@ export function procesarRespuestaSync(
   const acceptedIds: string[] = [];
   const rejectedItems: Array<{ id: string; error: string }> = [];
 
-  // Caso A: Hay lista explícita de aceptados (anidada o plana)
+  const acceptedSet = new Set<string>();
   if (Array.isArray(aceptadosRaw)) {
-    const acceptedSet = new Set(
-      aceptadosRaw.map((item: any) => (typeof item === 'string' ? item : item?.id)).filter(Boolean),
-    );
-    for (const item of sentItems) {
-      if (acceptedSet.has(item.id)) {
-        acceptedIds.push(item.id);
-      } else {
-        const err = rejectedMap.get(item.id) || errorGeneral || 'No aceptado por el servidor';
-        rejectedItems.push({ id: item.id, error: err });
-      }
+    for (const item of aceptadosRaw) {
+      const id = typeof item === 'string' ? item : item?.id;
+      if (id) acceptedSet.add(String(id));
     }
   }
-  // Caso B: Hay fallos numéricos, rechazos numéricos o errores generales sin mapeo de aceptados
-  else if (countFallidos > 0 || numericRechazados > 0 || (errorGeneral !== null && rejectedMap.size === 0)) {
-    const defaultErr =
-      errorGeneral ||
-      (numericRechazados > 0
-        ? 'Rechazado por el servidor (el lote contiene rechazos no identificados)'
-        : 'Rechazado por el servidor (el lote contiene fallos)');
-    for (const item of sentItems) {
-      const err = rejectedMap.get(item.id) || defaultErr;
-      rejectedItems.push({ id: item.id, error: err });
-    }
-  }
-  // Caso C: Hay IDs rechazados explícitos sin lista de aceptados
-  else if (rejectedMap.size > 0) {
-    for (const item of sentItems) {
-      if (rejectedMap.has(item.id)) {
-        rejectedItems.push({ id: item.id, error: rejectedMap.get(item.id)! });
-      } else {
-        acceptedIds.push(item.id);
-      }
-    }
-  }
-  // Caso D: Sin acuses explícitos pero confirmación legacy verificable sin fallos
-  else {
-    const confirmacionLegacy =
-      itemTipo === 'resultado'
-        ? (Array.isArray(responseObj.resultados) && responseObj.resultados.length > 0) ||
-          (typeof responseObj.resumen?.resultadosSincronizados === 'number' &&
-            responseObj.resumen.resultadosSincronizados > 0)
-        : itemTipo === 'foto'
-          ? (Array.isArray(responseObj.fotos) && responseObj.fotos.length > 0) ||
-            (typeof responseObj.resumen?.fotosSincronizadas === 'number' &&
-              responseObj.resumen.fotosSincronizadas > 0)
-          : (Array.isArray(responseObj.incidencias) && responseObj.incidencias.length > 0) ||
-            (typeof responseObj.incidenciasSincronizadas === 'number' &&
-              responseObj.incidenciasSincronizadas > 0);
 
-    if (confirmacionLegacy) {
-      for (const item of sentItems) {
-        acceptedIds.push(item.id);
-      }
+  for (const item of sentItems) {
+    if (acceptedSet.has(item.id)) {
+      acceptedIds.push(item.id);
     } else {
-      // Respuesta sin confirmación: no marcar como enviado un ítem desconocido
-      for (const item of sentItems) {
-        rejectedItems.push({
-          id: item.id,
-          error: 'Respuesta sin confirmación del servidor',
-        });
+      let err: string;
+      if (rejectedMap.has(item.id)) {
+        err = rejectedMap.get(item.id)!;
+      } else if (errorGeneral) {
+        err = errorGeneral;
+      } else if (numericRechazados > 0) {
+        err = 'Rechazado por el servidor (el lote contiene rechazos no identificados)';
+      } else if (countFallidos > 0) {
+        err = 'Rechazado por el servidor (el lote contiene fallos)';
+      } else if (Array.isArray(aceptadosRaw)) {
+        err = 'No aceptado por el servidor';
+      } else {
+        err = 'Respuesta sin confirmación del servidor';
       }
+      rejectedItems.push({ id: item.id, error: err });
     }
   }
 
