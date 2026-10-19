@@ -26,6 +26,45 @@ let backoffMs = 0;
 let nextRetryAt = 0;
 const MAX_BACKOFF_MS = 8 * 60 * 1000; // 8 minutos
 
+let lastSyncTime: string | null = null;
+type SyncListener = (syncing: boolean) => void;
+const syncListeners: Set<SyncListener> = new Set();
+
+export function onSyncStateChange(listener: SyncListener): () => void {
+  syncListeners.add(listener);
+  return () => {
+    syncListeners.delete(listener);
+  };
+}
+
+function notifySyncState(syncing: boolean) {
+  for (const listener of syncListeners) {
+    try {
+      listener(syncing);
+    } catch {
+      // Ignorar errores en callbacks
+    }
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cuorum:sync-state', { detail: { syncing } }));
+    window.dispatchEvent(new CustomEvent('cuorum:sync-status'));
+  }
+}
+
+export function getLastSyncTime(): string | null {
+  if (!lastSyncTime && typeof localStorage !== 'undefined') {
+    lastSyncTime = localStorage.getItem('cuorum_last_sync_time');
+  }
+  return lastSyncTime;
+}
+
+export function setLastSyncTime(timeStr: string) {
+  lastSyncTime = timeStr;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('cuorum_last_sync_time', timeStr);
+  }
+}
+
 /**
  * Flag para pausar el auto-sync de fondo durante guardado manual.
  * Previene race condition: el poller podría enviar resultados parciales
@@ -160,6 +199,7 @@ export async function sincronizar(): Promise<SyncResultado> {
   }
 
   syncInProgress = true;
+  notifySyncState(true);
 
   try {
     const jornadasPendientes = await getJornadasPendientes();
@@ -173,6 +213,7 @@ export async function sincronizar(): Promise<SyncResultado> {
       jornadasPendientes.length === 0
     ) {
       syncInProgress = false;
+      notifySyncState(false);
       return {
         success: true,
         resultadosSincronizados: 0,
@@ -288,6 +329,14 @@ export async function sincronizar(): Promise<SyncResultado> {
     );
 
     syncInProgress = false;
+    const horaEnvio = new Date().toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    setLastSyncTime(horaEnvio);
+    notifySyncState(false);
+
     return {
       success: true,
       resultadosSincronizados: resultadosSinc,
@@ -307,6 +356,7 @@ export async function sincronizar(): Promise<SyncResultado> {
     console.log(`[Sync] Próximo reintento en ${backoffMs / 1000}s`);
 
     syncInProgress = false;
+    notifySyncState(false);
     return {
       success: false,
       resultadosSincronizados: 0,

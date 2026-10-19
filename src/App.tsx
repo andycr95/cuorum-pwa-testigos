@@ -8,8 +8,7 @@ import { AperturaMesa } from './components/jornada/AperturaMesa';
 import { authService, TestigoData } from './services/authService';
 import { jornadaService, JornadaMesa } from './services/jornadaService';
 import { clearEscrutinioCache, guardarJornada, getJornadaByMesa } from './db/indexeddb';
-import { OfflineBanner } from './components/ui/OfflineBanner';
-import { PendingSyncBadge } from './components/ui/PendingSyncBadge';
+import { BarraEstadoEnvio } from './components/sync/BarraEstadoSync';
 
 /**
  * PWA Testigos Electorales
@@ -54,7 +53,7 @@ export function App() {
       if (data) {
         setTestigoData(data);
         setIsAuthenticated(true);
-        
+
         // Autoseleccionar si solo hay una mesa
         const listaMesas = data.mesas && data.mesas.length > 0 ? data.mesas || [data.mesa] : [];
         if (listaMesas.length === 1) {
@@ -77,7 +76,7 @@ export function App() {
     if (data) {
       setTestigoData(data);
       setIsAuthenticated(true);
-      
+
       const listaMesas = data.mesas || [data.mesa];
       if (listaMesas.length === 1) {
         setSelectedMesaId(listaMesas[0].id);
@@ -220,9 +219,9 @@ export function App() {
           </button>
         </header>
         <main>
-          <SelectorMesa 
-            mesas={listaMesas} 
-            onSelect={setSelectedMesaId} 
+          <SelectorMesa
+            mesas={listaMesas}
+            onSelect={setSelectedMesaId}
             testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
             onLogout={handleLogout}
           />
@@ -291,7 +290,7 @@ export function App() {
   if (jornadaEstado === 'PENDIENTE') {
     return (
       <main className="min-h-screen bg-gray-50">
-        <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg">
+        <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
@@ -315,6 +314,7 @@ export function App() {
               </svg>
             </button>
           </div>
+          <BarraEstadoEnvio />
         </header>
         <CheckinTestigo
           mesaData={mesaSeleccionada}
@@ -330,7 +330,7 @@ export function App() {
   if (jornadaEstado === 'CHECKIN') {
     return (
       <main className="min-h-screen bg-gray-50">
-        <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg">
+        <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
@@ -354,6 +354,7 @@ export function App() {
               </svg>
             </button>
           </div>
+          <BarraEstadoEnvio />
         </header>
         <AperturaMesa
           mesaId={mesaSeleccionada.id}
@@ -367,53 +368,54 @@ export function App() {
   // ABIERTA / EN_CONTEO — Show FormularioMesaMultiple (existing main flow)
   return (
     <main className="min-h-screen bg-gray-50">
-      <OfflineBanner />
-      {/* Header compacto */}
-      <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                <img src="/logo.svg" alt="Cuorum" className="w-7 h-7" />
+      {/* Contenedor sticky con cabecera y barra de estado fija bajo ella */}
+      <div className="sticky top-0 z-50 shadow-md">
+        <header data-testid="cabecera-roja" className="bg-editorial-red text-white">
+          <div className="max-w-md mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                  <img src="/logo.svg" alt="Cuorum" className="w-7 h-7" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">Cuorum Testigos</h1>
+                  <p className="text-white text-xs truncate max-w-[180px]">
+                    {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-white font-medium text-xs truncate max-w-[180px]">
-                  {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 bg-black/25 text-white rounded-md text-xs font-bold tabular-nums">
-                Mesa #{mesaSeleccionada.numero}
-              </span>
-              <PendingSyncBadge />
-              {(testigoData.mesas?.length || 0) > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 bg-black/25 text-white rounded-md text-xs font-bold tabular-nums">
+                  Mesa #{mesaSeleccionada.numero}
+                </span>
+                {(testigoData.mesas?.length || 0) > 1 && (
+                  <button
+                    onClick={handleBackToSelector}
+                    className="min-h-[48px] min-w-[48px] p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center"
+                    title="Cambiar de mesa"
+                    aria-label="Cambiar de mesa"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                )}
                 <button
-                  onClick={handleBackToSelector}
+                  onClick={handleLogout}
                   className="min-h-[48px] min-w-[48px] p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center"
-                  title="Cambiar de mesa"
-                  aria-label="Cambiar de mesa"
+                  title="Cerrar sesión"
+                  aria-label="Cerrar sesión"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
                 </button>
-              )}
-              <button
-                onClick={handleLogout}
-                className="min-h-[48px] min-w-[48px] p-2 hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center"
-                title="Cerrar sesión"
-                aria-label="Cerrar sesión"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+        <BarraEstadoEnvio />
+      </div>
 
       {/* Formulario */}
       <FormularioMesaMultiple

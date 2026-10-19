@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePendingSync } from '../../hooks/usePendingSync';
 
 export function PendingSyncBadge() {
+  return null;
   const { pendingCount, breakdown } = usePendingSync();
   const [showPopover, setShowPopover] = useState(false);
 
