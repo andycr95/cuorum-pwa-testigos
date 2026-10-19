@@ -166,25 +166,6 @@ export function procesarRespuestaSync(
     (typeof responseObj.mensaje === 'string' && responseObj.mensaje) ||
     null;
 
-  // Contadores de fallos
-  const countFallidos =
-    itemTipo === 'resultado'
-      ? (responseObj.resumen?.resultadosFallidos ?? responseObj.resultadosFallidos ?? 0)
-      : itemTipo === 'foto'
-        ? (responseObj.resumen?.fotosFallidas ?? responseObj.fotosFallidas ?? 0)
-        : (responseObj.incidenciasFallidas ?? responseObj.resumen?.incidenciasFallidas ?? 0);
-
-  const numericRechazados =
-    typeof responseObj.rechazados === 'number'
-      ? responseObj.rechazados
-      : itemTipo === 'resultado' && typeof responseObj.rechazados?.resultados === 'number'
-        ? responseObj.rechazados.resultados
-        : itemTipo === 'foto' && typeof responseObj.rechazados?.fotos === 'number'
-          ? responseObj.rechazados.fotos
-          : itemTipo === 'incidencia' && typeof responseObj.rechazados?.incidencias === 'number'
-            ? responseObj.rechazados.incidencias
-            : 0;
-
   const acceptedIds: string[] = [];
   const rejectedItems: Array<{ id: string; error: string }> = [];
 
@@ -200,20 +181,7 @@ export function procesarRespuestaSync(
     if (acceptedSet.has(item.id)) {
       acceptedIds.push(item.id);
     } else {
-      let err: string;
-      if (rejectedMap.has(item.id)) {
-        err = rejectedMap.get(item.id)!;
-      } else if (errorGeneral) {
-        err = errorGeneral;
-      } else if (numericRechazados > 0) {
-        err = 'Rechazado por el servidor (el lote contiene rechazos no identificados)';
-      } else if (countFallidos > 0) {
-        err = 'Rechazado por el servidor (el lote contiene fallos)';
-      } else if (Array.isArray(aceptadosRaw)) {
-        err = 'No aceptado por el servidor';
-      } else {
-        err = 'Respuesta sin confirmación del servidor';
-      }
+      const err = rejectedMap.get(item.id) || errorGeneral || 'Respuesta sin confirmación del servidor';
       rejectedItems.push({ id: item.id, error: err });
     }
   }

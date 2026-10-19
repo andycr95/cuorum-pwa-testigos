@@ -116,7 +116,7 @@ describe('CUO-331: PWA no mostrar «Enviado ✓» ni marcar sincronizado lo que 
       const resultado = procesarRespuestaSync(itemsPrueba, resp, 'resultado');
       assert.deepEqual(resultado.acceptedIds, []);
       assert.equal(resultado.rejectedItems.length, 3);
-      assert.match(resultado.rejectedItems[0].error, /rechazos no identificados/);
+      assert.match(resultado.rejectedItems[0].error, /sin confirmación/i);
       assert.equal(resultado.tieneRechazos, true);
     });
 
