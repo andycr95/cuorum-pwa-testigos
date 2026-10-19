@@ -1,4 +1,5 @@
 import { MesaData } from '../../services/authService';
+import { IconoAlerta } from '../ui/Iconos';
 
 export interface SelectorMesaProps {
   mesas: MesaData[];
@@ -11,9 +12,9 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout }: Selec
   return (
     <div className="max-w-md mx-auto px-4 py-8">
       <div className="mb-8">
-        <h2 className="text-2xl font-black text-gray-900 leading-tight uppercase tracking-tight">
+        <h1 className="text-2xl font-black text-gray-900 leading-tight uppercase tracking-tight">
           ¡Hola, {testigoNombre.split(' ')[0]}!
-        </h2>
+        </h1>
         <p className="text-gray-500 text-sm mt-1 font-medium">
           Selecciona la mesa que vas a reportar en este momento:
         </p>
@@ -29,7 +30,7 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout }: Selec
           >
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1 group-hover:text-editorial-red transition-colors">
+                <p className="text-xs font-black text-gray-600 uppercase tracking-widest mb-1 group-hover:text-editorial-red transition-colors">
                   Mesa de Votación
                 </p>
                 <p className="text-3xl font-black text-gray-900 group-hover:text-editorial-red transition-colors">
@@ -39,7 +40,7 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout }: Selec
                   <p className="text-xs font-bold text-gray-700 truncate">
                     {mesa.puesto?.nombre || 'Puesto no especificado'}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-gray-600 truncate">
                     {mesa.puesto?.direccion || 'Sin dirección'}
                   </p>
                 </div>
@@ -84,8 +85,9 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout }: Selec
       )}
 
       <div className="mt-12 p-6 bg-red-50 rounded-2xl border-2 border-red-100">
-        <p className="text-xs text-red-800 font-black uppercase tracking-widest text-center">
-          ⚠️ RECUERDA
+        <p className="text-xs text-red-700 font-black uppercase tracking-widest text-center flex items-center justify-center gap-1.5">
+          <IconoAlerta className="w-4 h-4 text-red-700" />
+          <span>RECUERDA</span>
         </p>
         <p className="text-xs text-red-900 text-center mt-2 leading-relaxed font-medium">
           Solo puedes reportar los datos oficiales del acta E-14 una vez haya finalizado el conteo en la mesa.

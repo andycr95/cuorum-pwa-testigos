@@ -53,7 +53,7 @@ export function App() {
       if (data) {
         setTestigoData(data);
         setIsAuthenticated(true);
-        
+
         // Autoseleccionar si solo hay una mesa
         const listaMesas = data.mesas && data.mesas.length > 0 ? data.mesas || [data.mesa] : [];
         if (listaMesas.length === 1) {
@@ -76,7 +76,7 @@ export function App() {
     if (data) {
       setTestigoData(data);
       setIsAuthenticated(true);
-      
+
       const listaMesas = data.mesas || [data.mesa];
       if (listaMesas.length === 1) {
         setSelectedMesaId(listaMesas[0].id);
@@ -168,7 +168,7 @@ export function App() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="relative w-16 h-16 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red/20"></div>
@@ -202,10 +202,13 @@ export function App() {
   // Si no hay mesa seleccionada, mostrar el selector
   if (!selectedMesaId || !mesaSeleccionada) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="bg-editorial-red px-4 py-3 min-h-[64px] flex items-center justify-between">
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-            <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-editorial-red px-4 py-3 min-h-[64px] flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+              <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+            </div>
+            <span className="text-white font-bold text-base">Cuorum Testigos</span>
           </div>
           <button
             onClick={handleLogout}
@@ -214,13 +217,15 @@ export function App() {
           >
             Cerrar Sesión
           </button>
-        </div>
-        <SelectorMesa 
-          mesas={listaMesas} 
-          onSelect={setSelectedMesaId} 
-          testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
-          onLogout={handleLogout}
-        />
+        </header>
+        <main>
+          <SelectorMesa
+            mesas={listaMesas}
+            onSelect={setSelectedMesaId}
+            testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
+            onLogout={handleLogout}
+          />
+        </main>
       </div>
     );
   }
@@ -228,7 +233,7 @@ export function App() {
   // Jornada loading state
   if (jornadaLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="relative w-16 h-16 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red/20"></div>
@@ -243,30 +248,28 @@ export function App() {
   // CERRADA/FIRMADA — Mesa cerrada screen
   if (jornadaEstado === 'CERRADA' || jornadaEstado === 'FIRMADA') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200 p-8 text-center">
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border-2 border-gray-200 p-8 text-center">
           <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
 
-          <h2 className="text-2xl font-black text-gray-900 mb-2">
-            Acta firmada exitosamente
-          </h2>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">Acta firmada exitosamente</h1>
           <p className="text-sm text-gray-500 mb-6">
             Mesa #{mesaSeleccionada.numero} cerrada correctamente
           </p>
 
           {codigoVerificacion && (
             <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-5 mb-6">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
                 Codigo de verificacion
               </p>
               <p className="text-3xl font-black text-gray-900 tracking-[0.3em] font-mono">
                 {codigoVerificacion}
               </p>
-              <p className="text-[10px] text-gray-400 mt-2">
+              <p className="text-[10px] text-gray-600 mt-2">
                 Guarda este codigo como comprobante
               </p>
             </div>
@@ -279,14 +282,14 @@ export function App() {
             Cerrar sesion
           </button>
         </div>
-      </div>
+      </main>
     );
   }
 
   // PENDIENTE — Show CheckinTestigo
   if (jornadaEstado === 'PENDIENTE') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <main className="min-h-screen bg-gray-50">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -319,14 +322,14 @@ export function App() {
           campanaId={authService.getCampanaId() || ''}
           onCheckinComplete={handleCheckinComplete}
         />
-      </div>
+      </main>
     );
   }
 
   // CHECKIN — Show AperturaMesa
   if (jornadaEstado === 'CHECKIN') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      <main className="min-h-screen bg-gray-50">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -335,7 +338,7 @@ export function App() {
               </div>
               <div>
                 <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-red-200 text-xs truncate max-w-[180px]">
+                <p className="text-white text-xs truncate max-w-[180px] font-medium">
                   {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
                 </p>
               </div>
@@ -358,13 +361,13 @@ export function App() {
           mesaNumero={mesaSeleccionada.numero}
           onAperturaComplete={handleAperturaComplete}
         />
-      </div>
+      </main>
     );
   }
 
   // ABIERTA / EN_CONTEO — Show FormularioMesaMultiple (existing main flow)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <main className="min-h-screen bg-gray-50">
       {/* Contenedor sticky con cabecera y barra de estado fija bajo ella */}
       <div className="sticky top-0 z-50 shadow-md">
         <header data-testid="cabecera-roja" className="bg-editorial-red text-white">
@@ -425,6 +428,6 @@ export function App() {
         onMesaCerrada={handleMesaCerrada}
         onVolverSelector={handleBackToSelector}
       />
-    </div>
+    </main>
   );
 }

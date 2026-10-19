@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from 'react';
+import { IconoCamara, IconoPapelera } from '../ui/Iconos';
 
 /**
  * CapturaE14 — Captura de foto con pipeline de compresión optimizado para E-14
@@ -157,7 +158,7 @@ export function CapturaE14({
               <div className="px-2 py-1 bg-black/70 backdrop-blur-sm rounded-full">
                 <p className="text-[10px] font-bold text-white">
                   {formatKB(infoCompresion.original)} → {formatKB(infoCompresion.final)}
-                  {infoCompresion.final <= MAX_SIZE_BYTES ? ' ⚡ 2G' : ''}
+                  {infoCompresion.final <= MAX_SIZE_BYTES ? ' 2G' : ''}
                 </p>
               </div>
             )}
@@ -168,9 +169,9 @@ export function CapturaE14({
           <button
             type="button"
             onClick={onEliminar}
-            className="w-full py-3 px-4 bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 text-red-700 rounded-xl font-bold text-sm uppercase tracking-wide hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 border-2 border-red-300 text-red-700 rounded-xl font-bold text-sm uppercase tracking-wide hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <span className="text-lg">🗑️</span>
+            <IconoPapelera className="w-5 h-5 text-red-700" />
             <span>Volver a tomar foto</span>
           </button>
         )}
@@ -193,14 +194,14 @@ export function CapturaE14({
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={disabled || procesando}
-        className="relative w-full overflow-hidden rounded-2xl py-6 border-2 border-dashed border-gray-300 hover:border-editorial-red/50 bg-gradient-to-br from-gray-50 to-white hover:from-editorial-red/5 hover:to-red-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+        className="relative w-full overflow-hidden rounded-2xl py-6 border-2 border-dashed border-gray-300 hover:border-editorial-red/50 bg-gray-50 hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
       >
         <div className="relative flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-editorial-red to-red-700 shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+          <div className="w-16 h-16 rounded-2xl bg-editorial-red shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform">
             {procesando ? (
               <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <span className="text-3xl">📷</span>
+              <IconoCamara className="w-8 h-8 text-white" />
             )}
           </div>
 
@@ -229,7 +230,7 @@ export function CapturaE14({
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-xs text-blue-700 leading-relaxed">
-          <span className="font-bold">💡 Consejo:</span> Asegúrate de que toda el acta sea
+          <span className="font-bold">Consejo:</span> Asegúrate de que toda el acta sea
           legible. La foto se comprime automáticamente para funcionar en zonas con señal 2G/EDGE.
         </p>
       </div>

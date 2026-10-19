@@ -28,14 +28,14 @@ export function ObservacionesInput({
 
       {/* Textarea */}
       <div className="relative">
-        <textarea
+        <textarea aria-label="Observaciones sobre la mesa"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           maxLength={maxLength}
           placeholder="Escribe cualquier observación sobre el conteo, irregularidades, incidentes, o comentarios adicionales..."
           rows={4}
-          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-editorial-red focus:outline-none focus:ring-2 focus:ring-editorial-red/20 resize-none text-sm text-gray-800 placeholder-gray-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-editorial-red focus:outline-none focus:ring-2 focus:ring-editorial-red/20 resize-none text-sm text-gray-800 placeholder-gray-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
         {/* Contador de caracteres */}
@@ -51,8 +51,8 @@ export function ObservacionesInput({
       {/* Ejemplos de observaciones */}
       {!value && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <p className="text-xs text-gray-600 font-semibold mb-2">
-            📝 Ejemplos de observaciones:
+          <p className="text-xs text-gray-700 font-semibold mb-2">
+            Ejemplos de observaciones:
           </p>
           <ul className="text-xs text-gray-600 space-y-1 ml-3">
             <li>• "Conteo realizado sin novedad"</li>
