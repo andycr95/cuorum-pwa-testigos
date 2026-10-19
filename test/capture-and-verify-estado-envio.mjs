@@ -10,7 +10,8 @@ const screenshotsDir = path.join(rootDir, 'test', 'screenshots');
 const vaultCapturasDir = process.env.EXTRA_CAPTURAS_DIR || null;
 
 const playwrightPath = process.env.PLAYWRIGHT_PATH || 'playwright';
-const { chromium } = await import(playwrightPath);
+const playwright = await import(playwrightPath);
+const chromium = playwright.chromium || playwright.default?.chromium || playwright.default;
 
 if (process.env.LOCAL_LIB_DIR && fs.existsSync(process.env.LOCAL_LIB_DIR)) {
   process.env.LD_LIBRARY_PATH = `${process.env.LOCAL_LIB_DIR}:${process.env.LD_LIBRARY_PATH || ''}`;
@@ -33,8 +34,9 @@ async function run() {
     });
   });
 
-  console.log('Iniciando vite preview en puerto 4703...');
-  const server = spawn('npx', ['vite', 'preview', '--port', '4703', '--strictPort'], {
+  const port = process.env.PWA_PORT || process.env.PORT || '4703';
+  console.log(`Iniciando vite preview en puerto ${port}...`);
+  const server = spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], {
     cwd: rootDir,
     stdio: 'pipe',
   });
@@ -245,8 +247,8 @@ async function run() {
       );
     });
 
-    console.log('Navegando a http://localhost:4703/...');
-    await page.goto('http://localhost:4703/', { waitUntil: 'networkidle' });
+    console.log(`Navegando a http://localhost:${port}/...`);
+    await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
     console.log('Esperando selector de barra-estado-envio...');
     try {
       await page.waitForSelector('[data-testid="barra-estado-envio"]', { timeout: 8000 });

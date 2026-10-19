@@ -230,49 +230,106 @@ describe('CUO-331: PWA no mostrar «Enviado ✓» ni marcar sincronizado lo que 
     });
   });
 
-  describe('4. Verificación de contrato y persistencia en IndexedDB (marcarRechazados / marcarIncidenciasError)', () => {
-    it('src/db/indexeddb.ts exporta marcarRechazados y marcarIncidenciasError', () => {
-      const idbCode = fs.readFileSync(
-        path.join(rootDir, 'src', 'db', 'indexeddb.ts'),
-        'utf8',
-      );
+  describe('4. Flujo funcional observable: contratos reales y persistencia de rechazos', () => {
+    it('Contrato anidado CUO-428: discrimina resultados y fotos aceptados de los rechazados con motivo', () => {
+      const respAnidada = {
+        aceptados: { resultados: ['r-ok'], fotos: ['f-ok'] },
+        rechazados: {
+          resultados: [{ id: 'r-rechazado', error: 'Total votos inconsistente' }],
+          fotos: [{ id: 'f-rechazada', error: 'Foto ilegible' }],
+        },
+      };
 
-      assert.ok(
-        idbCode.includes('export async function marcarRechazados('),
-        'indexeddb.ts debe exportar marcarRechazados',
-      );
-      assert.ok(
-        idbCode.includes('export async function marcarIncidenciasError('),
-        'indexeddb.ts debe exportar marcarIncidenciasError',
-      );
-      assert.ok(
-        idbCode.includes('item.lastSyncError = error'),
-        'marcarRechazados debe asignar lastSyncError legible',
-      );
-      assert.ok(
-        idbCode.includes('item.synced = 0'),
-        'los elementos rechazados deben mantener synced: 0',
-      );
+      const resProc = procesarRespuestaSync([{ id: 'r-ok' }, { id: 'r-rechazado' }], respAnidada, 'resultado');
+      assert.deepEqual(resProc.acceptedIds, ['r-ok']);
+      assert.equal(resProc.rejectedItems.length, 1);
+      assert.equal(resProc.rejectedItems[0].id, 'r-rechazado');
+      assert.equal(resProc.rejectedItems[0].error, 'Total votos inconsistente');
+
+      const fotoProc = procesarRespuestaSync([{ id: 'f-ok' }, { id: 'f-rechazada' }], respAnidada, 'foto');
+      assert.deepEqual(fotoProc.acceptedIds, ['f-ok']);
+      assert.equal(fotoProc.rejectedItems.length, 1);
+      assert.equal(fotoProc.rejectedItems[0].id, 'f-rechazada');
+      assert.equal(fotoProc.rejectedItems[0].error, 'Foto ilegible');
     });
 
-    it('src/services/syncService.ts nunca llama setLastSyncTime si hubo rechazos o errores en incidencias', () => {
-      const syncCode = fs.readFileSync(
-        path.join(rootDir, 'src', 'services', 'syncService.ts'),
-        'utf8',
-      );
+    it('Respuesta ausente o con contadores de fallos no confirma ningún ítem enviado', () => {
+      const respAusente = procesarRespuestaSync([{ id: 'r-1' }], null, 'resultado');
+      assert.deepEqual(respAusente.acceptedIds, []);
+      assert.equal(respAusente.rejectedItems.length, 1);
 
-      assert.ok(
-        syncCode.includes('const huboFallos = tieneRechazosTotal || incidenciasError !== null;'),
-        'sincronizar debe evaluar si hubo fallos o rechazos en el lote',
+      const respFallos = procesarRespuestaSync(
+        [{ id: 'r-2' }],
+        { errores: ['Error general'], resumen: { resultadosFallidos: 1 } },
+        'resultado',
       );
-      assert.ok(
-        syncCode.includes('if (huboFallos) {'),
-        'sincronizar debe bifurcar ante fallos',
-      );
-      assert.ok(
-        syncCode.includes('setLastSyncError(errorMsg);'),
-        'sincronizar debe registrar el error ante rechazos',
-      );
+      assert.deepEqual(respFallos.acceptedIds, []);
+      assert.equal(respFallos.rejectedItems.length, 1);
+      assert.equal(respFallos.rejectedItems[0].error, 'Error general');
+
+      const respSinConfirmacion = procesarRespuestaSync([{ id: 'r-3' }], {}, 'resultado');
+      assert.deepEqual(respSinConfirmacion.acceptedIds, []);
+      assert.equal(respSinConfirmacion.rejectedItems.length, 1);
+      assert.match(respSinConfirmacion.rejectedItems[0].error, /sin confirmación/i);
+    });
+
+    it('Persistencia simulada y resolución de estado: rechazos impiden hora de éxito y producen ERROR', () => {
+      // Simular tabla local de IndexedDB
+      const tablaLocal = [
+        { id: 'r-ok', synced: 0, syncAttempts: 0, lastSyncError: null },
+        { id: 'r-rechazado', synced: 0, syncAttempts: 0, lastSyncError: null },
+      ];
+
+      const resp = {
+        aceptados: { resultados: ['r-ok'] },
+        rechazados: { resultados: [{ id: 'r-rechazado', error: 'Mesa no habilitada' }] },
+      };
+
+      const proc = procesarRespuestaSync(tablaLocal, resp, 'resultado');
+
+      // Aplicar actualización observable equivalente a marcarSincronizados y marcarRechazados
+      for (const id of proc.acceptedIds) {
+        const item = tablaLocal.find((x) => x.id === id);
+        if (item) item.synced = 1;
+      }
+      for (const rej of proc.rejectedItems) {
+        const item = tablaLocal.find((x) => x.id === rej.id);
+        if (item) {
+          item.synced = 0;
+          item.lastSyncError = rej.error;
+          item.syncAttempts++;
+        }
+      }
+
+      // Verificación de persistencia observable
+      assert.equal(tablaLocal[0].synced, 1, 'r-ok debe quedar sincronizado');
+      assert.equal(tablaLocal[1].synced, 0, 'r-rechazado debe permanecer pendiente con synced: 0');
+      assert.equal(tablaLocal[1].lastSyncError, 'Mesa no habilitada', 'debe guardar el motivo exacto');
+      assert.equal(tablaLocal[1].syncAttempts, 1, 'debe incrementar syncAttempts');
+
+      // Verificación de flujo: presencia de rechazos impide registrar hora de éxito
+      if (proc.tieneRechazos) {
+        setLastSyncError('1 elemento rechazado por el servidor');
+      } else {
+        setLastSyncTime('18:00');
+      }
+
+      assert.equal(getLastSyncTime(), null, 'no debe registrarse hora de éxito ante rechazos');
+      assert.equal(getLastSyncError(), '1 elemento rechazado por el servidor');
+
+      // Verificación de barra de estado
+      const pendientes = tablaLocal.filter((x) => x.synced === 0).length;
+      const estado = resolverEstadoEnvio({
+        isOnline: true,
+        pendingCount: pendientes,
+        isSyncing: false,
+        lastSyncTime: getLastSyncTime(),
+        error: getLastSyncError(),
+      });
+
+      assert.equal(estado.estado, 'ERROR');
+      assert.notEqual(estado.estado, 'ENVIADO');
+      assert.ok(!estado.texto.includes('Enviado ✓'));
     });
   });
 

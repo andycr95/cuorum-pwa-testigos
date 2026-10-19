@@ -57,63 +57,165 @@ export function clearLastSyncError() {
 
 /**
  * Procesa la respuesta del backend evaluando aceptados y rechazados.
- * Soporta contratos con arreglos de IDs (string[]), objetos ({ id, error/motivo/mensaje }),
- * y conteos numéricos de rechazo.
+ * Soporta contratos con acuses anidados (CUO-428: { resultados, fotos }),
+ * planos (string[] / { id, error }[]), objetos con motivo y conteos numéricos.
  */
 export function procesarRespuestaSync(
   sentItems: ItemConId[],
   responseObj: any,
   itemTipo: 'resultado' | 'foto' | 'incidencia' = 'resultado',
 ): ResultadoProcesamientoSync {
-  if (!responseObj || typeof responseObj !== 'object') {
+  if (!sentItems || sentItems.length === 0) {
     return {
-      acceptedIds: sentItems.map((i) => i.id),
+      acceptedIds: [],
       rejectedItems: [],
       tieneRechazos: false,
     };
   }
 
+  // Respuesta ausente o inválida: no confirma ningún ítem enviado
+  if (!responseObj || typeof responseObj !== 'object') {
+    return {
+      acceptedIds: [],
+      rejectedItems: sentItems.map((i) => ({
+        id: i.id,
+        error: 'Sin confirmación del servidor',
+      })),
+      tieneRechazos: true,
+    };
+  }
+
+  // 1. Extraer rechazados específicos según contrato anidado o plano
+  let rechazadosRaw: any = null;
+  if (
+    responseObj.rechazados &&
+    typeof responseObj.rechazados === 'object' &&
+    !Array.isArray(responseObj.rechazados)
+  ) {
+    if (itemTipo === 'resultado') {
+      rechazadosRaw = responseObj.rechazados.resultados;
+    } else if (itemTipo === 'foto') {
+      rechazadosRaw = responseObj.rechazados.fotos;
+    } else if (itemTipo === 'incidencia') {
+      rechazadosRaw = responseObj.rechazados.incidencias;
+    }
+  }
+
+  if (!rechazadosRaw) {
+    if (itemTipo === 'resultado') {
+      rechazadosRaw = responseObj.resultadosRechazados ?? responseObj.rechazadosResultados;
+    } else if (itemTipo === 'foto') {
+      rechazadosRaw = responseObj.fotosRechazadas ?? responseObj.rechazadosFotos;
+    } else if (itemTipo === 'incidencia') {
+      rechazadosRaw = responseObj.incidenciasRechazadas ?? responseObj.rechazadosIncidencias;
+    }
+  }
+
+  if (!rechazadosRaw && Array.isArray(responseObj.rechazados)) {
+    rechazadosRaw = responseObj.rechazados;
+  }
+
   const rejectedMap = new Map<string, string>();
-
-  // Revisar arreglos de rechazados
-  const rechazadosRaw =
-    itemTipo === 'foto'
-      ? (responseObj.fotosRechazadas || responseObj.rechazadosFotos || responseObj.rechazados)
-      : responseObj.rechazados;
-
   if (Array.isArray(rechazadosRaw)) {
     for (const item of rechazadosRaw) {
       const id = typeof item === 'string' ? item : item?.id;
       const errorMsg =
         typeof item === 'object' && item !== null
-          ? (item.error || item.motivo || item.mensaje || item.reason || 'Rechazado por el servidor')
+          ? item.error || item.motivo || item.mensaje || item.reason || 'Rechazado por el servidor'
           : 'Rechazado por el servidor';
-      if (id) rejectedMap.set(id, errorMsg);
+      if (id) rejectedMap.set(String(id), String(errorMsg));
     }
   }
 
-  // Revisar arreglos de aceptados explícitos
-  const aceptadosRaw =
-    itemTipo === 'foto'
-      ? (responseObj.fotosAceptadas || responseObj.aceptadosFotos || responseObj.aceptados)
-      : responseObj.aceptados;
+  // 2. Extraer aceptados específicos según contrato anidado o plano
+  let aceptadosRaw: any = null;
+  if (
+    responseObj.aceptados &&
+    typeof responseObj.aceptados === 'object' &&
+    !Array.isArray(responseObj.aceptados)
+  ) {
+    if (itemTipo === 'resultado') {
+      aceptadosRaw = responseObj.aceptados.resultados;
+    } else if (itemTipo === 'foto') {
+      aceptadosRaw = responseObj.aceptados.fotos;
+    } else if (itemTipo === 'incidencia') {
+      aceptadosRaw = responseObj.aceptados.incidencias;
+    }
+  }
+
+  if (!aceptadosRaw) {
+    if (itemTipo === 'resultado') {
+      aceptadosRaw = responseObj.resultadosAceptados ?? responseObj.aceptadosResultados;
+    } else if (itemTipo === 'foto') {
+      aceptadosRaw = responseObj.fotosAceptadas ?? responseObj.aceptadosFotos;
+    } else if (itemTipo === 'incidencia') {
+      aceptadosRaw = responseObj.incidenciasAceptadas ?? responseObj.aceptadosIncidencias;
+    }
+  }
+
+  if (!aceptadosRaw && Array.isArray(responseObj.aceptados)) {
+    aceptadosRaw = responseObj.aceptados;
+  }
+
+  // Mensaje general de error si existe
+  const errorGeneral =
+    (Array.isArray(responseObj.errores) &&
+      responseObj.errores.length > 0 &&
+      String(responseObj.errores[0])) ||
+    (typeof responseObj.error === 'string' && responseObj.error) ||
+    (typeof responseObj.mensaje === 'string' && responseObj.mensaje) ||
+    null;
+
+  // Contadores de fallos
+  const countFallidos =
+    itemTipo === 'resultado'
+      ? (responseObj.resumen?.resultadosFallidos ?? responseObj.resultadosFallidos ?? 0)
+      : itemTipo === 'foto'
+        ? (responseObj.resumen?.fotosFallidas ?? responseObj.fotosFallidas ?? 0)
+        : (responseObj.incidenciasFallidas ?? responseObj.resumen?.incidenciasFallidas ?? 0);
+
+  const numericRechazados =
+    typeof responseObj.rechazados === 'number'
+      ? responseObj.rechazados
+      : itemTipo === 'resultado' && typeof responseObj.rechazados?.resultados === 'number'
+        ? responseObj.rechazados.resultados
+        : itemTipo === 'foto' && typeof responseObj.rechazados?.fotos === 'number'
+          ? responseObj.rechazados.fotos
+          : itemTipo === 'incidencia' && typeof responseObj.rechazados?.incidencias === 'number'
+            ? responseObj.rechazados.incidencias
+            : 0;
 
   const acceptedIds: string[] = [];
   const rejectedItems: Array<{ id: string; error: string }> = [];
 
+  // Caso A: Hay lista explícita de aceptados (anidada o plana)
   if (Array.isArray(aceptadosRaw)) {
     const acceptedSet = new Set(
-      aceptadosRaw.map((item: any) => (typeof item === 'string' ? item : item?.id)).filter(Boolean)
+      aceptadosRaw.map((item: any) => (typeof item === 'string' ? item : item?.id)).filter(Boolean),
     );
     for (const item of sentItems) {
       if (acceptedSet.has(item.id)) {
         acceptedIds.push(item.id);
       } else {
-        const err = rejectedMap.get(item.id) || 'No aceptado por el servidor';
+        const err = rejectedMap.get(item.id) || errorGeneral || 'No aceptado por el servidor';
         rejectedItems.push({ id: item.id, error: err });
       }
     }
-  } else if (rejectedMap.size > 0) {
+  }
+  // Caso B: Hay fallos numéricos, rechazos numéricos o errores generales sin mapeo de aceptados
+  else if (countFallidos > 0 || numericRechazados > 0 || (errorGeneral !== null && rejectedMap.size === 0)) {
+    const defaultErr =
+      errorGeneral ||
+      (numericRechazados > 0
+        ? 'Rechazado por el servidor (el lote contiene rechazos no identificados)'
+        : 'Rechazado por el servidor (el lote contiene fallos)');
+    for (const item of sentItems) {
+      const err = rejectedMap.get(item.id) || defaultErr;
+      rejectedItems.push({ id: item.id, error: err });
+    }
+  }
+  // Caso C: Hay IDs rechazados explícitos sin lista de aceptados
+  else if (rejectedMap.size > 0) {
     for (const item of sentItems) {
       if (rejectedMap.has(item.id)) {
         rejectedItems.push({ id: item.id, error: rejectedMap.get(item.id)! });
@@ -121,16 +223,34 @@ export function procesarRespuestaSync(
         acceptedIds.push(item.id);
       }
     }
-  } else if (typeof responseObj.rechazados === 'number' && responseObj.rechazados > 0) {
-    for (const item of sentItems) {
-      rejectedItems.push({
-        id: item.id,
-        error: 'Rechazado por el servidor (el lote contiene rechazos no identificados)',
-      });
-    }
-  } else {
-    for (const item of sentItems) {
-      acceptedIds.push(item.id);
+  }
+  // Caso D: Sin acuses explícitos pero confirmación legacy verificable sin fallos
+  else {
+    const confirmacionLegacy =
+      itemTipo === 'resultado'
+        ? (Array.isArray(responseObj.resultados) && responseObj.resultados.length > 0) ||
+          (typeof responseObj.resumen?.resultadosSincronizados === 'number' &&
+            responseObj.resumen.resultadosSincronizados > 0)
+        : itemTipo === 'foto'
+          ? (Array.isArray(responseObj.fotos) && responseObj.fotos.length > 0) ||
+            (typeof responseObj.resumen?.fotosSincronizadas === 'number' &&
+              responseObj.resumen.fotosSincronizadas > 0)
+          : (Array.isArray(responseObj.incidencias) && responseObj.incidencias.length > 0) ||
+            (typeof responseObj.incidenciasSincronizadas === 'number' &&
+              responseObj.incidenciasSincronizadas > 0);
+
+    if (confirmacionLegacy) {
+      for (const item of sentItems) {
+        acceptedIds.push(item.id);
+      }
+    } else {
+      // Respuesta sin confirmación: no marcar como enviado un ítem desconocido
+      for (const item of sentItems) {
+        rejectedItems.push({
+          id: item.id,
+          error: 'Respuesta sin confirmación del servidor',
+        });
+      }
     }
   }
 

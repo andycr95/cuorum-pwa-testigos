@@ -122,8 +122,8 @@ export interface SyncResultado {
   /** Respuesta de validación del servidor (si el backend la provee) */
   validacionServidor?: {
     alertas?: string[];
-    aceptados?: number;
-    rechazados?: number;
+    aceptados?: number | Record<string, any> | string[];
+    rechazados?: number | Record<string, any> | any[];
   };
   error?: string;
 }
