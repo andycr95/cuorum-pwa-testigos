@@ -204,61 +204,12 @@ export function FormularioMesaMultiple({
     return () => { cancelled = true; };
   }, [mesaId, eleccionActual]);
 
-  // Caso sin elecciones asignadas a la mesa
-  if (elecciones.length === 0) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-8">
-        <EstadoVacio
-          tipo="vacio"
-          titulo="Sin elecciones asignadas"
-          mensaje="Tu mesa aún no tiene elecciones asignadas. Avisa a tu coordinador."
-          accionPrincipal={{
-            texto: 'Volver al selector de mesa',
-            onClick: onVolverSelector || (() => {
-              if (typeof window !== 'undefined' && window.history.length > 1) {
-                window.history.back();
-              }
-            }),
-          }}
-        />
-      </div>
-    );
-  }
-
-  const eleccion = elecciones.find((e) => e.id === eleccionActual) || elecciones[0];
-
-  if (!eleccion) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-8">
-        <EstadoVacio
-          tipo="advertencia"
-          titulo="Elección no encontrada"
-          mensaje="No se encontró la elección seleccionada para esta mesa. Avisa a tu coordinador."
-          accionPrincipal={{
-            texto: 'Volver al selector de mesa',
-            onClick: onVolverSelector || (() => {
-              if (typeof window !== 'undefined' && window.history.length > 1) {
-                window.history.back();
-              }
-            }),
-          }}
-        />
-      </div>
-    );
-  }
-
-  const calcularTotal = () => {
-    if (eleccion.tipoCargo === 'UNINOMINAL') {
-      return Object.values(votosUninominal).reduce((sum, v) => sum + v, 0)
-        + votosBlanco + votosNulos + votosNoMarcados;
+  // Si cambia la lista de elecciones y no hay elección actual válida, sincronizar
+  useEffect(() => {
+    if (elecciones.length > 0 && !elecciones.some((e) => e.id === eleccionActual)) {
+      setEleccionActual(elecciones[0].id);
     }
-    const totalListas = Object.values(votosLista).reduce((sum, v) => sum + v, 0);
-    const totalPreferentes = Object.values(votosPreferente).reduce((sum, v) => sum + v, 0);
-    return totalListas + totalPreferentes + votosBlanco + votosNulos + votosNoMarcados;
-  };
-
-  const totalVotos = calcularTotal();
-  const hayAlertaFraude = totalVotos > totalSufragantes;
+  }, [elecciones, eleccionActual]);
 
   const limpiarFormulario = useCallback(() => {
     setVotosUninominal({});
@@ -281,7 +232,24 @@ export function FormularioMesaMultiple({
     setPasoActivo('contar');
   }, []);
 
+  const eleccion = elecciones.find((e) => e.id === eleccionActual) || elecciones[0];
+
+  const calcularTotal = () => {
+    if (!eleccion) return 0;
+    if (eleccion.tipoCargo === 'UNINOMINAL') {
+      return Object.values(votosUninominal).reduce((sum, v) => sum + v, 0)
+        + votosBlanco + votosNulos + votosNoMarcados;
+    }
+    const totalListas = Object.values(votosLista).reduce((sum, v) => sum + v, 0);
+    const totalPreferentes = Object.values(votosPreferente).reduce((sum, v) => sum + v, 0);
+    return totalListas + totalPreferentes + votosBlanco + votosNulos + votosNoMarcados;
+  };
+
+  const totalVotos = calcularTotal();
+  const hayAlertaFraude = totalVotos > totalSufragantes;
+
   const handleGuardar = async () => {
+    if (!eleccion) return;
     // Alerta si el candidato propio tiene 0 votos
     if (miCandidatoId || miListaId) {
       let propioTieneZero = false;
@@ -471,6 +439,47 @@ export function FormularioMesaMultiple({
       setCerrando(false);
     }
   };
+
+  // ─── Estados vacíos al final (después de todos los hooks y callbacks) ─────
+  if (elecciones.length === 0) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-8">
+        <EstadoVacio
+          tipo="vacio"
+          titulo="Sin elecciones asignadas"
+          mensaje="Tu mesa aún no tiene elecciones asignadas. Avisa a tu coordinador."
+          accionPrincipal={{
+            texto: 'Volver al selector de mesa',
+            onClick: onVolverSelector || (() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
+              }
+            }),
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (!eleccion) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-8">
+        <EstadoVacio
+          tipo="advertencia"
+          titulo="Elección no encontrada"
+          mensaje="No se encontró la elección seleccionada para esta mesa. Avisa a tu coordinador."
+          accionPrincipal={{
+            texto: 'Volver al selector de mesa',
+            onClick: onVolverSelector || (() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
+              }
+            }),
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-32">
