@@ -5,6 +5,7 @@
  */
 
 import { api } from './api';
+import { clearLastSyncTime, clearLastSyncError } from './syncService';
 
 export interface MesaData {
   id: string;
@@ -143,6 +144,8 @@ class AuthService {
     localStorage.removeItem(this.CAMPANA_KEY);
     localStorage.removeItem(this.ELECCION_KEY);
     localStorage.removeItem(this.ELECCION_DATA_KEY);
+    clearLastSyncTime();
+    clearLastSyncError();
   }
 
   /**

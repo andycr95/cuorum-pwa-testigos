@@ -418,6 +418,57 @@ export async function marcarSincronizados(resultadoIds: string[], fotoIds: strin
   await tx.done;
 }
 
+export async function marcarRechazados(
+  rechazadosResultados: Array<{ id: string; error?: string }>,
+  rechazadosFotos?: Array<{ id: string; error?: string }>,
+) {
+  const db = await getDB();
+  const tx = db.transaction(['resultados', 'fotosE14'], 'readwrite');
+
+  for (const { id, error } of rechazadosResultados) {
+    const item = await tx.objectStore('resultados').get(id);
+    if (item) {
+      item.synced = 0;
+      item.syncAttempts = (item.syncAttempts || 0) + 1;
+      item.lastSyncError = error || 'Rechazado por el servidor';
+      await tx.objectStore('resultados').put(item);
+    }
+  }
+
+  if (rechazadosFotos) {
+    for (const { id, error } of rechazadosFotos) {
+      const item = await tx.objectStore('fotosE14').get(id);
+      if (item) {
+        item.synced = 0;
+        item.syncAttempts = (item.syncAttempts || 0) + 1;
+        item.lastSyncError = error || 'Rechazado por el servidor';
+        await tx.objectStore('fotosE14').put(item);
+      }
+    }
+  }
+
+  await tx.done;
+}
+
+export async function marcarIncidenciasError(
+  incidenciasErrores: Array<{ id: string; error?: string }>,
+) {
+  const db = await getDB();
+  const tx = db.transaction('incidencias', 'readwrite');
+
+  for (const { id, error } of incidenciasErrores) {
+    const item = await tx.objectStore('incidencias').get(id);
+    if (item) {
+      item.synced = 0;
+      item.syncAttempts = (item.syncAttempts || 0) + 1;
+      item.lastSyncError = error || 'Error al sincronizar incidencia';
+      await tx.objectStore('incidencias').put(item);
+    }
+  }
+
+  await tx.done;
+}
+
 // ─── Sync log ─────────────────────────────────────────────────
 
 export async function logSync(
