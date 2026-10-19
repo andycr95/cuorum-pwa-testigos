@@ -13,6 +13,9 @@ import { authService } from '../../services/authService';
 import { jornadaService, AlertaValidacion } from '../../services/jornadaService';
 import { ProgresoElecciones } from '../jornada/ProgresoElecciones';
 import { WizardCierre } from '../jornada/WizardCierre';
+import { IconoAlerta, IconoCandado, IconoDocumento, IconoCheck } from '../ui/Iconos';
+import { EstadoVacio } from '../ui/EstadoVacio';
+import { formatearErrorAmigable } from '../../utils/formatoError';
 
 /**
  * FormularioMesaMultiple — Captura de resultados electorales
@@ -71,6 +74,7 @@ interface FormularioMesaMultipleProps {
   elecciones: Eleccion[];
   deviceId: string;
   onMesaCerrada?: (codigo: string) => void;
+  onVolverSelector?: () => void;
 }
 
 /** Genera un código de verificación de 8 chars para el acta cerrada */
@@ -90,6 +94,7 @@ export function FormularioMesaMultiple({
   elecciones,
   deviceId,
   onMesaCerrada,
+  onVolverSelector,
 }: FormularioMesaMultipleProps) {
   const [pasoActivo, setPasoActivo] = useState<'contar' | 'foto' | 'cierre'>('contar');
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
@@ -199,14 +204,45 @@ export function FormularioMesaMultiple({
     return () => { cancelled = true; };
   }, [mesaId, eleccionActual]);
 
-  const eleccion = elecciones.find((e) => e.id === eleccionActual);
+  // Caso sin elecciones asignadas a la mesa
+  if (elecciones.length === 0) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-8">
+        <EstadoVacio
+          tipo="vacio"
+          titulo="Sin elecciones asignadas"
+          mensaje="Tu mesa aún no tiene elecciones asignadas. Avisa a tu coordinador."
+          accionPrincipal={{
+            texto: 'Volver al selector de mesa',
+            onClick: onVolverSelector || (() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
+              }
+            }),
+          }}
+        />
+      </div>
+    );
+  }
+
+  const eleccion = elecciones.find((e) => e.id === eleccionActual) || elecciones[0];
 
   if (!eleccion) {
     return (
-      <div className="max-w-md mx-auto p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">Error: Elección no encontrada</p>
-        </div>
+      <div className="max-w-md mx-auto px-4 py-8">
+        <EstadoVacio
+          tipo="advertencia"
+          titulo="Elección no encontrada"
+          mensaje="No se encontró la elección seleccionada para esta mesa. Avisa a tu coordinador."
+          accionPrincipal={{
+            texto: 'Volver al selector de mesa',
+            onClick: onVolverSelector || (() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
+              }
+            }),
+          }}
+        />
       </div>
     );
   }
@@ -388,6 +424,9 @@ export function FormularioMesaMultiple({
       await guardarResultadosYFoto(resultadosBatch, fotosData.length > 0 ? fotosData : undefined);
 
       setGuardado(true);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cuorum:sync-status'));
+      }
 
       // ─── Paso 3: Sincronizar ───────────────────────────────────
       const online = await verificarConectividadReal();
@@ -398,7 +437,7 @@ export function FormularioMesaMultiple({
         // ─── Paso 4: Validar resultados ───────────────────────────
         try {
           const validacion = await jornadaService.validar(mesaId, eleccionActual);
-          setAlertasValidacion(validacion.alertas);
+          setAlertasValidacion(validacion?.alertas || []);
         } catch {
           // Validation is optional — don't block the flow
         }
@@ -438,7 +477,7 @@ export function FormularioMesaMultiple({
       <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
 
         {/* Header Card Info */}
-        <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 px-6 py-6 border-b-2 border-gray-200 relative overflow-hidden">
+        <div className="bg-gray-50 px-6 py-6 border-b-2 border-gray-200 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-editorial-red/5 rounded-full -mr-16 -mt-16" />
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-200/50 rounded-full -ml-12 -mb-12" />
           <div className="relative flex items-center justify-between gap-4">
@@ -464,7 +503,7 @@ export function FormularioMesaMultiple({
           {actaCerrada && codigoActa && (
             <div className="mt-4 px-4 py-3 bg-green-50 border-2 border-green-400 rounded-2xl">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-green-600 font-black text-sm">🔒 Acta cerrada y firmada</span>
+                <span className="text-green-600 font-black text-sm"><IconoCandado className="w-4 h-4 inline mr-1" />Acta cerrada y firmada</span>
               </div>
               <p className="text-xs text-green-700 font-semibold">
                 Código de verificación:{' '}
@@ -520,10 +559,10 @@ export function FormularioMesaMultiple({
             <div id="panel-foto" role="tabpanel" aria-labelledby="tab-foto" className="space-y-4 mb-6">
               {ocrCompletado && (
                 <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
-                  <span className="text-2xl flex-shrink-0">✓</span>
+                  <IconoCheck className="w-6 h-6 text-green-600 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-black text-green-800">Fotos del E-14 recibidas</p>
-                    <p className="text-xs text-green-600 mt-0.5">
+                    <p className="text-xs text-green-700 mt-0.5">
                       Revisa y confirma los resultados extraidos abajo.
                     </p>
                   </div>
@@ -654,21 +693,21 @@ export function FormularioMesaMultiple({
 
           {/* Alerta de fraude */}
           {hayAlertaFraude && (
-            <div className="mb-6 relative overflow-hidden rounded-2xl bg-red-600 text-white">
+            <div className="mb-6 relative overflow-hidden rounded-2xl bg-red-600">
               <div className="relative px-5 py-4 flex items-start gap-3">
-                <div className="flex-shrink-0 w-12 h-12 bg-white text-red-600 rounded-full flex items-center justify-center shadow-lg">
-                  <span className="text-2xl">⚠️</span>
+                <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                  <IconoAlerta className="w-6 h-6 text-red-600" />
                 </div>
                 <div className="flex-1 pt-1">
                   <p className="font-black text-white text-base uppercase tracking-wide mb-1">
-                    ⚡ ALERTA DE FRAUDE
+                    ALERTA DE FRAUDE
                   </p>
                   <p className="text-sm text-red-50 font-semibold leading-snug">
                     Total de votos (<span className="font-black">{totalVotos}</span>) SUPERA
                     sufragantes habilitados (<span className="font-black">{totalSufragantes}</span>)
                   </p>
                   <p className="text-xs text-red-100 mt-2 font-medium">
-                    ⚠️ Verifique los datos antes de guardar
+                    Verifique los datos antes de guardar
                   </p>
                 </div>
               </div>
@@ -801,6 +840,47 @@ export function FormularioMesaMultiple({
             />
           </div>
 
+          {/* ── Botón guardar (CUO-207: 56 px de alto, estado Guardado, sin degradados) ── */}
+          {!actaCerrada && (
+            <button
+              type="button"
+              onClick={handleGuardar}
+              disabled={guardado || guardando}
+              data-testid="btn-guardar-resultados"
+              className={`w-full h-14 min-h-[56px] rounded-xl font-bold text-white uppercase text-sm tracking-wide transition-all my-4 shadow-md flex items-center justify-center gap-2 select-none ${
+                guardado
+                  ? 'bg-[#15803D] hover:bg-[#166534] cursor-default'
+                  : hayAlertaFraude
+                  ? 'bg-editorial-red hover:bg-red-700 active:scale-[0.98]'
+                  : 'bg-editorial-red hover:bg-red-700 active:scale-[0.98]'
+              } disabled:opacity-90 disabled:cursor-not-allowed`}
+            >
+              <span className="flex items-center justify-center gap-2">
+                {guardando ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : guardado ? (
+                  <>
+                    <IconoCheck className="w-6 h-6 text-white" />
+                    <span>Guardado</span>
+                  </>
+                ) : hayAlertaFraude ? (
+                  <>
+                    <IconoAlerta className="w-6 h-6 text-white animate-pulse" />
+                    <span>Guardar con Alerta</span>
+                  </>
+                ) : (
+                  <>
+                    <IconoDocumento className="w-6 h-6 text-white" />
+                    <span>Guardar Resultados</span>
+                  </>
+                )}
+              </span>
+            </button>
+          )}
+
           {/* Fin paso 1: Contar votos */}
           </>)}
           </div>
@@ -821,7 +901,6 @@ export function FormularioMesaMultiple({
                 disabled={guardado}
               />
             </div>
-
           {/* ── Confirmación post-sync del servidor ─────────────────── */}
           {syncStatus && (
             <div className={`mb-4 px-4 py-4 rounded-2xl border-2 ${
@@ -834,16 +913,16 @@ export function FormularioMesaMultiple({
               {syncStatus.success ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-green-600 text-lg">✅</span>
+                    <IconoCheck className="w-5 h-5 text-green-600" />
                     <p className="text-sm font-black text-green-800">Reporte enviado al servidor</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-green-700">
-                    <span>📊 {syncStatus.resultadosSincronizados} resultado(s)</span>
-                    <span>📸 {syncStatus.fotosSincronizadas} foto(s)</span>
+                    <span>{syncStatus.resultadosSincronizados} resultado(s)</span>
+                    <span>{syncStatus.fotosSincronizadas} foto(s)</span>
                   </div>
                   {syncStatus.validacionServidor?.alertas && syncStatus.validacionServidor.alertas.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-xs font-bold text-orange-700">⚠️ Alertas del servidor:</p>
+                      <p className="text-xs font-bold text-orange-700">Alertas del servidor:</p>
                       {syncStatus.validacionServidor.alertas.map((alerta, i) => (
                         <p key={i} className="text-xs text-orange-600 pl-2">• {alerta}</p>
                       ))}
@@ -852,7 +931,7 @@ export function FormularioMesaMultiple({
                 </div>
               ) : syncStatus.error?.includes('Sin conexión') ? (
                 <div className="flex items-start gap-2">
-                  <span className="text-blue-500 text-lg">📱</span>
+                  <IconoDocumento className="w-5 h-5 text-blue-500 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-black text-blue-800">Guardado localmente</p>
                     <p className="text-xs text-blue-600 mt-0.5">Se enviará automáticamente cuando recupere conexión</p>
@@ -860,11 +939,11 @@ export function FormularioMesaMultiple({
                 </div>
               ) : (
                 <div className="flex items-start gap-2">
-                  <span className="text-orange-500 text-lg">⚠️</span>
+                  <IconoAlerta className="w-5 h-5 text-orange-600 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-black text-orange-800">Error al sincronizar</p>
-                    <p className="text-xs text-orange-600 mt-0.5">{syncStatus.error}</p>
-                    <p className="text-xs text-orange-500 mt-1">Los datos están guardados. Se reintentará automáticamente.</p>
+                    <p className="text-xs text-orange-700 mt-0.5">{formatearErrorAmigable(syncStatus.error)}</p>
+                    <p className="text-xs text-orange-700 mt-1">Los datos están guardados en tu teléfono. Se reintentará automáticamente.</p>
                   </div>
                 </div>
               )}
@@ -872,7 +951,7 @@ export function FormularioMesaMultiple({
           )}
 
           {/* ── Alertas de validación ───────────────────────────────── */}
-          {alertasValidacion.length > 0 && (
+          {alertasValidacion && alertasValidacion.length > 0 && (
             <div className="mb-4 space-y-2">
               {alertasValidacion.map((alerta, i) => (
                 <div
@@ -913,7 +992,7 @@ export function FormularioMesaMultiple({
             <button
               onClick={handleCerrarActa}
               disabled={cerrando}
-              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-800 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50"
+              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-900 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50"
             >
               <span className="flex items-center justify-center gap-2">
                 {cerrando ? (
@@ -923,7 +1002,7 @@ export function FormularioMesaMultiple({
                   </>
                 ) : (
                   <>
-                    <span>🔒</span>
+                    <IconoCandado className="w-4 h-4 inline-block mr-1 text-white" />
                     Cerrar y firmar acta
                   </>
                 )}
@@ -981,32 +1060,6 @@ export function FormularioMesaMultiple({
             />
           )}
 
-          {/* ── Indicador de conexión ───────────────────────────────── */}
-          <div className="flex items-center justify-center">
-            <div className={`relative flex items-center gap-3 px-5 py-3 rounded-full border-2 shadow-lg transition-all ${
-              navigator.onLine
-                ? 'bg-green-50 border-green-300 shadow-green-200/50'
-                : 'bg-orange-50 border-orange-300 shadow-orange-200/50'
-            }`}>
-              {navigator.onLine && (
-                <div className="absolute inset-0 rounded-full bg-green-400 opacity-20 blur-md animate-pulse" />
-              )}
-              <div className="relative w-3 h-3 flex items-center justify-center">
-                <div className={`absolute inset-0 rounded-full shadow-lg ${
-                  navigator.onLine ? 'bg-green-500' : 'bg-orange-500'
-                }`} />
-                {navigator.onLine && (
-                  <div className="absolute inset-0 rounded-full bg-green-500 animate-ping" />
-                )}
-              </div>
-              <span className={`text-xs font-black uppercase tracking-widest ${
-                navigator.onLine ? 'text-green-700' : 'text-orange-700'
-              }`} style={{ letterSpacing: '0.1em' }}>
-                {navigator.onLine ? 'En línea · Sync automática' : 'Sin conexión · Guardado local'}
-              </span>
-            </div>
-          </div>
-
           {error && (
             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-xs text-red-600 text-center font-semibold">{error}</p>
@@ -1025,11 +1078,40 @@ export function FormularioMesaMultiple({
               <span className="text-xs font-bold text-gray-500">/ {totalSufragantes}</span>
             </div>
             <p data-testid="estado-conteo-barra" className={`text-xs font-bold truncate mt-0.5 ${hayAlertaFraude ? 'text-red-600' : totalVotos === totalSufragantes ? 'text-green-700' : totalVotos > 0 ? 'text-amber-700' : 'text-gray-500'}`}>
-              {hayAlertaFraude ? '⚠️ Excede sufragantes' : totalVotos === totalSufragantes ? '✓ Mesa completa' : totalVotos > 0 ? 'En conteo' : 'Sin votos registrados'}
+              {hayAlertaFraude ? 'Excede sufragantes' : totalVotos === totalSufragantes ? '✓ Mesa completa' : totalVotos > 0 ? 'En conteo' : 'Sin votos registrados'}
             </p>
           </div>
-          <button type="button" onClick={handleGuardar} disabled={guardado || guardando || yaRegistrado || actaCerrada} data-testid="btn-guardar-barra" className={`min-h-[48px] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wide transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${guardado ? 'bg-green-600 text-white cursor-default' : 'bg-editorial-red hover:bg-red-700 text-white'} disabled:opacity-70 disabled:cursor-not-allowed`}>
-            {guardando ? (<><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /><span>Guardando...</span></>) : guardado ? (<><span className="text-base">✓</span><span>Guardado</span></>) : hayAlertaFraude ? (<><span className="text-base" aria-hidden="true">⚠️</span><span>Guardar</span></>) : (<span>Guardar</span>)}
+          <button
+            type="button"
+            onClick={handleGuardar}
+            disabled={guardado || guardando || yaRegistrado || actaCerrada}
+            data-testid="btn-guardar-barra"
+            aria-label={guardado ? 'Resultados guardados' : hayAlertaFraude ? 'Guardar resultados con alerta de fraude' : 'Guardar resultados de la mesa'}
+            className={`min-h-[48px] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wide transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${
+              guardado ? 'bg-green-600 text-white cursor-default' : 'bg-editorial-red hover:bg-red-700 text-white'
+            } disabled:opacity-70 disabled:cursor-not-allowed`}
+          >
+            {guardando ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Guardando...</span>
+              </>
+            ) : guardado ? (
+              <>
+                <IconoCheck className="w-5 h-5 text-white" />
+                <span>Guardado</span>
+              </>
+            ) : hayAlertaFraude ? (
+              <>
+                <IconoAlerta className="w-5 h-5 text-white animate-pulse" />
+                <span>Guardar</span>
+              </>
+            ) : (
+              <>
+                <IconoDocumento className="w-5 h-5 text-white" />
+                <span>Guardar</span>
+              </>
+            )}
           </button>
         </div>
       </div>

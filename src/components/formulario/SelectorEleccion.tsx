@@ -1,3 +1,4 @@
+import { IconoUrna } from '../ui/Iconos';
 interface Eleccion {
   id: string;
   nombre: string;
@@ -29,11 +30,14 @@ export function SelectorEleccion({
   if (elecciones.length === 1) {
     const eleccion = elecciones[0];
     return (
-      <div className="relative overflow-hidden bg-red-50/50 border-2 border-editorial-red/30 rounded-xl p-4 mb-6 shadow-sm">
+      <div className="relative overflow-hidden bg-red-50 border-2 border-editorial-red/30 rounded-xl p-4 mb-6 shadow-md">
+        {/* Patrón de fondo */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-editorial-red/5 rounded-full -mr-16 -mt-16"></div>
+
         <div className="relative">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 bg-editorial-red rounded-lg flex items-center justify-center text-white shadow-sm">
-              <span className="text-xl">🗳️</span>
+            <div className="flex-shrink-0 w-10 h-10 bg-editorial-red rounded-lg flex items-center justify-center shadow-md">
+              <IconoUrna className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-editorial-red uppercase tracking-wider mb-1">
@@ -73,7 +77,7 @@ export function SelectorEleccion({
             onClick={() => onCambiar(eleccion.id)}
             className={`relative w-full text-left p-4 rounded-xl border-2 transition-all overflow-hidden ${
               eleccionActual === eleccion.id
-                ? 'border-editorial-red bg-red-50/60 shadow-md'
+                ? 'border-editorial-red bg-red-50 shadow-md'
                 : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
             }`}
           >

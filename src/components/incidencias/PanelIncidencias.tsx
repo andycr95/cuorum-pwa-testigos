@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { guardarIncidencia, getIncidenciasByMesa, TipoIncidencia } from '../../db/indexeddb';
 import { sincronizar, verificarConectividadReal } from '../../services/syncService';
+import { IconoAlerta, IconoNovedad, IconoCamara, IconoDocumento, IconoCheck } from '../ui/Iconos';
 
 /** Incidencia ya sincronizada que llega desde el backend */
 interface IncidenciaRemota {
@@ -37,17 +38,18 @@ interface PanelIncidenciasProps {
 interface TipoConfig {
   tipo: TipoIncidencia;
   label: string;
-  emoji: string;
   color: string;
 }
 
+const renderIconoTipo = (tipo: TipoIncidencia, className = 'w-5 h-5') => (tipo === 'INTIMIDACION' || tipo === 'VIOLENCIA') ? <IconoAlerta className={className} /> : (tipo === 'MATERIALES_FALTANTES' || tipo === 'IRREGULARIDAD_ACTA') ? <IconoDocumento className={className} /> : <IconoNovedad className={className} />;
+
 const TIPOS: TipoConfig[] = [
-  { tipo: 'MATERIALES_FALTANTES', label: 'Materiales faltantes', emoji: '📦', color: 'bg-yellow-100 border-yellow-400 text-yellow-800' },
-  { tipo: 'INTIMIDACION',         label: 'Intimidación',          emoji: '⚠️',  color: 'bg-orange-100 border-orange-400 text-orange-800' },
-  { tipo: 'VIOLENCIA',            label: 'Violencia',             emoji: '🚨', color: 'bg-red-100 border-red-500 text-red-800' },
-  { tipo: 'JURADO_AUSENTE',       label: 'Jurado ausente',        emoji: '👤', color: 'bg-blue-100 border-blue-400 text-blue-800' },
-  { tipo: 'IRREGULARIDAD_ACTA',   label: 'Irregularidad en acta', emoji: '📋', color: 'bg-purple-100 border-purple-400 text-purple-800' },
-  { tipo: 'OTRO',                 label: 'Otro',                  emoji: '📝', color: 'bg-gray-100 border-gray-400 text-gray-800' },
+  { tipo: 'MATERIALES_FALTANTES', label: 'Materiales faltantes', color: 'bg-yellow-100 border-yellow-400 text-yellow-800' },
+  { tipo: 'INTIMIDACION',         label: 'Intimidación',          color: 'bg-orange-100 border-orange-400 text-orange-800' },
+  { tipo: 'VIOLENCIA',            label: 'Violencia',             color: 'bg-red-100 border-red-500 text-red-800' },
+  { tipo: 'JURADO_AUSENTE',       label: 'Jurado ausente',        color: 'bg-blue-100 border-blue-400 text-blue-800' },
+  { tipo: 'IRREGULARIDAD_ACTA',   label: 'Irregularidad en acta', color: 'bg-purple-100 border-purple-400 text-purple-800' },
+  { tipo: 'OTRO',                 label: 'Otro',                  color: 'bg-gray-100 border-gray-400 text-gray-800' },
 ];
 
 export function PanelIncidencias({
@@ -172,7 +174,7 @@ export function PanelIncidencias({
 
       // Toast de confirmación
       const cfg = TIPOS.find((t) => t.tipo === tipoSeleccionado)!;
-      mostrarToast(`${cfg.emoji} Novedad registrada: ${cfg.label}`);
+      mostrarToast(`Novedad registrada: ${cfg.label}`);
 
       // Intentar sync inmediato si hay conexión
       const online = await verificarConectividadReal();
@@ -197,12 +199,12 @@ export function PanelIncidencias({
       {/* Toast de confirmación — flota encima del panel */}
       {toast && (
         <div className="mx-4 mt-3 px-4 py-3 bg-green-500 text-white rounded-2xl shadow-lg flex items-center gap-3 animate-pulse">
-          <span className="text-lg">✅</span>
+          <IconoCheck className="w-5 h-5 text-white shrink-0" />
           <p className="text-sm font-bold flex-1">{toast}</p>
           <button
             type="button"
             onClick={() => setToast(null)}
-            className="text-white/70 hover:text-white font-black text-base"
+            className="text-white/70 hover:text-white font-black text-base min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Cerrar notificación"
           >
             ✕
           </button>
@@ -216,7 +218,7 @@ export function PanelIncidencias({
         className="w-full flex items-center justify-between px-5 py-4 bg-orange-500 active:opacity-90 transition-opacity"
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🚨</span>
+          <IconoNovedad className="w-6 h-6 text-white shrink-0" />
           <div className="text-left">
             <p className="text-sm font-black text-white uppercase tracking-wide">
               Novedades / Incidencias
@@ -285,7 +287,7 @@ export function PanelIncidencias({
                 </div>
               ) : incidencias.length === 0 ? (
                 <div className="py-8 text-center">
-                  <p className="text-3xl mb-2">📋</p>
+                  <IconoDocumento className="w-8 h-8 text-orange-400 mx-auto mb-2" />
                   <p className="text-sm font-semibold text-gray-500">Sin novedades registradas</p>
                   <button
                     type="button"
@@ -310,7 +312,7 @@ export function PanelIncidencias({
                         key={inc.id}
                         className={`flex items-start gap-3 px-3 py-3 rounded-xl border-2 ${cfg.color}`}
                       >
-                        <span className="text-xl flex-shrink-0 mt-0.5">{cfg.emoji}</span>
+                        {renderIconoTipo(inc.tipo, 'w-5 h-5 shrink-0 mt-0.5')}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-xs font-black uppercase tracking-wide">{cfg.label}</p>
@@ -319,13 +321,13 @@ export function PanelIncidencias({
                               {inc.synced === 1 ? (
                                 <span className="text-green-600 font-black text-xs" title="Sincronizado con servidor">✓</span>
                               ) : (
-                                <span className="text-orange-500 font-black text-xs" title="Pendiente de sincronización">⏳</span>
+                                <span className="text-orange-700 font-bold text-xs" title="Pendiente de sincronización">Pendiente</span>
                               )}
                             </div>
                           </div>
                           <p className="text-xs mt-0.5 leading-relaxed">{inc.descripcion}</p>
                           {tienefoto && (
-                            <p className="text-[10px] mt-1 font-semibold opacity-70">📷 Con foto de evidencia</p>
+                            <p className="text-[10px] mt-1 font-semibold opacity-70">Con foto de evidencia</p>
                           )}
                         </div>
                       </div>
@@ -363,7 +365,7 @@ export function PanelIncidencias({
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
-                      <span className="text-xl flex-shrink-0">{t.emoji}</span>
+                      {renderIconoTipo(t.tipo, 'w-5 h-5 shrink-0')}
                       <span className="text-xs font-bold leading-tight">{t.label}</span>
                     </button>
                   ))}
@@ -435,7 +437,7 @@ export function PanelIncidencias({
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full py-3 border-2 border-dashed border-orange-300 rounded-xl text-orange-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-orange-50 active:scale-95 transition-all"
                   >
-                    <span>📷</span>
+                    <IconoCamara className="w-5 h-5 text-orange-600 shrink-0" />
                     Agregar foto de evidencia
                   </button>
                 )}
@@ -465,7 +467,7 @@ export function PanelIncidencias({
                 className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg ${
                   puedeGuardar
                     ? 'bg-orange-500 text-white shadow-orange-200 hover:shadow-orange-300'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none'
                 }`}
               >
                 {guardando ? (
@@ -475,13 +477,13 @@ export function PanelIncidencias({
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    <span>🚨</span>
+                    <IconoAlerta className="w-5 h-5 shrink-0" />
                     Registrar novedad
                   </span>
                 )}
               </button>
 
-              <p className="text-center text-[10px] text-gray-400 leading-relaxed">
+              <p className="text-center text-[10px] text-gray-600 leading-relaxed">
                 Las novedades se guardan localmente y se sincronizan automáticamente con el servidor cuando hay conexión.
               </p>
             </div>

@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef } from 'react';
+import { IconoCamara, IconoPapelera } from '../ui/Iconos';
 
 interface CapturaFotoProps {
   onFotoCapturada: (blob: Blob, preview: string) => void;
@@ -86,9 +87,9 @@ export function CapturaFoto({
             <button
               type="button"
               onClick={onEliminar}
-              className="mt-3 w-full py-3 px-4 bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 text-red-700 rounded-xl font-bold text-sm uppercase tracking-wide hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="mt-3 w-full py-3 px-4 bg-red-50 hover:bg-red-100 border-2 border-red-300 text-red-700 rounded-xl font-bold text-sm uppercase tracking-wide hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <span className="text-lg">🗑️</span>
+              <IconoPapelera className="w-5 h-5 text-red-700" />
               <span>Eliminar foto</span>
             </button>
           )}
@@ -98,15 +99,15 @@ export function CapturaFoto({
           type="button"
           onClick={handleCapturar}
           disabled={disabled || capturando}
-          className="relative w-full overflow-hidden rounded-2xl py-6 border-3 border-dashed border-gray-300 hover:border-editorial-red/50 bg-gradient-to-br from-gray-50 to-white hover:from-editorial-red/5 hover:to-red-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+          className="relative w-full overflow-hidden rounded-2xl py-6 border-2 border-dashed border-gray-300 hover:border-editorial-red/50 bg-gray-50 hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
         >
           {/* Patrón de fondo */}
           <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImRvdHMiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNkb3RzKSIvPjwvc3ZnPg==')]"></div>
 
           <div className="relative flex flex-col items-center gap-3">
             {/* Ícono cámara */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-editorial-red to-red-700 shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-3xl">📷</span>
+            <div className="w-16 h-16 rounded-2xl bg-editorial-red shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <IconoCamara className="w-8 h-8 text-white" />
             </div>
 
             {/* Texto */}
@@ -136,7 +137,7 @@ export function CapturaFoto({
       {/* Nota informativa */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-xs text-blue-700 leading-relaxed">
-          <span className="font-bold">💡 Consejo:</span> Asegúrate de que la foto sea clara y legible.
+          <span className="font-bold">Consejo:</span> Asegúrate de que la foto sea clara y legible.
           La foto se guardará localmente y se sincronizará automáticamente cuando haya conexión.
         </p>
       </div>

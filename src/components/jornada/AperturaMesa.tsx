@@ -169,7 +169,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
     <div className="max-w-md mx-auto px-4 py-8">
       <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
         {/* Header */}
-        <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 px-6 py-6 border-b-2 border-gray-200">
+        <div className="bg-gray-50 px-6 py-6 border-b-2 border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-editorial-red/10 rounded-xl flex items-center justify-center">
               <svg className="w-6 h-6 text-editorial-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -205,7 +205,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
                 className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
                   checklist[item.key]
                     ? 'bg-green-500 text-white shadow-md shadow-green-200'
-                    : 'bg-gray-200 text-gray-400'
+                    : 'bg-gray-200 text-gray-600'
                 }`}
               >
                 {checklist[item.key] ? (
@@ -213,7 +213,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 ) : (
-                  <span className={checklist[item.key] ? 'text-white' : 'text-gray-400'}>{item.icon}</span>
+                  <span className={checklist[item.key] ? 'text-white' : 'text-gray-600'}>{item.icon}</span>
                 )}
               </div>
 
@@ -232,7 +232,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
               </div>
 
               {/* Icon */}
-              <span className={checklist[item.key] ? 'text-green-500' : 'text-gray-300'}>
+              <span className={checklist[item.key] ? 'text-green-500' : 'text-gray-600'}>
                 {item.icon}
               </span>
             </button>
@@ -240,17 +240,17 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
 
           {/* Observaciones */}
           <div className="pt-3">
-            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
+            <label htmlFor="observaciones-apertura" className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
               Observaciones (opcional)
             </label>
-            <textarea
+            <textarea id="observaciones-apertura"
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value.slice(0, 500))}
               placeholder="Notas adicionales sobre el estado de la mesa..."
               rows={3}
               className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:border-editorial-red focus:outline-none resize-none"
             />
-            <p className="text-[10px] text-gray-400 text-right mt-1">{observaciones.length}/500</p>
+            <p className="text-[10px] text-gray-600 text-right mt-1">{observaciones.length}/500</p>
           </div>
 
           {error && (
@@ -263,16 +263,13 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
           <button
             onClick={handleApertura}
             disabled={!requiredMet || loading}
-            className={`relative w-full overflow-hidden rounded-2xl py-5 font-black text-white uppercase tracking-widest text-base transition-all shadow-2xl ${
+            className={`relative w-full overflow-hidden rounded-2xl py-5 font-black uppercase tracking-widest text-base transition-all shadow-xl min-h-[48px] ${
               requiredMet
-                ? 'bg-editorial-red hover:shadow-[0_20px_60px_rgba(220,38,38,0.4)] active:scale-[0.97] shadow-red-300/50'
-                : 'bg-gray-300 cursor-not-allowed shadow-gray-200/50'
+                ? 'bg-editorial-red hover:bg-red-700 text-white active:scale-[0.97] shadow-red-300/50'
+                : 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none'
             } disabled:opacity-70 disabled:cursor-not-allowed`}
             style={{ letterSpacing: '0.1em' }}
           >
-            {!loading && requiredMet && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_2.5s_ease-in-out_infinite]" style={{ width: '200%' }} />
-            )}
             <span className="relative flex items-center justify-center gap-3">
               {loading ? (
                 <>
@@ -291,7 +288,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
           </button>
 
           {!requiredMet && (
-            <p className="text-center text-xs text-gray-400 font-medium">
+            <p className="text-center text-xs text-gray-600 font-medium">
               Completa los items requeridos para continuar
             </p>
           )}
