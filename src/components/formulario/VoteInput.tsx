@@ -58,7 +58,7 @@ export function VoteInput({
           {label}
         </p>
         {subtitle && (
-          <p className="text-xs text-gray-500 truncate mt-0.5 font-medium">{subtitle}</p>
+          <p className="text-xs text-gray-600 truncate mt-0.5 font-medium">{subtitle}</p>
         )}
       </div>
 
@@ -68,15 +68,15 @@ export function VoteInput({
         <button
           type="button"
           onClick={decrement}
-          disabled={disabled || value === 0}
-          className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg ${
+          disabled={disabled || value === 0} aria-label={`Disminuir votos de ${label}`}
+          className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg min-w-[44px] min-h-[44px] ${
             isLarge
               ? 'w-12 h-12 text-xl'
-              : 'w-10 h-10 text-lg'
+              : 'w-11 h-11 text-lg'
           } ${
             isSpecial
-              ? 'bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-700 border-2 border-gray-300 shadow-gray-200'
-              : 'bg-gradient-to-br from-editorial-red/10 to-editorial-red/20 hover:from-editorial-red/20 hover:to-editorial-red/30 text-editorial-red border-2 border-editorial-red/40 shadow-red-100'
+              ? 'bg-gray-100 hover:bg-gray-200 text-gray-800 border-2 border-gray-300 shadow-gray-200'
+              : 'bg-red-50 hover:bg-red-100 text-editorial-red border-2 border-editorial-red/40 shadow-red-100'
           }`}
         >
           −
@@ -91,17 +91,17 @@ export function VoteInput({
             max="9999"
             value={value || ''}
             onChange={handleChange}
-            disabled={disabled}
+            disabled={disabled} aria-label={`Votos de ${label}`}
             className={`text-center font-black border-3 rounded-2xl transition-all focus:outline-none focus:ring-4 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed ${
               isLarge
                 ? 'w-24 h-12 text-3xl'
-                : 'w-20 h-10 text-2xl'
+                : 'w-20 h-11 text-2xl'
             } ${
               value > 0
                 ? isSpecial
-                  ? 'border-gray-500 bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 shadow-gray-200 focus:ring-gray-200'
-                  : 'border-editorial-red bg-gradient-to-br from-red-50 to-red-100 text-editorial-red shadow-red-200 focus:ring-editorial-red/30'
-                : 'border-gray-300 bg-white text-gray-400 shadow-gray-100 focus:ring-gray-200'
+                  ? 'border-gray-500 bg-gray-100 text-gray-900 shadow-gray-200 focus:ring-gray-200'
+                  : 'border-editorial-red bg-red-50 text-editorial-red shadow-red-200 focus:ring-editorial-red/30'
+                : 'border-gray-300 bg-white text-gray-600 shadow-gray-100 focus:ring-gray-200'
             }`}
             placeholder="0"
             style={{
@@ -121,15 +121,15 @@ export function VoteInput({
         <button
           type="button"
           onClick={increment}
-          disabled={disabled || value >= 9999}
-          className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg ${
+          disabled={disabled || value >= 9999} aria-label={`Aumentar votos de ${label}`}
+          className={`flex items-center justify-center rounded-xl font-black transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed shadow-md hover:shadow-lg min-w-[44px] min-h-[44px] ${
             isLarge
               ? 'w-12 h-12 text-xl'
-              : 'w-10 h-10 text-lg'
+              : 'w-11 h-11 text-lg'
           } ${
             isSpecial
-              ? 'bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-700 border-2 border-gray-300 shadow-gray-200'
-              : 'bg-gradient-to-br from-editorial-red/10 to-editorial-red/20 hover:from-editorial-red/20 hover:to-editorial-red/30 text-editorial-red border-2 border-editorial-red/40 shadow-red-100'
+              ? 'bg-gray-100 hover:bg-gray-200 text-gray-800 border-2 border-gray-300 shadow-gray-200'
+              : 'bg-red-50 hover:bg-red-100 text-editorial-red border-2 border-editorial-red/40 shadow-red-100'
           }`}
         >
           +

@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { authService, mapearErrorAuth } from '../../services/authService';
+import { IconoAlerta } from '../ui/Iconos';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -57,7 +58,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo y Header */}
         <div className="text-center mb-8">
@@ -73,7 +74,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </div>
 
         {/* Card de Login */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 p-8">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Iniciar Sesión</h2>
             <p className="text-sm text-gray-500">
@@ -121,7 +122,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   aria-live="polite"
                   className="text-xs text-editorial-red font-medium mt-1.5 flex items-center gap-1"
                 >
-                  <span aria-hidden="true">⚠️</span>
+                  <IconoAlerta className="w-4 h-4 text-editorial-red flex-shrink-0" />
                   <span>{cedulaError}</span>
                 </p>
               )}
@@ -167,11 +168,11 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   aria-live="polite"
                   className="text-xs text-editorial-red font-medium mt-1.5 flex items-center gap-1 justify-center"
                 >
-                  <span aria-hidden="true">⚠️</span>
+                  <IconoAlerta className="w-4 h-4 text-editorial-red flex-shrink-0" />
                   <span>{pinError}</span>
                 </p>
               )}
-              <p id="pin-ayuda" className="text-xs text-gray-500 mt-2">
+              <p id="pin-ayuda" className="text-xs text-gray-600 mt-2">
                 El PIN de 6 dígitos fue enviado a tu email
               </p>
             </div>
@@ -183,7 +184,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 aria-live="polite"
                 className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3"
               >
-                <span className="text-xl flex-shrink-0" aria-hidden="true">⚠️</span>
+                <IconoAlerta className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
             )}
@@ -213,7 +214,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <div className="mt-6 pt-6 border-t-2 border-gray-100">
             <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
               <p className="text-xs text-blue-700 font-medium">
-                <strong>📧 ¿No recibiste tu PIN?</strong><br />
+                <strong>¿No recibiste tu PIN?</strong><br />
                 Contacta al coordinador de tu campaña para que te reenvíe las credenciales.
               </p>
             </div>
@@ -225,6 +226,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           Sistema Seguro de Reporte Electoral • Cuorum {new Date().getFullYear()}
         </p>
       </div>
-    </div>
+    </main>
   );
 }
