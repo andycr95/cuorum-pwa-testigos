@@ -170,8 +170,8 @@ async function run() {
             cedula: '90000001',
             nombres: 'Testigo Sintético',
             apellidos: 'Demo Uno',
-            telefono: '3001234567',
-            email: 'testigo@campanademo.co',
+            telefono: '3000000000',
+            email: 'testigo@example.invalid',
           },
           tipoTestigo: 'ELECTORAL',
           mesa: {

@@ -14,8 +14,8 @@ El administrador crea un testigo desde el panel web:
   cedula: "1234567890",
   nombres: "Juan",
   apellidos: "Pérez",
-  telefono: "3001234567",
-  email: "juan@example.com",
+  telefono: "3000000000",
+  email: "juan@example.invalid",
   mesaId: "mesa-123",
   campanaId: "campana-456"
 }

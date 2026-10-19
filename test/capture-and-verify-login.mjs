@@ -189,8 +189,8 @@ async function run() {
           cedula: 'TEST-TES-001',
           nombres: 'Carlos',
           apellidos: 'Testigo Demo',
-          telefono: '3001234567',
-          email: 'testigo@demo.cuorum',
+          telefono: '3000000000',
+          email: 'testigo@example.invalid',
         },
         tipoTestigo: 'ELECTORAL',
         mesa: {
