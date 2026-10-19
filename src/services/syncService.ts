@@ -3,9 +3,11 @@ import { jornadaService } from './jornadaService';
 import {
   getPendientes,
   marcarSincronizados,
+  marcarRechazados,
   logSync,
   getIncidenciasPendientes,
   marcarIncidenciasSincronizadas,
+  marcarIncidenciasError,
   getJornadasPendientes,
   saveJornada,
 } from '../db/indexeddb';
@@ -21,12 +23,35 @@ import {
  * - Respuesta enriquecida con validación del servidor
  */
 
+import {
+  procesarRespuestaSync,
+  getLastSyncTime,
+  setLastSyncTime,
+  clearLastSyncTime,
+  getLastSyncError,
+  setLastSyncError,
+  clearLastSyncError,
+  type ItemConId,
+  type ResultadoProcesamientoSync,
+} from './syncResponseLogic';
+
+export {
+  procesarRespuestaSync,
+  getLastSyncTime,
+  setLastSyncTime,
+  clearLastSyncTime,
+  getLastSyncError,
+  setLastSyncError,
+  clearLastSyncError,
+  type ItemConId,
+  type ResultadoProcesamientoSync,
+};
+
 let syncInProgress = false;
 let backoffMs = 0;
 let nextRetryAt = 0;
 const MAX_BACKOFF_MS = 8 * 60 * 1000; // 8 minutos
 
-let lastSyncTime: string | null = null;
 type SyncListener = (syncing: boolean) => void;
 const syncListeners: Set<SyncListener> = new Set();
 
@@ -48,20 +73,6 @@ function notifySyncState(syncing: boolean) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('cuorum:sync-state', { detail: { syncing } }));
     window.dispatchEvent(new CustomEvent('cuorum:sync-status'));
-  }
-}
-
-export function getLastSyncTime(): string | null {
-  if (!lastSyncTime && typeof localStorage !== 'undefined') {
-    lastSyncTime = localStorage.getItem('cuorum_last_sync_time');
-  }
-  return lastSyncTime;
-}
-
-export function setLastSyncTime(timeStr: string) {
-  lastSyncTime = timeStr;
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('cuorum_last_sync_time', timeStr);
   }
 }
 
@@ -234,6 +245,9 @@ export async function sincronizar(): Promise<SyncResultado> {
       jornadasSinc = await sincronizarJornadas();
     }
 
+    let tieneRechazosTotal = false;
+    let rechazadosCountTotal = 0;
+
     // ─── Sync resultados de mesa y fotos E-14 ─────────────────────
 
     if (resultados.length > 0 || fotos.length > 0) {
@@ -248,10 +262,11 @@ export async function sincronizar(): Promise<SyncResultado> {
         ),
       );
 
-      const fotosMetadata: { mesaId: string; testigoId: string; capturedAt: string; deviceId: string }[] = [];
+      const fotosMetadata: { id?: string; mesaId: string; testigoId: string; capturedAt: string; deviceId: string }[] = [];
       for (const foto of fotos) {
         formData.append('fotos', foto.blob, `e14_${foto.mesaId}.jpg`);
         fotosMetadata.push({
+          id: foto.id,
           mesaId: foto.mesaId,
           testigoId: foto.testigoId,
           capturedAt: foto.capturedAt,
@@ -273,18 +288,26 @@ export async function sincronizar(): Promise<SyncResultado> {
         };
       }
 
-      await marcarSincronizados(
-        resultados.map((r) => r.id),
-        fotos.map((f) => f.id),
-      );
+      const resProc = procesarRespuestaSync(resultados, response.data, 'resultado');
+      const fotoProc = procesarRespuestaSync(fotos, response.data, 'foto');
 
-      resultadosSinc = resultados.length;
-      fotosSinc = fotos.length;
+      if (resProc.acceptedIds.length > 0 || fotoProc.acceptedIds.length > 0) {
+        await marcarSincronizados(resProc.acceptedIds, fotoProc.acceptedIds);
+      }
+
+      if (resProc.rejectedItems.length > 0 || fotoProc.rejectedItems.length > 0) {
+        await marcarRechazados(resProc.rejectedItems, fotoProc.rejectedItems);
+        tieneRechazosTotal = true;
+        rechazadosCountTotal += resProc.rejectedItems.length + fotoProc.rejectedItems.length;
+      }
+
+      resultadosSinc = resProc.acceptedIds.length;
+      fotosSinc = fotoProc.acceptedIds.length;
     }
 
     // ─── Sync incidencias ──────────────────────────────────────────
     // Endpoint separado: POST /testigos/incidencias
-    // Si el backend aún no lo implementa, el catch previene romper el sync principal
+    let incidenciasError: string | null = null;
 
     if (incidencias.length > 0) {
       try {
@@ -306,48 +329,76 @@ export async function sincronizar(): Promise<SyncResultado> {
         });
         incFormData.append('fotosIncidenciasIds', JSON.stringify(fotosIds));
 
-        await api.post(`/testigos/incidencias`, incFormData, {
+        const incResponse = await api.post(`/testigos/incidencias`, incFormData, {
           headers: { 'Content-Type': undefined },
         });
 
-        await marcarIncidenciasSincronizadas(incidencias.map((i) => i.id));
-        incidenciasSinc = incidencias.length;
+        const incProc = procesarRespuestaSync(incidencias, incResponse.data, 'incidencia');
+        if (incProc.acceptedIds.length > 0) {
+          await marcarIncidenciasSincronizadas(incProc.acceptedIds);
+        }
+        if (incProc.rejectedItems.length > 0) {
+          await marcarIncidenciasError(incProc.rejectedItems);
+          tieneRechazosTotal = true;
+          rechazadosCountTotal += incProc.rejectedItems.length;
+        }
+        incidenciasSinc = incProc.acceptedIds.length;
         console.log(`[Sync] Incidencias: ${incidenciasSinc} enviadas`);
-      } catch (incError) {
+      } catch (incError: any) {
         console.warn('[Sync] Error sincronizando incidencias:', incError);
+        const msg = incError instanceof Error ? incError.message : 'Error al sincronizar incidencias';
+        incidenciasError = msg;
+        await marcarIncidenciasError(incidencias.map((i) => ({ id: i.id, error: msg })));
+        tieneRechazosTotal = true;
+        rechazadosCountTotal += incidencias.length;
       }
     }
 
-    await logSync('batch_sync', resultadosSinc + fotosSinc + incidenciasSinc + jornadasSinc, true);
+    const huboFallos = tieneRechazosTotal || incidenciasError !== null;
 
-    // Reset backoff en éxito
-    backoffMs = 0;
-    nextRetryAt = 0;
+    if (huboFallos) {
+      const errorMsg =
+        incidenciasError ||
+        (rechazadosCountTotal === 1
+          ? '1 elemento rechazado por el servidor'
+          : `${rechazadosCountTotal} elementos rechazados por el servidor`);
+      setLastSyncError(errorMsg);
+      await logSync('batch_sync', resultadosSinc + fotosSinc + incidenciasSinc + jornadasSinc, false, errorMsg);
+    } else {
+      setLastSyncError(null);
+      await logSync('batch_sync', resultadosSinc + fotosSinc + incidenciasSinc + jornadasSinc, true);
+      // Reset backoff en éxito completo
+      backoffMs = 0;
+      nextRetryAt = 0;
+
+      const horaEnvio = new Date().toLocaleTimeString('es-CO', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+      setLastSyncTime(horaEnvio);
+    }
 
     console.log(
-      `[Sync] Completado: ${resultadosSinc} resultados, ${fotosSinc} fotos, ${incidenciasSinc} incidencias, ${jornadasSinc} jornadas`,
+      `[Sync] Completado: ${resultadosSinc} resultados, ${fotosSinc} fotos, ${incidenciasSinc} incidencias, ${jornadasSinc} jornadas (fallos: ${huboFallos ? 'sí' : 'no'})`,
     );
 
     syncInProgress = false;
-    const horaEnvio = new Date().toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    setLastSyncTime(horaEnvio);
     notifySyncState(false);
 
     return {
-      success: true,
+      success: !huboFallos,
       resultadosSincronizados: resultadosSinc,
       fotosSincronizadas: fotosSinc,
       incidenciasSincronizadas: incidenciasSinc,
       jornadasSincronizadas: jornadasSinc,
       validacionServidor,
+      ...(huboFallos ? { error: getLastSyncError() || 'Error en sincronización' } : {}),
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[Sync] Error:', msg);
+    setLastSyncError(msg);
     await logSync('batch_sync', 0, false, msg);
 
     // Backoff exponencial: 30s → 1min → 2min → 4min → 8min

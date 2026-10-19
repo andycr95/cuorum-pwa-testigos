@@ -1,10 +1,12 @@
-export type EstadoEnvio = 'ENVIANDO' | 'PENDIENTE' | 'OFFLINE' | 'ENVIADO' | 'ONLINE' | 'NEUTRAL';
+export type EstadoEnvio = 'ENVIANDO' | 'PENDIENTE' | 'OFFLINE' | 'ENVIADO' | 'ONLINE' | 'NEUTRAL' | 'ERROR';
 
 export interface ResolverEstadoEnvioParams {
   isOnline: boolean;
   pendingCount: number;
   isSyncing: boolean;
   lastSyncTime?: string | null;
+  error?: string | null;
+  hasRechazos?: boolean;
 }
 
 export interface ResultadoEstadoEnvio {
@@ -18,6 +20,9 @@ export function formatearHoraActual(fecha = new Date()): string {
 
 export function resolverEstadoEnvio(p: ResolverEstadoEnvioParams): ResultadoEstadoEnvio {
   if (p.isSyncing) return { estado: 'ENVIANDO', texto: 'Enviando…' };
+  if (p.hasRechazos || p.error) {
+    return { estado: 'ERROR', texto: p.error || 'Envío rechazado por el servidor' };
+  }
   if (p.pendingCount > 0) {
     const suf = p.pendingCount === 1 ? '1 pendiente' : `${p.pendingCount} pendientes`;
     return { estado: 'PENDIENTE', texto: `Guardado en el teléfono (${suf})` };

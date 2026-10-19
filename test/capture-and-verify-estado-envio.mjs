@@ -67,6 +67,8 @@ async function run() {
   page.on('pageerror', (err) => console.error('[Browser Uncaught Error]', err));
 
   try {
+    let simularRechazoSync = false;
+
     // Interceptar rutas de backend para testing offline y mock sintético
     await page.route('**/*', (route) => {
       const url = route.request().url();
@@ -118,6 +120,19 @@ async function run() {
         });
       }
       if (url.includes('/api/testigos/sync')) {
+        if (simularRechazoSync) {
+          const postData = route.request().postData() || '';
+          const match = postData.match(/"id":"([^"]+)"/);
+          const rejectedId = match ? match[1] : 'res-01';
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              rechazados: [{ id: rejectedId, error: 'Votos exceden censo electoral de la mesa' }],
+              alertas: ['Discrepancia en total de mesa'],
+            }),
+          });
+        }
         return route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -392,9 +407,44 @@ async function run() {
     console.log('✓ Captura 3 guardada:', captura3Path);
 
     // Copiar la captura corregida de guardado offline a la bóveda
-    if (fs.existsSync(vaultCapturasDir)) {
+    if (vaultCapturasDir && fs.existsSync(vaultCapturasDir)) {
       fs.copyFileSync(captura3Path, path.join(vaultCapturasDir, 'pwa-10-guardar-offline-m.png'));
       console.log('✓ Actualizada captura en bóveda: pwa-10-guardar-offline-m.png');
+    }
+
+    // ─── CAPTURA 4 (CUO-331): Estado de rechazo / error en la barra ───
+    console.log('Simulando estado de rechazo del servidor en la sincronización...');
+    simularRechazoSync = true;
+    await context.setOffline(false);
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('cuorum:online-status', { detail: { isOnline: true } }));
+      window.dispatchEvent(new Event('online'));
+    });
+    await page.waitForTimeout(1000);
+
+    const textoError = await page.$eval(
+      '[data-testid="texto-estado-envio"]',
+      (el) => el.textContent?.trim(),
+    );
+    console.log(`Texto en barra (con error de rechazo): "${textoError}"`);
+    const estadoError = await page.$eval(
+      '[data-testid="barra-estado-envio"]',
+      (el) => el.getAttribute('data-estado'),
+    );
+    console.log(`Estado en barra (con error de rechazo): "${estadoError}"`);
+    if (estadoError !== 'ERROR' && estadoError !== 'PENDIENTE') {
+      throw new Error(`Se esperaba data-estado="ERROR" o "PENDIENTE", se obtuvo: "${estadoError}"`);
+    }
+    if (textoError?.includes('Enviado ✓')) {
+      throw new Error(`La barra no debe mostrar «Enviado ✓» ante rechazos. Se obtuvo: "${textoError}"`);
+    }
+
+    const captura4Path = path.join(screenshotsDir, 'pwa-estado-04-rechazo-servidor.png');
+    await page.screenshot({ path: captura4Path, fullPage: false });
+    console.log('✓ Captura 4 guardada:', captura4Path);
+    if (vaultCapturasDir && fs.existsSync(vaultCapturasDir)) {
+      fs.copyFileSync(captura4Path, path.join(vaultCapturasDir, 'cuo-331-pwa-rechazo-error.png'));
+      console.log('✓ Guardada captura en bóveda: cuo-331-pwa-rechazo-error.png');
     }
 
     // ─── VERIFICACIÓN 3: Accesibilidad con axe-core ───
