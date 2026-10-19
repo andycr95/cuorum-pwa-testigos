@@ -42,12 +42,14 @@ interface Candidato {
   id: string;
   nombre: string;
   partido: string;
+  numero?: number | string | null;
 }
 
 interface Lista {
   id: string;
   nombre: string;
   partido: string;
+  numero?: number | string | null;
   tipoLista: 'CERRADA' | 'PREFERENTE';
   candidatos: Candidato[];
 }
@@ -94,7 +96,7 @@ export function FormularioMesaMultiple({
   onMesaCerrada,
   onVolverSelector,
 }: FormularioMesaMultipleProps) {
-  const [modoCaptura, setModoCaptura] = useState<'manual' | 'foto'>('manual');
+  const [pasoActivo, setPasoActivo] = useState<'contar' | 'foto' | 'cierre'>('contar');
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
   const [votosUninominal, setVotosUninominal] = useState<Record<string, number>>({});
   const [votosLista, setVotosLista] = useState<Record<string, number>>({});
@@ -148,7 +150,7 @@ export function FormularioMesaMultiple({
   );
 
   useEffect(() => {
-    if (ocrCompletado) setModoCaptura('foto');
+    if (ocrCompletado) setPasoActivo('foto');
   }, [ocrCompletado]);
 
   // Verificar si ya existen resultados para esta mesa + elección
@@ -276,6 +278,7 @@ export function FormularioMesaMultiple({
     setYaRegistrado(false);
     setResultadosExistentes([]);
     setCargandoResultados(true);
+    setPasoActivo('contar');
   }, []);
 
   const handleGuardar = async () => {
@@ -470,7 +473,7 @@ export function FormularioMesaMultiple({
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6">
+    <div className="max-w-md mx-auto px-4 pt-4 pb-32">
       <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
 
         {/* Header Card Info */}
@@ -479,18 +482,18 @@ export function FormularioMesaMultiple({
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-200/50 rounded-full -ml-12 -mb-12" />
           <div className="relative flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
                 Mesa Electoral
               </p>
-              <h2 className="text-4xl font-black text-editorial-black leading-none" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <h2 className="text-4xl font-black text-editorial-black leading-none tabular-nums">
                 #{mesaNumero}
               </h2>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1.5" style={{ letterSpacing: '0.15em' }}>
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
                 Sufragantes
               </p>
-              <p className="text-3xl font-black text-editorial-red leading-none drop-shadow-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <p className="text-3xl font-black text-editorial-red leading-none tabular-nums">
                 {totalSufragantes}
               </p>
             </div>
@@ -506,7 +509,7 @@ export function FormularioMesaMultiple({
                 Código de verificación:{' '}
                 <span className="font-black text-green-900 tracking-widest">{codigoActa}</span>
               </p>
-              <p className="text-[10px] text-green-600 mt-1">
+              <p className="text-xs text-green-600 mt-1">
                 Guarda este código como comprobante de tu reporte
               </p>
             </div>
@@ -537,42 +540,24 @@ export function FormularioMesaMultiple({
             }}
           />
 
-          {/* Tab bar: Manual / Foto E-14 */}
-          <div className="flex gap-2 mb-6">
-            <button
-              type="button"
-              onClick={() => !ocrCompletado && setModoCaptura('manual')}
-              disabled={ocrCompletado}
-              title={ocrCompletado ? 'El acta ya fue procesada por OCR' : undefined}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
-                ocrCompletado
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'
-                  : modoCaptura === 'manual'
-                  ? 'bg-editorial-red text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Manual
-              {ocrCompletado && <IconoCandado className="w-3.5 h-3.5 inline ml-1 text-gray-500" />}
+          {/* Stepper de Pasos de la Jornada de Conteo */}
+          <div className="flex rounded-2xl bg-gray-100 p-1 mb-5 border border-gray-200" role="tablist" aria-label="Pasos de la jornada de conteo">
+            <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+              <span>1. Contar</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setModoCaptura('foto')}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all ${
-                modoCaptura === 'foto'
-                  ? 'bg-editorial-red text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Foto E-14
-              {ocrCompletado && <IconoCheck className="w-3.5 h-3.5 inline ml-1 text-green-600" />}
+            <button type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+              <span>2. Foto E-14</span>
+              {fotosManual.length > 0 && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length}</span>}
+            </button>
+            <button type="button" role="tab" id="tab-cierre" aria-controls="panel-cierre" aria-selected={pasoActivo === 'cierre'} onClick={() => setPasoActivo('cierre')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'cierre' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+              <span>3. Cerrar</span>
             </button>
           </div>
 
-          {/* ── Modo Foto OCR ──────────────────────────────────────── */}
-          {modoCaptura === 'foto' && (
-            <div className="space-y-4 mb-6">
-              {ocrCompletado ? (
+          {/* ── Paso 2: Foto E-14 (Evidencia y OCR) ─────────────────── */}
+          {pasoActivo === 'foto' && (
+            <div id="panel-foto" role="tabpanel" aria-labelledby="tab-foto" className="space-y-4 mb-6">
+              {ocrCompletado && (
                 <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
                   <IconoCheck className="w-6 h-6 text-green-600 flex-shrink-0" />
                   <div>
@@ -582,12 +567,18 @@ export function FormularioMesaMultiple({
                     </p>
                   </div>
                 </div>
-              ) : (
-                <CapturaMultipleE14
-                  onFotosListas={ocrJobs.guardar}
-                  disabled={ocrJobs.saving}
-                />
               )}
+              <CapturaMultipleE14
+                onFotosListas={(fotos) => {
+                  setFotosManual(fotos);
+                  setGuardado(false);
+                  setSyncStatus(null);
+                  ocrJobs.guardar(fotos);
+                }}
+                disabled={guardado || ocrJobs.saving}
+                title="Fotos del E-14 (evidencia)"
+                submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
+              />
               <EstadoOcrE14
                 jobs={ocrJobs.jobs}
                 onRetry={ocrJobs.syncJobs}
@@ -606,8 +597,9 @@ export function FormularioMesaMultiple({
             </div>
           )}
 
-          {/* ── Modo Manual (formulario original) ─────────────────── */}
-          {modoCaptura === 'manual' && (<>
+          {/* ── Paso 1: Contar votos ───────────────────────────────── */}
+          {pasoActivo === 'contar' && (
+            <div id="panel-contar" role="tabpanel" aria-labelledby="tab-contar">
 
           {/* Verificando resultados previos */}
           {cargandoResultados && (
@@ -689,7 +681,7 @@ export function FormularioMesaMultiple({
 
               {/* Timestamp */}
               {resultadosExistentes[0]?.capturedAt && (
-                <p className="text-center text-[10px] text-gray-400 font-semibold">
+                <p className="text-center text-xs text-gray-500 font-semibold">
                   Registrado el {new Date(resultadosExistentes[0].capturedAt).toLocaleString('es-CO')}
                 </p>
               )}
@@ -734,6 +726,7 @@ export function FormularioMesaMultiple({
                   key={candidato.id}
                   label={candidato.nombre}
                   subtitle={candidato.partido}
+                  numero={candidato.numero}
                   value={votosUninominal[candidato.id] || 0}
                   onChange={(value) => {
                     setVotosUninominal({ ...votosUninominal, [candidato.id]: value });
@@ -817,7 +810,7 @@ export function FormularioMesaMultiple({
               <div className="w-full border-t-2 border-dashed border-gray-200" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              <span className="bg-white px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
                 Votos Especiales
               </span>
             </div>
@@ -847,107 +840,6 @@ export function FormularioMesaMultiple({
             />
           </div>
 
-          {/* ── Separador Evidencia ─────────────────────────────────── */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-dashed border-gray-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Evidencia y Observaciones
-              </span>
-            </div>
-          </div>
-
-          {/* Captura múltiples fotos E-14 como evidencia */}
-          <div className="mb-6">
-            <CapturaMultipleE14
-              onFotosListas={(fotos) => {
-                setFotosManual(fotos);
-                setGuardado(false);
-                setSyncStatus(null);
-              }}
-              disabled={guardado}
-              title="Fotos del E-14 (evidencia)"
-              submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
-            />
-          </div>
-
-          {/* Observaciones */}
-          <div className="mb-6">
-            <ObservacionesInput
-              value={observaciones}
-              onChange={(v) => {
-                setObservaciones(v);
-                setGuardado(false);
-                setSyncStatus(null);
-              }}
-              disabled={guardado}
-            />
-          </div>
-
-          {/* ── Total de votos ──────────────────────────────────────── */}
-          <div className={`my-4 relative overflow-hidden rounded-3xl border-2 transition-all shadow-xl ${
-            hayAlertaFraude
-              ? 'bg-red-50 border-red-500 shadow-red-200'
-              : totalVotos > 0
-              ? 'bg-red-50/50 border-editorial-red/40 shadow-red-100'
-              : 'bg-gray-50 border-gray-300 shadow-gray-200'
-          }`}>
-            <div className="absolute bottom-0 left-0 right-0 h-2 bg-gray-200">
-              <div
-                className={`h-full transition-all duration-500 ${
-                  hayAlertaFraude
-                    ? 'bg-red-600'
-                    : 'bg-editorial-red'
-                }`}
-                style={{ width: `${Math.min((totalVotos / totalSufragantes) * 100, 100)}%` }}
-              />
-            </div>
-
-            <div className="p-6 text-center">
-              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-3" style={{ letterSpacing: '0.15em' }}>
-                Total Votos Registrados
-              </p>
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <div className={`text-6xl font-black leading-none transition-all ${
-                  hayAlertaFraude ? 'text-red-600' : totalVotos > 0 ? 'text-editorial-red' : 'text-gray-600'
-                }`} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {totalVotos}
-                </div>
-                <div className="text-left">
-                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">de</p>
-                  <p className="text-3xl font-black text-gray-700 leading-none">{totalSufragantes}</p>
-                </div>
-              </div>
-
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 ${
-                hayAlertaFraude ? 'bg-red-100 border-red-400'
-                : totalVotos === totalSufragantes ? 'bg-green-100 border-green-400'
-                : totalVotos > 0 ? 'bg-yellow-100 border-yellow-400'
-                : 'bg-gray-100 border-gray-300'
-              }`}>
-                <div className={`relative w-2.5 h-2.5 rounded-full ${
-                  hayAlertaFraude ? 'bg-red-500'
-                  : totalVotos === totalSufragantes ? 'bg-green-500'
-                  : totalVotos > 0 ? 'bg-yellow-500' : 'bg-gray-400'
-                }`}>
-                  {hayAlertaFraude && <div className="absolute inset-0 rounded-full bg-red-500 animate-ping" />}
-                </div>
-                <p className={`text-xs font-black uppercase tracking-wider ${
-                  hayAlertaFraude ? 'text-red-700'
-                  : totalVotos === totalSufragantes ? 'text-green-700'
-                  : totalVotos > 0 ? 'text-yellow-700' : 'text-gray-600'
-                }`}>
-                  {hayAlertaFraude ? 'Excede sufragantes'
-                  : totalVotos === totalSufragantes ? '✓ Mesa completa'
-                  : totalVotos > 0 ? 'En proceso de conteo'
-                  : 'Sin votos registrados'}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* ── Botón guardar (CUO-207: 56 px de alto, estado Guardado, sin degradados) ── */}
           {!actaCerrada && (
             <button
@@ -955,7 +847,7 @@ export function FormularioMesaMultiple({
               onClick={handleGuardar}
               disabled={guardado || guardando}
               data-testid="btn-guardar-resultados"
-              className={`w-full h-14 min-h-[56px] rounded-xl font-bold text-white uppercase text-sm tracking-wide transition-all mb-4 shadow-md flex items-center justify-center gap-2 select-none ${
+              className={`w-full h-14 min-h-[56px] rounded-xl font-bold text-white uppercase text-sm tracking-wide transition-all my-4 shadow-md flex items-center justify-center gap-2 select-none ${
                 guardado
                   ? 'bg-[#15803D] hover:bg-[#166534] cursor-default'
                   : hayAlertaFraude
@@ -989,6 +881,26 @@ export function FormularioMesaMultiple({
             </button>
           )}
 
+          {/* Fin paso 1: Contar votos */}
+          </>)}
+          </div>
+          )}
+
+          {/* ── Paso 3: Cierre y Observaciones ─────────────────────────── */}
+          {pasoActivo === 'cierre' && (
+            <div id="panel-cierre" role="tabpanel" aria-labelledby="tab-cierre">
+            {/* Observaciones */}
+            <div className="mb-6">
+              <ObservacionesInput
+                value={observaciones}
+                onChange={(v) => {
+                  setObservaciones(v);
+                  setGuardado(false);
+                  setSyncStatus(null);
+                }}
+                disabled={guardado}
+              />
+            </div>
           {/* ── Confirmación post-sync del servidor ─────────────────── */}
           {syncStatus && (
             <div className={`mb-4 px-4 py-4 rounded-2xl border-2 ${
@@ -1095,18 +1007,13 @@ export function FormularioMesaMultiple({
                   </>
                 )}
               </span>
-              <p className="text-[10px] text-gray-400 font-normal mt-1 tracking-normal">
+              <p className="text-xs text-gray-400 font-normal mt-1 tracking-normal">
                 Genera código de verificación — bloquea ediciones futuras
               </p>
             </button>
           )}
 
-          </>)}
-
-          </>)}
-          {/* ── end modoCaptura === 'manual' ── */}
-
-          {/* ── Panel de incidencias (siempre visible) ───────────────── */}
+          {/* ── Panel de incidencias ─────────────────────────────────── */}
           <div className="mb-6">
             <PanelIncidencias
               mesaId={mesaId}
@@ -1129,10 +1036,12 @@ export function FormularioMesaMultiple({
                 </svg>
                 <span>Cerrar Acta de Mesa</span>
               </span>
-              <p className="text-[10px] text-editorial-red font-normal mt-1 tracking-normal">
-                Validacion final, firma digital y codigo de verificacion
+              <p className="text-xs text-editorial-red/80 font-normal mt-1 tracking-normal">
+                Validación final, firma digital y comprobante para el testigo
               </p>
             </button>
+          )}
+          </div>
           )}
 
           {/* ── WizardCierre modal ─────────────────────────────────── */}
@@ -1151,12 +1060,59 @@ export function FormularioMesaMultiple({
             />
           )}
 
-
           {error && (
             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-xs text-red-600 text-center font-semibold">{error}</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ── BARRA INFERIOR FIJA: TOTAL CONTADO VS SUFRAGANTES Y GUARDAR ── */}
+      <div data-testid="barra-fija-conteo" className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-300 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-600">Total votos:</span>
+              <span data-testid="total-votos-barra" className={`text-2xl font-black tabular-nums ${hayAlertaFraude ? 'text-red-600' : 'text-gray-900'}`}>{totalVotos}</span>
+              <span className="text-xs font-bold text-gray-500">/ {totalSufragantes}</span>
+            </div>
+            <p data-testid="estado-conteo-barra" className={`text-xs font-bold truncate mt-0.5 ${hayAlertaFraude ? 'text-red-600' : totalVotos === totalSufragantes ? 'text-green-700' : totalVotos > 0 ? 'text-amber-700' : 'text-gray-500'}`}>
+              {hayAlertaFraude ? 'Excede sufragantes' : totalVotos === totalSufragantes ? '✓ Mesa completa' : totalVotos > 0 ? 'En conteo' : 'Sin votos registrados'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleGuardar}
+            disabled={guardado || guardando || yaRegistrado || actaCerrada}
+            data-testid="btn-guardar-barra"
+            aria-label={guardado ? 'Resultados guardados' : hayAlertaFraude ? 'Guardar resultados con alerta de fraude' : 'Guardar resultados de la mesa'}
+            className={`min-h-[48px] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wide transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${
+              guardado ? 'bg-green-600 text-white cursor-default' : 'bg-editorial-red hover:bg-red-700 text-white'
+            } disabled:opacity-70 disabled:cursor-not-allowed`}
+          >
+            {guardando ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Guardando...</span>
+              </>
+            ) : guardado ? (
+              <>
+                <IconoCheck className="w-5 h-5 text-white" />
+                <span>Guardado</span>
+              </>
+            ) : hayAlertaFraude ? (
+              <>
+                <IconoAlerta className="w-5 h-5 text-white animate-pulse" />
+                <span>Guardar</span>
+              </>
+            ) : (
+              <>
+                <IconoDocumento className="w-5 h-5 text-white" />
+                <span>Guardar</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

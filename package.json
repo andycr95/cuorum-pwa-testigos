@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs && bash scripts/check-nombres-prohibidos.test.sh",
     "test:e2e": "node test/capture-and-verify-login.mjs",
+    "test:conteo": "node test/capture-and-verify-conteo.mjs",
     "test:a11y": "node test/axe-audit-and-screenshots.mjs",
     "generate:icons": "node scripts/generate-pwa-icons.mjs",
     "check:nombres": "bash scripts/check-nombres-prohibidos.sh",

@@ -40,17 +40,17 @@ export function SelectorEleccion({
               <IconoUrna className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold text-editorial-red uppercase tracking-wider mb-1">
+              <p className="text-xs font-bold text-editorial-red uppercase tracking-wider mb-1">
                 Tarjetón Electoral
               </p>
               <p className="text-base font-black text-editorial-black mb-1">
                 {eleccion.nombre}
               </p>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-block px-2 py-0.5 bg-white rounded-md text-[10px] font-bold text-editorial-red uppercase border border-editorial-red/20">
+                <span className="inline-block px-2 py-0.5 bg-white rounded-md text-xs font-bold text-editorial-red uppercase border border-editorial-red/20">
                   {eleccion.tipoEleccion}
                 </span>
-                <span className="inline-block px-2 py-0.5 bg-editorial-red text-white rounded-md text-[10px] font-bold uppercase">
+                <span className="inline-block px-2 py-0.5 bg-editorial-red text-white rounded-md text-xs font-bold uppercase">
                   {eleccion.tipoCargo === 'UNINOMINAL' ? 'Uninominal' : 'Colegiado'}
                 </span>
               </div>
@@ -84,13 +84,8 @@ export function SelectorEleccion({
             {/* Indicador de seleccionado */}
             {eleccionActual === eleccion.id && (
               <div className="absolute top-3 right-3 w-6 h-6 bg-editorial-red rounded-full flex items-center justify-center shadow-md">
-                <span className="text-white text-xs">✓</span>
+                <span className="text-white text-xs font-bold">✓</span>
               </div>
-            )}
-
-            {/* Patrón de fondo sutil */}
-            {eleccionActual === eleccion.id && (
-              <div className="absolute bottom-0 right-0 w-24 h-24 bg-editorial-red/5 rounded-full -mr-12 -mb-12"></div>
             )}
 
             <div className="relative">
@@ -100,14 +95,14 @@ export function SelectorEleccion({
                 {eleccion.nombre}
               </p>
               <div className="flex items-center gap-2">
-                <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold uppercase ${
                   eleccionActual === eleccion.id
                     ? 'bg-white text-editorial-red border border-editorial-red/20'
                     : 'bg-gray-100 text-gray-600'
                 }`}>
                   {eleccion.tipoEleccion}
                 </span>
-                <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold uppercase ${
                   eleccionActual === eleccion.id
                     ? 'bg-editorial-red text-white'
                     : 'bg-gray-200 text-gray-700'

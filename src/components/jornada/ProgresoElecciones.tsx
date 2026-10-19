@@ -67,7 +67,7 @@ export function ProgresoElecciones({
     <div className="mb-5">
       {/* Progress Header */}
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest" style={{ letterSpacing: '0.15em' }}>
+        <p className="text-xs font-black text-gray-600 uppercase tracking-wider">
           Progreso
         </p>
         <p className="text-xs font-bold text-gray-600">
