@@ -216,7 +216,7 @@ export function FormularioMesaMultiple({
   // Cargar fotos existentes en IndexedDB para esta mesa
   useEffect(() => {
     let mounted = true;
-    getFotosByMesa(mesaId)
+    getFotosByMesa(mesaId, { campanaId, testigoId })
       .then((fotos) => {
         if (mounted) setFotosMesaCount(fotos.length);
       })
@@ -224,7 +224,7 @@ export function FormularioMesaMultiple({
     return () => {
       mounted = false;
     };
-  }, [mesaId, guardado, refreshProgreso]);
+  }, [mesaId, campanaId, testigoId, guardado, refreshProgreso]);
 
   const limpiarFormulario = useCallback(() => {
     setVotosUninominal({});
@@ -405,6 +405,7 @@ export function FormularioMesaMultiple({
         id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
         mesaId,
         testigoId,
+        campanaId: campanaId || undefined,
         blob: f.blob,
         capturedAt: now,
         deviceId,

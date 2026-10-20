@@ -71,6 +71,7 @@ export interface CuorumDB extends DBSchema {
       id: string;
       mesaId: string;
       testigoId: string;
+      campanaId?: string;
       blob: Blob;
       capturedAt: string;
       deviceId: string;
@@ -78,7 +79,7 @@ export interface CuorumDB extends DBSchema {
       syncAttempts: number;
       lastSyncError?: string;
     };
-    indexes: { 'by-synced': 0 | 1 };
+    indexes: { 'by-synced': 0 | 1; 'by-mesa': string; 'by-testigo': string; 'by-campana': string };
   };
   syncLog: {
     key: string;
@@ -158,7 +159,7 @@ export interface CuorumDB extends DBSchema {
   };
 }
 
-const DB_VERSION = 10;
+const DB_VERSION = 11;
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
@@ -180,6 +181,9 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
 
         const fotosStore = db.createObjectStore('fotosE14', { keyPath: 'id' });
         fotosStore.createIndex('by-synced', 'synced');
+        fotosStore.createIndex('by-mesa', 'mesaId');
+        fotosStore.createIndex('by-testigo', 'testigoId');
+        fotosStore.createIndex('by-campana', 'campanaId');
 
         db.createObjectStore('syncLog', { keyPath: 'id' });
       }
@@ -257,6 +261,23 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
           db.createObjectStore('escrutinio-divulgacion', { keyPath: 'cacheKey' });
         }
       }
+
+      // v11: Índices de tenencia por mesa, testigo y campaña en fotosE14
+      if (oldVersion < 11) {
+        if (db.objectStoreNames.contains('fotosE14')) {
+          // @ts-ignore
+          const fotosStore = db.transaction.objectStore('fotosE14');
+          if (!fotosStore.indexNames.contains('by-mesa')) {
+            fotosStore.createIndex('by-mesa', 'mesaId');
+          }
+          if (!fotosStore.indexNames.contains('by-testigo')) {
+            fotosStore.createIndex('by-testigo', 'testigoId');
+          }
+          if (!fotosStore.indexNames.contains('by-campana')) {
+            fotosStore.createIndex('by-campana', 'campanaId');
+          }
+        }
+      }
     },
   });
 
@@ -304,11 +325,35 @@ export async function guardarResultado(
 
 // ─── Fotos E-14 ───────────────────────────────────────────────
 
+export interface FiltroTenencia {
+  campanaId?: string | null;
+  testigoId?: string | null;
+}
+
+export function obtenerSesionActivaLocal(): { campanaId?: string; testigoId?: string } | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const campanaId = localStorage.getItem('cuorum_testigo_campana') || undefined;
+    const rawData = localStorage.getItem('cuorum_testigo_data');
+    let testigoId: string | undefined = undefined;
+    if (rawData) {
+      const parsed = JSON.parse(rawData);
+      testigoId = parsed?.testigo?.id || undefined;
+    }
+    if (!campanaId && !testigoId) return null;
+    return { campanaId, testigoId };
+  } catch {
+    return null;
+  }
+}
+
 export async function guardarFotoE14(
   data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>,
 ) {
   const db = await getDB();
-  await db.put('fotosE14', { ...data, synced: 0, syncAttempts: 0 });
+  const sesion = obtenerSesionActivaLocal();
+  const campanaId = data.campanaId || sesion?.campanaId || undefined;
+  await db.put('fotosE14', { ...data, campanaId, synced: 0, syncAttempts: 0 });
 }
 
 /**
@@ -332,8 +377,10 @@ export async function guardarResultadosYFoto(
   }
 
   if (hayFotos) {
+    const sesion = obtenerSesionActivaLocal();
     for (const foto of fotos!) {
-      await tx.objectStore('fotosE14').put({ ...foto, synced: 0, syncAttempts: 0 });
+      const campanaId = foto.campanaId || sesion?.campanaId || undefined;
+      await tx.objectStore('fotosE14').put({ ...foto, campanaId, synced: 0, syncAttempts: 0 });
     }
   }
 
@@ -376,31 +423,64 @@ export async function marcarIncidenciasSincronizadas(ids: string[]) {
 
 // ─── Pendientes generales ─────────────────────────────────────
 
-export async function getResultadosPendientes() {
+export async function getResultadosPendientes(filtro?: FiltroTenencia) {
   const db = await getDB();
-  return db.getAllFromIndex('resultados', 'by-synced', 0);
+  const all = await db.getAllFromIndex('resultados', 'by-synced', 0);
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  if (!f?.testigoId) return all;
+  return all.filter((r) => !r.testigoId || r.testigoId === f.testigoId);
 }
 
-export async function getFotosPendientes() {
+export async function getFotosPendientes(filtro?: FiltroTenencia) {
   const db = await getDB();
-  return db.getAllFromIndex('fotosE14', 'by-synced', 0);
+  const all = await db.getAllFromIndex('fotosE14', 'by-synced', 0);
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  if (!f) return all;
+  return all.filter((foto) => {
+    if (f.testigoId && foto.testigoId && foto.testigoId !== f.testigoId) return false;
+    if (f.campanaId && foto.campanaId && foto.campanaId !== f.campanaId) return false;
+    return true;
+  });
 }
 
-export async function getFotosByMesa(mesaId: string) {
+export async function getFotosByMesa(mesaId: string, filtro?: FiltroTenencia) {
   const db = await getDB();
   const all = await db.getAll('fotosE14');
-  return all.filter((f) => f.mesaId === mesaId);
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  return all.filter((foto) => {
+    if (foto.mesaId !== mesaId) return false;
+    if (f?.testigoId && foto.testigoId && foto.testigoId !== f.testigoId) return false;
+    if (f?.campanaId && foto.campanaId && foto.campanaId !== f.campanaId) return false;
+    return true;
+  });
 }
 
-export async function tieneFotoE14Mesa(mesaId: string): Promise<boolean> {
-  const fotos = await getFotosByMesa(mesaId);
+export async function tieneFotoE14Mesa(mesaId: string, filtro?: FiltroTenencia): Promise<boolean> {
+  const fotos = await getFotosByMesa(mesaId, filtro);
   return fotos.length > 0;
 }
 
-export async function getPendientes() {
+export async function getPendientes(filtro?: FiltroTenencia) {
   const db = await getDB();
-  const resultados = await db.getAllFromIndex('resultados', 'by-synced', 0);
-  const fotos = await db.getAllFromIndex('fotosE14', 'by-synced', 0);
+  const resultadosAll = await db.getAllFromIndex('resultados', 'by-synced', 0);
+  const fotosAll = await db.getAllFromIndex('fotosE14', 'by-synced', 0);
+
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  if (!f) {
+    return { resultados: resultadosAll, fotos: fotosAll };
+  }
+
+  const resultados = resultadosAll.filter((r) => {
+    if (f.testigoId && r.testigoId && r.testigoId !== f.testigoId) return false;
+    return true;
+  });
+
+  const fotos = fotosAll.filter((foto) => {
+    if (f.testigoId && foto.testigoId && foto.testigoId !== f.testigoId) return false;
+    if (f.campanaId && foto.campanaId && foto.campanaId !== f.campanaId) return false;
+    return true;
+  });
+
   return { resultados, fotos };
 }
 

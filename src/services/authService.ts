@@ -5,7 +5,7 @@
  */
 
 import { api } from './api';
-import { clearLastSyncTime, clearLastSyncError } from './syncService';
+import { clearLastSyncTime, clearLastSyncError, cancelarSincronizacion } from './syncService';
 
 export interface MesaData {
   id: string;
@@ -139,6 +139,7 @@ class AuthService {
    * Cierra sesión y limpia datos
    */
   logout(): void {
+    cancelarSincronizacion();
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.DATA_KEY);
     localStorage.removeItem(this.CAMPANA_KEY);

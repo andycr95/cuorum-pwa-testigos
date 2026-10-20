@@ -208,8 +208,46 @@ export function iniciarMonitoreoConexion() {
 
 // ─── Subida directa a S3 (sin pasar por servidor intermedio) ─────────────
 
-export async function pedirFirmaFotoE14(mesaId: string, deviceId: string, tamanoBytes: number): Promise<FirmaFotoItem> {
-  const resp = await api.post<RespuestaFirma>('/testigos/e14/fotos/firmar', { mesaId, deviceId, fotos: [{ tamanoBytes }] });
+let syncSessionId = 0;
+
+export function cancelarSincronizacion(): void {
+  syncSessionId++;
+  syncInProgress = false;
+  notifySyncState(false);
+}
+
+export function obtenerSesionSync(): { token: string | null; campanaId: string | null; testigoId: string | null } {
+  if (typeof localStorage === 'undefined') {
+    return { token: null, campanaId: null, testigoId: null };
+  }
+  const token = localStorage.getItem('cuorum_testigo_token');
+  const campanaId = localStorage.getItem('cuorum_testigo_campana');
+  let testigoId: string | null = null;
+  const rawData = localStorage.getItem('cuorum_testigo_data');
+  if (rawData) {
+    try {
+      const parsed = JSON.parse(rawData);
+      testigoId = parsed?.testigo?.id || null;
+    } catch {}
+  }
+  return { token, campanaId, testigoId };
+}
+
+export async function pedirFirmaFotoE14(
+  mesaId: string,
+  deviceId: string,
+  tamanoBytes: number,
+  testigoId?: string,
+): Promise<FirmaFotoItem> {
+  const sesion = obtenerSesionSync();
+  if (testigoId && sesion.testigoId && testigoId !== sesion.testigoId) {
+    throw new Error(`Tenencia inválida: la foto pertenece al testigo ${testigoId}, no al activo ${sesion.testigoId}`);
+  }
+  const payload: any = { mesaId, deviceId, fotos: [{ tamanoBytes }] };
+  if (testigoId) {
+    payload.testigoId = testigoId;
+  }
+  const resp = await api.post<RespuestaFirma>('/testigos/e14/fotos/firmar', payload);
   const f = resp.data?.fotos?.[0];
   if (!f) throw new Error('No se recibió la autorización para subir la foto a S3');
   return f;
@@ -220,10 +258,22 @@ export async function confirmarSubidaFotoE14(fotoId: string, hash: string, captu
 }
 
 export async function subirFotoE14Directo(foto: CuorumDB['fotosE14']['value']): Promise<{ id: string; hash: string }> {
+  const sesionInicial = obtenerSesionSync();
+
+  // Validación de tenencia antes de solicitar firma
+  if (sesionInicial.testigoId && foto.testigoId && foto.testigoId !== sesionInicial.testigoId) {
+    throw new Error(`Tenencia inválida: la foto pertenece al testigo ${foto.testigoId}, sesión activa es ${sesionInicial.testigoId}`);
+  }
+  if (sesionInicial.campanaId && foto.campanaId && foto.campanaId !== sesionInicial.campanaId) {
+    throw new Error(`Tenencia inválida: la foto pertenece a la campaña ${foto.campanaId}, campaña activa es ${sesionInicial.campanaId}`);
+  }
+
+  const sesionSnapshot = `${sesionInicial.campanaId || ''}:${sesionInicial.testigoId || ''}:${sesionInicial.token || ''}`;
+
   let firma: FirmaFotoItem | null = null;
   for (let intento = 0; intento < 2; intento++) {
     try {
-      firma = await pedirFirmaFotoE14(foto.mesaId, foto.deviceId, foto.blob.size);
+      firma = await pedirFirmaFotoE14(foto.mesaId, foto.deviceId, foto.blob.size, foto.testigoId);
       await subirDirectoS3(firma.post, foto.blob);
       break;
     } catch (err: any) {
@@ -232,6 +282,14 @@ export async function subirFotoE14Directo(foto: CuorumDB['fotosE14']['value']): 
     }
   }
   if (!firma) throw new Error('No se pudo obtener la firma para S3');
+
+  // Comprobar que la sesión no haya cambiado durante la subida a S3
+  const sesionFinal = obtenerSesionSync();
+  const sesionFinalSnapshot = `${sesionFinal.campanaId || ''}:${sesionFinal.testigoId || ''}:${sesionFinal.token || ''}`;
+  if (sesionFinalSnapshot !== sesionSnapshot) {
+    throw new Error('La sesión cambió durante la subida de la foto a S3');
+  }
+
   const hash = await calcularSha256(foto.blob);
   await confirmarSubidaFotoE14(firma.id, hash, foto.capturedAt);
   return { id: firma.id, hash };
@@ -252,9 +310,15 @@ export async function sincronizar(): Promise<SyncResultado> {
   syncInProgress = true;
   notifySyncState(true);
 
+  const currentSessionId = ++syncSessionId;
+  const sesionSync = obtenerSesionSync();
+  const filtroTenencia = (sesionSync.campanaId || sesionSync.testigoId)
+    ? { campanaId: sesionSync.campanaId, testigoId: sesionSync.testigoId }
+    : undefined;
+
   try {
     const jornadasPendientes = await getJornadasPendientes();
-    const { resultados, fotos } = await getPendientes();
+    const { resultados, fotos } = await getPendientes(filtroTenencia);
     const incidencias = await getIncidenciasPendientes();
 
     if (
@@ -335,17 +399,38 @@ export async function sincronizar(): Promise<SyncResultado> {
       // Subida directa de fotos E-14 a S3 (sin pasar por servidor intermedio)
       if (fotos.length > 0) {
         for (const foto of fotos) {
+          if (currentSessionId !== syncSessionId) {
+            console.log('[Sync] Operación interrumpida por nueva sesión o logout');
+            break;
+          }
+
+          // Filtrar en bucle para defender tenencia estricta
+          if (sesionSync.testigoId && foto.testigoId && foto.testigoId !== sesionSync.testigoId) {
+            console.warn(`[Sync] Omitiendo foto ${foto.id}: pertenece al testigo ${foto.testigoId}, no al activo ${sesionSync.testigoId}`);
+            continue;
+          }
+          if (sesionSync.campanaId && (foto as any).campanaId && (foto as any).campanaId !== sesionSync.campanaId) {
+            console.warn(`[Sync] Omitiendo foto ${foto.id}: pertenece a la campaña ${(foto as any).campanaId}, no a la activa ${sesionSync.campanaId}`);
+            continue;
+          }
+
           try {
             await subirFotoE14Directo(foto);
+            if (currentSessionId !== syncSessionId) break;
             await marcarSincronizados([], [foto.id]);
             fotosSinc++;
           } catch (fotoErr: any) {
+            if (currentSessionId !== syncSessionId) break;
+            const msg = fotoErr instanceof Error ? fotoErr.message : 'Error al subir foto a S3';
+            if (msg.includes('Tenencia inválida') || msg.includes('La sesión cambió')) {
+              console.warn(`[Sync] Foto ${foto.id} retenida pendiente para su sesión original: ${msg}`);
+              continue;
+            }
             // Compatibilidad de prueba con contratos anidados si la llamada S3 no está mockeada
             if (fotoProc.acceptedIds.includes(foto.id)) {
               await marcarSincronizados([], [foto.id]);
               fotosSinc++;
             } else {
-              const msg = fotoErr instanceof Error ? fotoErr.message : 'Error al subir foto a S3';
               const errServidor = fotoProc.rejectedItems.find((r) => r.id === foto.id)?.error;
               await marcarRechazados([], [{ id: foto.id, error: errServidor || msg }]);
               tieneRechazosTotal = true;
