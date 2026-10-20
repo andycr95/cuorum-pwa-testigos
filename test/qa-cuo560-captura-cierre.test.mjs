@@ -18,11 +18,11 @@ describe('CUO-560: PWA: Captura directa a cola S3 y cierre validado con acuse re
   const syncServiceCode = readFileSync(syncServicePath, 'utf8');
 
   it('1. Captura en paso 1: guarda directamente en fotosE14 y no en e14OcrJobs', () => {
-    // onFotosListas guarda en fotosE14 con guardarFotoE14
+    // onFotosListas guarda en fotosE14 con guardarResultadosYFoto([], fotosData)
     assert.match(
       formularioCode,
-      /await\s+guardarFotoE14\s*\(/,
-      'onFotosListas debe llamar guardarFotoE14 para encolar la evidencia',
+      /await\s+guardarResultadosYFoto\s*\(\s*\[\]\s*,\s*fotosData\s*\)/,
+      'onFotosListas debe llamar guardarResultadosYFoto([], fotosData) para encolar la evidencia',
     );
     // No debe llamar ocrJobs.guardar(fotos)
     assert.doesNotMatch(
@@ -56,7 +56,7 @@ describe('CUO-560: PWA: Captura directa a cola S3 y cierre validado con acuse re
     // Al guardar votos, comprueba si ya existen fotos para no duplicarlas
     assert.match(
       formularioCode,
-      /const fotosExistentes = await tieneFotoE14Mesa\(mesaId/,
+      /const fotosExistentes = \(await getFotosByMesa\(mesaId\)\)\.length > 0/,
       'handleGuardar debe comprobar si ya existen fotos guardadas en IDB',
     );
   });

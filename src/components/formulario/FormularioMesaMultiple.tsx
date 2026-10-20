@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   guardarResultadosYFoto,
-  guardarFotoE14,
-  tieneFotoE14Mesa,
   getResultadosByMesa,
   getFotosByMesa,
 } from '../../db/indexeddb';
@@ -408,7 +406,7 @@ export function FormularioMesaMultiple({
       }
 
       // Fotos E-14 de evidencia: verificar si ya fueron guardadas en IDB en el paso 1
-      const fotosExistentes = await tieneFotoE14Mesa(mesaId, { campanaId, testigoId });
+      const fotosExistentes = (await getFotosByMesa(mesaId)).length > 0;
       let fotosData: Array<{
         id: string;
         mesaId: string;
@@ -665,9 +663,7 @@ export function FormularioMesaMultiple({
                       deviceId,
                     }));
 
-                    for (const foto of fotosData) {
-                      await guardarFotoE14(foto);
-                    }
+                    await guardarResultadosYFoto([], fotosData);
                     setFotosMesaCount((prev) => prev + fotosData.length);
 
                     // Subida directa a S3 en segundo plano si hay red
