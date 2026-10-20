@@ -175,6 +175,7 @@ const {
   sincronizar,
   subirFotoE14Directo,
   pedirFirmaFotoE14,
+  confirmarSubidaFotoE14,
   clearLastSyncTime,
   clearLastSyncError,
 } = await import('../src/services/syncService.ts');
@@ -505,5 +506,38 @@ describe('CUO-559 / QA-CUO556: Aislamiento estricto de evidencia E-14 entre camp
     assert.equal(await tieneFotoE14Mesa('mesa-compartida-01'), false, 'B no debe ver la evidencia tomada por A');
     const fotosB = await getFotosByMesa('mesa-compartida-01');
     assert.equal(fotosB.length, 0, 'B no debe listar fotos de A');
+  });
+
+  it('6. Contrato estricto de payloads S3: pedirFirmaFotoE14 solo envía mesaId, deviceId y fotos; confirmarSubidaFotoE14 solo envía hash y capturedAt', async () => {
+    await authService.login('1000000001', '123456');
+    httpCalls = [];
+
+    // Llamar pedirFirmaFotoE14 pasando testigoId para verificar que NO se incluya en el payload JSON
+    await pedirFirmaFotoE14('cm000000000000000000000001', 'dispositivo-sintetico-01', 12345, 'testigo-sintetico-A');
+
+    const callFirma = httpCalls.find(c => c.url.includes('/testigos/e14/fotos/firmar'));
+    assert.ok(callFirma, 'Debe haber llamado a /testigos/e14/fotos/firmar');
+    assert.deepEqual(
+      Object.keys(callFirma.data).sort(),
+      ['deviceId', 'fotos', 'mesaId'].sort(),
+      'El payload de firmar debe contener exactamente las claves mesaId, deviceId y fotos (sin testigoId)',
+    );
+    assert.ok(Array.isArray(callFirma.data.fotos) && callFirma.data.fotos.length === 1);
+    assert.deepEqual(
+      Object.keys(callFirma.data.fotos[0]),
+      ['tamanoBytes'],
+      'El item de fotos debe contener exactamente tamanoBytes',
+    );
+
+    // Llamar confirmarSubidaFotoE14
+    await confirmarSubidaFotoE14('foto-sintetica-123', 'a'.repeat(64), '2026-10-20T00:00:00.000Z');
+
+    const callSubida = httpCalls.find(c => c.url.includes('/subida'));
+    assert.ok(callSubida, 'Debe haber llamado a /subida');
+    assert.deepEqual(
+      Object.keys(callSubida.data).sort(),
+      ['capturedAt', 'hash'].sort(),
+      'El payload de subida debe contener exactamente las claves hash y capturedAt',
+    );
   });
 });

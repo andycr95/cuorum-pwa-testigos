@@ -331,4 +331,33 @@ describe('CUO-490: PWA: Foto del E-14 primero y obligatoria, subida directa a S3
       'WizardCierre debe capturar explícitamente E14_FOTO_REQUERIDA',
     );
   });
+
+  it('12. Contrato de payload estricto: pedirFirmaFotoE14 y confirmarSubidaFotoE14 respetan .strict() del backend', () => {
+    // Validar que pedirFirmaFotoE14 NO envíe testigoId en el payload a /testigos/e14/fotos/firmar
+    // (el backend lo toma del JWT y su schema es .strict())
+    assert.doesNotMatch(
+      syncServiceCode,
+      /payload\.testigoId\s*=/,
+      'pedirFirmaFotoE14 no debe asignar testigoId al payload',
+    );
+    assert.doesNotMatch(
+      syncServiceCode,
+      /testigoId:\s*testigoId/,
+      'pedirFirmaFotoE14 no debe incluir testigoId en el objeto de payload',
+    );
+
+    // Validar que el payload tenga exactamente mesaId, deviceId y fotos
+    assert.match(
+      syncServiceCode,
+      /const payload\s*=\s*\{\s*mesaId,\s*deviceId,\s*fotos:\s*\[\{\s*tamanoBytes\s*\}\]\s*\};/,
+      'El payload debe construirse exactamente con mesaId, deviceId y fotos',
+    );
+
+    // Validar que confirmarSubidaFotoE14 envíe exclusivamente hash y capturedAt
+    assert.match(
+      syncServiceCode,
+      /confirmarSubidaFotoE14[\s\S]*?api\.post\([^,]+,\s*\{\s*hash,\s*capturedAt\s*\}\)/,
+      'confirmarSubidaFotoE14 debe enviar exactamente hash y capturedAt',
+    );
+  });
 });

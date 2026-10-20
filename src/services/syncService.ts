@@ -243,10 +243,7 @@ export async function pedirFirmaFotoE14(
   if (testigoId && sesion.testigoId && testigoId !== sesion.testigoId) {
     throw new Error(`Tenencia inválida: la foto pertenece al testigo ${testigoId}, no al activo ${sesion.testigoId}`);
   }
-  const payload: any = { mesaId, deviceId, fotos: [{ tamanoBytes }] };
-  if (testigoId) {
-    payload.testigoId = testigoId;
-  }
+  const payload = { mesaId, deviceId, fotos: [{ tamanoBytes }] };
   const resp = await api.post<RespuestaFirma>('/testigos/e14/fotos/firmar', payload);
   const f = resp.data?.fotos?.[0];
   if (!f) throw new Error('No se recibió la autorización para subir la foto a S3');
@@ -357,8 +354,6 @@ export async function sincronizar(): Promise<SyncResultado> {
     if (resultados.length > 0 || fotos.length > 0) {
       console.log(`[Sync] Procesando: ${resultados.length} resultados, ${fotos.length} fotos`);
 
-      let fotoProc = { acceptedIds: [] as string[], rejectedItems: [] as Array<{ id: string; error?: string }> };
-
       if (resultados.length > 0) {
         const formData = new FormData();
         formData.append(
@@ -381,7 +376,6 @@ export async function sincronizar(): Promise<SyncResultado> {
         }
 
         const resProc = procesarRespuestaSync(resultados, response.data, 'resultado');
-        fotoProc = procesarRespuestaSync(fotos, response.data, 'foto');
 
         if (resProc.acceptedIds.length > 0) {
           await marcarSincronizados(resProc.acceptedIds, []);
@@ -409,8 +403,8 @@ export async function sincronizar(): Promise<SyncResultado> {
             console.warn(`[Sync] Omitiendo foto ${foto.id}: pertenece al testigo ${foto.testigoId}, no al activo ${sesionSync.testigoId}`);
             continue;
           }
-          if (sesionSync.campanaId && (foto as any).campanaId && (foto as any).campanaId !== sesionSync.campanaId) {
-            console.warn(`[Sync] Omitiendo foto ${foto.id}: pertenece a la campaña ${(foto as any).campanaId}, no a la activa ${sesionSync.campanaId}`);
+          if (sesionSync.campanaId && foto.campanaId && foto.campanaId !== sesionSync.campanaId) {
+            console.warn(`[Sync] Omitiendo foto ${foto.id}: pertenece a la campaña ${foto.campanaId}, no a la activa ${sesionSync.campanaId}`);
             continue;
           }
 
@@ -426,16 +420,9 @@ export async function sincronizar(): Promise<SyncResultado> {
               console.warn(`[Sync] Foto ${foto.id} retenida pendiente para su sesión original: ${msg}`);
               continue;
             }
-            // Compatibilidad de prueba con contratos anidados si la llamada S3 no está mockeada
-            if (fotoProc.acceptedIds.includes(foto.id)) {
-              await marcarSincronizados([], [foto.id]);
-              fotosSinc++;
-            } else {
-              const errServidor = fotoProc.rejectedItems.find((r) => r.id === foto.id)?.error;
-              await marcarRechazados([], [{ id: foto.id, error: errServidor || msg }]);
-              tieneRechazosTotal = true;
-              rechazadosCountTotal++;
-            }
+            await marcarRechazados([], [{ id: foto.id, error: msg }]);
+            tieneRechazosTotal = true;
+            rechazadosCountTotal++;
           }
         }
       }
