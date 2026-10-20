@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import 'fake-indexeddb/auto';
 import { openDB } from 'idb';
+import { getDB, closeDB } from '../src/db/indexeddb.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,47 +36,37 @@ describe('CUO-578: Apertura y migración v11 de IndexedDB sin errores ni pérdid
     );
   });
 
-  it('2. Instalación limpia (v0 -> v11): abre correctamente y crea índices de tenencia', async () => {
-    const dbName = `test-db-clean-${Date.now()}`;
-    const { getDB } = await import(`../src/db/indexeddb.ts?clean=${Date.now()}`);
-
-    // Abrir directamente simulando apertura de la base
-    const db = await openDB(dbName, 11, {
-      upgrade(dbInstance, oldVersion, newVersion, transaction) {
-        if (oldVersion < 1) {
-          const f = dbInstance.createObjectStore('fotosE14', { keyPath: 'id' });
-          f.createIndex('by-synced', 'synced');
-          f.createIndex('by-mesa', 'mesaId');
-          f.createIndex('by-testigo', 'testigoId');
-          f.createIndex('by-campana', 'campanaId');
-          dbInstance.createObjectStore('resultados', { keyPath: 'id' });
-          dbInstance.createObjectStore('syncLog', { keyPath: 'id' });
-        }
-        if (oldVersion < 11) {
-          if (dbInstance.objectStoreNames.contains('fotosE14')) {
-            const fotosStore = transaction.objectStore('fotosE14');
-            if (!fotosStore.indexNames.contains('by-mesa')) fotosStore.createIndex('by-mesa', 'mesaId');
-            if (!fotosStore.indexNames.contains('by-testigo')) fotosStore.createIndex('by-testigo', 'testigoId');
-            if (!fotosStore.indexNames.contains('by-campana')) fotosStore.createIndex('by-campana', 'campanaId');
-          }
-        }
-      }
+  it('2. Instalación limpia (v0 -> v11): invoca getDB() de producto, abre correctamente y crea índices de tenencia', async () => {
+    closeDB();
+    await new Promise((resolve, reject) => {
+      const req = indexedDB.deleteDatabase('cuorum-testigos');
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => resolve();
     });
 
+    const db = await getDB();
     assert.equal(db.version, 11);
+
     const store = db.transaction('fotosE14').store;
-    assert.ok(store.indexNames.contains('by-synced'));
-    assert.ok(store.indexNames.contains('by-mesa'));
-    assert.ok(store.indexNames.contains('by-testigo'));
-    assert.ok(store.indexNames.contains('by-campana'));
-    db.close();
+    assert.ok(store.indexNames.contains('by-synced'), 'Debe tener índice by-synced');
+    assert.ok(store.indexNames.contains('by-mesa'), 'Debe tener índice by-mesa');
+    assert.ok(store.indexNames.contains('by-testigo'), 'Debe tener índice by-testigo');
+    assert.ok(store.indexNames.contains('by-campana'), 'Debe tener índice by-campana');
+    closeDB();
   });
 
-  it('3. Migración v10 -> v11 con evidencia sintética previa: preserva registros y añade índices', async () => {
-    const dbName = `test-db-upgrade-${Date.now()}`;
+  it('3. Migración v10 -> v11 con evidencia sintética previa: getDB() preserva registros y añade índices', async () => {
+    closeDB();
+    await new Promise((resolve, reject) => {
+      const req = indexedDB.deleteDatabase('cuorum-testigos');
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => resolve();
+    });
 
-    // Paso A: Crear base simulando v10 con foto sintética
-    const dbV10 = await openDB(dbName, 10, {
+    // Paso A: Crear base sintética previa en v10 con los stores correspondientes
+    const dbV10 = await openDB('cuorum-testigos', 10, {
       upgrade(dbInstance, oldVersion) {
         if (oldVersion < 1) {
           const f = dbInstance.createObjectStore('fotosE14', { keyPath: 'id' });
@@ -83,6 +74,24 @@ describe('CUO-578: Apertura y migración v11 de IndexedDB sin errores ni pérdid
           f.createIndex('by-mesa', 'mesaId');
           dbInstance.createObjectStore('resultados', { keyPath: 'id' });
           dbInstance.createObjectStore('syncLog', { keyPath: 'id' });
+        }
+        if (oldVersion < 3) {
+          dbInstance.createObjectStore('incidencias', { keyPath: 'id' });
+        }
+        if (oldVersion < 5) {
+          dbInstance.createObjectStore('escrutinio-actas', { keyPath: 'cacheKey' });
+        }
+        if (oldVersion < 6) {
+          dbInstance.createObjectStore('e14OcrJobs', { keyPath: 'id' });
+        }
+        if (oldVersion < 7) {
+          dbInstance.createObjectStore('jornada', { keyPath: 'id' });
+        }
+        if (oldVersion < 9) {
+          dbInstance.createObjectStore('escrutinio-e14oficial', { keyPath: 'cacheKey' });
+        }
+        if (oldVersion < 10) {
+          dbInstance.createObjectStore('escrutinio-divulgacion', { keyPath: 'cacheKey' });
         }
       }
     });
@@ -93,29 +102,16 @@ describe('CUO-578: Apertura y migración v11 de IndexedDB sin errores ni pérdid
       synced: 0,
       testigoId: 'testigo-sintetico-456',
       campanaId: 'campana-sintetica-789',
-      tipo: 'e14_total',
       capturedAt: new Date().toISOString()
     };
     await dbV10.add('fotosE14', fotoSintetica);
     dbV10.close();
 
-    // Paso B: Migración a v11 usando la lógica de indexeddb.ts
-    const dbV11 = await openDB(dbName, 11, {
-      upgrade(dbInstance, oldVersion, newVersion, transaction) {
-        if (oldVersion < 11) {
-          if (dbInstance.objectStoreNames.contains('fotosE14')) {
-            const fotosStore = transaction.objectStore('fotosE14');
-            if (!fotosStore.indexNames.contains('by-mesa')) fotosStore.createIndex('by-mesa', 'mesaId');
-            if (!fotosStore.indexNames.contains('by-testigo')) fotosStore.createIndex('by-testigo', 'testigoId');
-            if (!fotosStore.indexNames.contains('by-campana')) fotosStore.createIndex('by-campana', 'campanaId');
-          }
-        }
-      }
-    });
-
+    // Paso B: Abrir con el getDB() real del producto a v11
+    const dbV11 = await getDB();
     assert.equal(dbV11.version, 11);
 
-    // Verificar que los nuevos índices existen
+    // Verificar que los nuevos índices existen en el store migrado
     const tx = dbV11.transaction('fotosE14', 'readonly');
     const store = tx.objectStore('fotosE14');
     assert.ok(store.indexNames.contains('by-mesa'), 'Debe tener índice by-mesa');
@@ -137,6 +133,17 @@ describe('CUO-578: Apertura y migración v11 de IndexedDB sin errores ni pérdid
     assert.equal(porTestigo.length, 1);
     assert.equal(porTestigo[0].id, 'foto-sintetica-qa-cuo578');
 
-    dbV11.close();
+    closeDB();
+  });
+
+  it('4. Apertura concurrente: múltiples llamadas simultáneas a getDB() resuelven sin error', async () => {
+    closeDB();
+    const [db1, db2, db3] = await Promise.all([getDB(), getDB(), getDB()]);
+    assert.equal(db1.version, 11);
+    assert.equal(db2.version, 11);
+    assert.equal(db3.version, 11);
+    assert.strictEqual(db1, db2);
+    assert.strictEqual(db2, db3);
+    closeDB();
   });
 });

@@ -162,6 +162,15 @@ export interface CuorumDB extends DBSchema {
 const DB_VERSION = 11;
 let dbInstance: IDBPDatabase<CuorumDB> | null = null;
 
+export function closeDB(): void {
+  if (dbInstance) {
+    try {
+      dbInstance.close();
+    } catch {}
+    dbInstance = null;
+  }
+}
+
 export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   // Si la instancia cacheada es de una versión anterior (no tiene los stores v5),
   // cerrarla y re-abrir para forzar el upgrade.
