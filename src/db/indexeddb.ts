@@ -386,6 +386,17 @@ export async function getFotosPendientes() {
   return db.getAllFromIndex('fotosE14', 'by-synced', 0);
 }
 
+export async function getFotosByMesa(mesaId: string) {
+  const db = await getDB();
+  const all = await db.getAll('fotosE14');
+  return all.filter((f) => f.mesaId === mesaId);
+}
+
+export async function tieneFotoE14Mesa(mesaId: string): Promise<boolean> {
+  const fotos = await getFotosByMesa(mesaId);
+  return fotos.length > 0;
+}
+
 export async function getPendientes() {
   const db = await getDB();
   const resultados = await db.getAllFromIndex('resultados', 'by-synced', 0);

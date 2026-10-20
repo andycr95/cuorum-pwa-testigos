@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { jornadaService, AlertaValidacion, ProgresoElecciones } from '../../services/jornadaService';
+import { formatearErrorAmigable } from '../../utils/formatoError';
 
 interface Props {
   mesaId: string;
   mesaNumero: number;
   elecciones: Array<{ id: string; nombre: string }>;
+  sinFotoMotivo?: string;
   onCerrado: (codigoVerificacion: string) => void;
   onCancel: () => void;
 }
@@ -17,7 +19,7 @@ interface EleccionValidacion {
   loading: boolean;
 }
 
-export function WizardCierre({ mesaId, mesaNumero, elecciones, onCerrado, onCancel }: Props) {
+export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, onCerrado, onCancel }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [validaciones, setValidaciones] = useState<EleccionValidacion[]>([]);
   const [progreso, setProgreso] = useState<ProgresoElecciones | null>(null);
@@ -72,13 +74,24 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, onCerrado, onCanc
       const jornada = await jornadaService.cerrar(mesaId, {
         observaciones: observaciones || undefined,
         firmaDataUrl: firmaDataUrl || undefined,
+        sinFotoMotivo: sinFotoMotivo || undefined,
       });
 
       setCodigoVerificacion(jornada.codigoVerificacion || 'SIN-CODIGO');
       setStep(4);
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'No se pudo cerrar el acta. Verifica tu conexion e intentalo de nuevo.';
-      setError(msg);
+      const errData = err?.response?.data;
+      let msg = '';
+      if (
+        errData?.codigo === 'E14_FOTO_REQUERIDA' ||
+        String(errData?.error || '').includes('E14_FOTO_REQUERIDA') ||
+        String(err?.message || '').includes('E14_FOTO_REQUERIDA')
+      ) {
+        msg = 'Se requiere la foto del acta E-14 como evidencia obligatoria, o justificar por qué no fue posible tomarla (mínimo 10 caracteres).';
+      } else {
+        msg = errData?.error || err?.message || 'No se pudo cerrar el acta. Verifica tu conexión e inténtalo de nuevo.';
+      }
+      setError(formatearErrorAmigable(err, msg));
     } finally {
       setLoading(false);
     }

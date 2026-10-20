@@ -74,8 +74,15 @@ export const jornadaService = {
       )
       .then((r) => r.data),
 
-  cerrar: (mesaId: string, data: { observaciones?: string; firmaDataUrl?: string }) =>
-    api.post<JornadaMesa>('/testigos/jornada/cerrar', { mesaId, ...data }).then((r) => r.data),
+  cerrar: (
+    mesaId: string,
+    data: {
+      observaciones?: string;
+      firmaDataUrl?: string;
+      sinFotoMotivo?: string;
+      deviceId?: string;
+    },
+  ) => api.post<JornadaMesa>('/testigos/jornada/cerrar', { mesaId, ...data }).then((r) => r.data),
 
   cambiarEstado: (mesaId: string, estado: string) =>
     api.patch<JornadaMesa>('/testigos/jornada/estado', { mesaId, estado }).then((r) => r.data),

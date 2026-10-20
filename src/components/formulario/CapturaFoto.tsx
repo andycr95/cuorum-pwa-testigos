@@ -58,7 +58,7 @@ export function CapturaFoto({
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full"></div>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          Foto del E-14 (Opcional)
+          Foto del E-14 (Evidencia)
         </p>
       </div>
 
