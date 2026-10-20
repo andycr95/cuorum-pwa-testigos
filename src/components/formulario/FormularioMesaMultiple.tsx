@@ -1,5 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { guardarResultadosYFoto, getResultadosByMesa, getFotosByMesa } from '../../db/indexeddb';
+import {
+  guardarResultadosYFoto,
+  guardarFotoE14,
+  tieneFotoE14Mesa,
+  getResultadosByMesa,
+  getFotosByMesa,
+} from '../../db/indexeddb';
 import { api } from '../../services/api';
 import { sincronizar, verificarConectividadReal, pauseAutoSync, resumeAutoSync, SyncResultado } from '../../services/syncService';
 import { SelectorEleccion } from './SelectorEleccion';
@@ -108,6 +114,7 @@ export function FormularioMesaMultiple({
   const [fotosManual, setFotosManual] = useState<{ orden: number; blob: Blob }[]>([]);
   const [sinFotoMotivo, setSinFotoMotivo] = useState('');
   const [fotosMesaCount, setFotosMesaCount] = useState(0);
+  const [guardandoFotos, setGuardandoFotos] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -400,20 +407,33 @@ export function FormularioMesaMultiple({
         }
       }
 
-      // Fotos E-14 de evidencia (modo manual, pueden ser varias)
-      const fotosData = fotosManual.map((f, i) => ({
-        id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
-        mesaId,
-        testigoId,
-        campanaId: campanaId || undefined,
-        blob: f.blob,
-        capturedAt: now,
-        deviceId,
-      }));
+      // Fotos E-14 de evidencia: verificar si ya fueron guardadas en IDB en el paso 1
+      const fotosExistentes = await tieneFotoE14Mesa(mesaId, { campanaId, testigoId });
+      let fotosData: Array<{
+        id: string;
+        mesaId: string;
+        testigoId: string;
+        campanaId?: string;
+        blob: Blob;
+        capturedAt: string;
+        deviceId: string;
+      }> | undefined = undefined;
+
+      if (!fotosExistentes && fotosManual.length > 0) {
+        fotosData = fotosManual.map((f, i) => ({
+          id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
+          mesaId,
+          testigoId,
+          campanaId: campanaId || undefined,
+          blob: f.blob,
+          capturedAt: now,
+          deviceId,
+        }));
+      }
 
       // ─── Paso 2: Guardar TODO en una sola transacción IDB ──────
       // Atómico: el auto-sync de fondo ve todo o nada.
-      await guardarResultadosYFoto(resultadosBatch, fotosData.length > 0 ? fotosData : undefined);
+      await guardarResultadosYFoto(resultadosBatch, fotosData);
 
       setGuardado(true);
       if (typeof window !== 'undefined') {
@@ -454,11 +474,37 @@ export function FormularioMesaMultiple({
   };
 
   const handleCerrarActa = async () => {
+    if (!puedeCerrar) return;
     setCerrando(true);
+    setError(null);
     try {
-      const codigo = await generarCodigoActa(mesaId, eleccionActual, totalVotos);
+      const jornada = await jornadaService.cerrar(mesaId, {
+        observaciones: observaciones || undefined,
+        sinFotoMotivo: sinFotoMotivo.trim() || undefined,
+        deviceId,
+      });
+      const codigo =
+        jornada?.codigoVerificacion || (await generarCodigoActa(mesaId, eleccionActual, totalVotos));
       setCodigoActa(codigo);
       setActaCerrada(true);
+      if (onMesaCerrada) onMesaCerrada(codigo);
+    } catch (err: any) {
+      const errData = err?.response?.data;
+      let msg = '';
+      if (
+        errData?.codigo === 'E14_FOTO_REQUERIDA' ||
+        String(errData?.error || '').includes('E14_FOTO_REQUERIDA') ||
+        String(err?.message || '').includes('E14_FOTO_REQUERIDA')
+      ) {
+        msg =
+          'Se requiere la foto del acta E-14 como evidencia obligatoria, o justificar por qué no fue posible tomarla (mínimo 10 caracteres).';
+      } else {
+        msg =
+          errData?.error ||
+          err?.message ||
+          'No se pudo cerrar el acta. Verifica tu conexión e inténtalo de nuevo.';
+      }
+      setError(formatearErrorAmigable(err, msg));
     } finally {
       setCerrando(false);
     }
@@ -602,13 +648,37 @@ export function FormularioMesaMultiple({
                 </div>
               )}
               <CapturaMultipleE14
-                onFotosListas={(fotos) => {
+                onFotosListas={async (fotos) => {
                   setFotosManual(fotos);
                   setGuardado(false);
                   setSyncStatus(null);
-                  ocrJobs.guardar(fotos);
+                  setGuardandoFotos(true);
+                  try {
+                    const now = new Date().toISOString();
+                    const fotosData = fotos.map((f, i) => ({
+                      id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
+                      mesaId,
+                      testigoId,
+                      campanaId: campanaId || undefined,
+                      blob: f.blob,
+                      capturedAt: now,
+                      deviceId,
+                    }));
+
+                    for (const foto of fotosData) {
+                      await guardarFotoE14(foto);
+                    }
+                    setFotosMesaCount((prev) => prev + fotosData.length);
+
+                    // Subida directa a S3 en segundo plano si hay red
+                    if (typeof navigator !== 'undefined' && navigator.onLine) {
+                      sincronizar().catch(() => {});
+                    }
+                  } finally {
+                    setGuardandoFotos(false);
+                  }
                 }}
-                disabled={guardado || ocrJobs.saving}
+                disabled={guardado || guardandoFotos}
                 title="Fotos del E-14 (evidencia)"
                 submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
               />
