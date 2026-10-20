@@ -1,4 +1,4 @@
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 /**
  * Base de datos local IndexedDB para modo offline.
@@ -172,7 +172,7 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
   if (dbInstance) return dbInstance;
 
   dbInstance = await openDB<CuorumDB>('cuorum-testigos', DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
       if (oldVersion < 1) {
         const resultadosStore = db.createObjectStore('resultados', { keyPath: 'id' });
         resultadosStore.createIndex('by-synced', 'synced');
@@ -189,8 +189,7 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
       }
 
       if (oldVersion >= 1 && oldVersion < 2) {
-        // @ts-ignore
-        const resultadosStore = db.transaction.objectStore('resultados');
+        const resultadosStore = transaction.objectStore('resultados');
         if (!resultadosStore.indexNames.contains('by-eleccion')) {
           resultadosStore.createIndex('by-eleccion', 'eleccionId');
         }
@@ -265,8 +264,7 @@ export async function getDB(): Promise<IDBPDatabase<CuorumDB>> {
       // v11: Índices de tenencia por mesa, testigo y campaña en fotosE14
       if (oldVersion < 11) {
         if (db.objectStoreNames.contains('fotosE14')) {
-          // @ts-ignore
-          const fotosStore = db.transaction.objectStore('fotosE14');
+          const fotosStore = transaction.objectStore('fotosE14');
           if (!fotosStore.indexNames.contains('by-mesa')) {
             fotosStore.createIndex('by-mesa', 'mesaId');
           }

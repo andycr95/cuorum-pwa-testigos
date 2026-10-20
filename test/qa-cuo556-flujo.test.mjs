@@ -7,27 +7,8 @@ import ts from 'typescript';
 
 // Formulario, hooks, servicios y parser reales. Solo cámara, API e IndexedDB
 // se sustituyen por límites sintéticos; no se modifica producto en disco.
-const candidatePackages = [
-  process.env.QA_PLATFORM_PACKAGE,
-  '/home/agentes/.npm/_npx/0aa74679bec75e15/package.json',
-  '/srv/cuorum/worktrees/agy-3/CUO-560/cuorum-platform/web-admin/package.json',
-  '/srv/cuorum/repos/cuorum-platform/web-admin/package.json',
-  '/srv/cuorum/worktrees/extra/pr-cuorum-platform-182-cuo556/web-admin/package.json'
-].filter(Boolean);
+import { JSDOM } from 'jsdom';
 
-let JSDOM;
-for (const pkg of candidatePackages) {
-  if (existsSync(pkg)) {
-    try {
-      const platformRequire = createRequire(pkg);
-      JSDOM = platformRequire('jsdom').JSDOM;
-      if (JSDOM) break;
-    } catch {}
-  }
-}
-if (!JSDOM) {
-  throw new Error('No se encontró jsdom en los paquetes candidatos.');
-}
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {url:'http://localhost/qa-sintetica'});
 for (const k of ['window','document','navigator','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Event','MouseEvent','CustomEvent','localStorage','sessionStorage']) {
   Object.defineProperty(globalThis,k,{value:dom.window[k],writable:true,configurable:true});
