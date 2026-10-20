@@ -117,7 +117,7 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full" />
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-          {title ?? 'Fotos del E-14 para OCR'} ({fotos.length} foto{fotos.length !== 1 ? 's' : ''})
+          {title ?? 'Fotos del E-14 (evidencia)'} ({fotos.length} foto{fotos.length !== 1 ? 's' : ''})
         </p>
       </div>
 
@@ -213,7 +213,7 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
           disabled={disabled || procesando}
           className="w-full py-4 bg-editorial-red hover:bg-red-700 text-white rounded-2xl font-black text-sm uppercase tracking-wide shadow-xl hover:shadow-2xl active:scale-95 transition-all disabled:opacity-50"
         >
-          {submitLabel ?? `Enviar ${fotos.length} foto${fotos.length !== 1 ? 's' : ''} para OCR`}
+          {submitLabel ?? `Confirmar ${fotos.length} foto${fotos.length !== 1 ? 's' : ''} como evidencia`}
         </button>
       )}
 

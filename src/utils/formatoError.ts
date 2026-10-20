@@ -10,6 +10,7 @@ const MSG_TIMEOUT = 'El servidor tardó en responder. Tu información está guar
 const MSG_PERMISOS = 'Tu sesión requiere confirmación o no tienes permisos para esta mesa. Avisa a tu coordinador.';
 const MSG_NO_DISPONIBLE = 'La información solicitada no está disponible en este momento. Consulta con tu coordinador.';
 const MSG_DATOS = 'Los datos ingresados requieren revisión. Verifica la información e intenta de nuevo.';
+const MSG_FOTO_REQUERIDA = 'Se requiere la foto del acta E-14 como evidencia obligatoria, o justificar por qué no fue posible tomarla (mínimo 10 caracteres).';
 
 export function formatearErrorAmigable(error: unknown, fallback?: string): string {
   if (!error) return fallback || 'Ocurrió un inconveniente temporal. Intenta nuevamente.';
@@ -18,6 +19,12 @@ export function formatearErrorAmigable(error: unknown, fallback?: string): strin
     const errObj = error as ErrorConDetalles;
     if (errObj.response?.data) {
       const data = errObj.response.data;
+      if (typeof data === 'object' && data !== null) {
+        const d = data as Record<string, unknown>;
+        if (d.codigo === 'E14_FOTO_REQUERIDA' || String(d.error || '').includes('E14_FOTO_REQUERIDA')) {
+          return MSG_FOTO_REQUERIDA;
+        }
+      }
       let sMsg = typeof data === 'string' ? data.trim() : '';
       if (!sMsg && typeof data === 'object' && data !== null) {
         const d = data as Record<string, unknown>;
@@ -25,6 +32,7 @@ export function formatearErrorAmigable(error: unknown, fallback?: string): strin
         if (typeof cand === 'string') sMsg = cand.trim();
       }
       if (sMsg) {
+        if (sMsg.includes('E14_FOTO_REQUERIDA')) return MSG_FOTO_REQUERIDA;
         const low = sMsg.toLowerCase();
         const esTecnico = low.startsWith('<!doctype') || low.startsWith('<html') ||
           ['internal server error', 'bad gateway', 'service unavailable', 'gateway timeout', 'not found', 'unauthorized', 'forbidden'].includes(low);

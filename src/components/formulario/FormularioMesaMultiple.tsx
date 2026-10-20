@@ -1,5 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import { guardarResultadosYFoto, getResultadosByMesa } from '../../db/indexeddb';
+import {
+  guardarResultadosYFoto,
+  getResultadosByMesa,
+  getFotosByMesa,
+} from '../../db/indexeddb';
 import { api } from '../../services/api';
 import { sincronizar, verificarConectividadReal, pauseAutoSync, resumeAutoSync, SyncResultado } from '../../services/syncService';
 import { SelectorEleccion } from './SelectorEleccion';
@@ -96,7 +100,7 @@ export function FormularioMesaMultiple({
   onMesaCerrada,
   onVolverSelector,
 }: FormularioMesaMultipleProps) {
-  const [pasoActivo, setPasoActivo] = useState<'contar' | 'foto' | 'cierre'>('contar');
+  const [pasoActivo, setPasoActivo] = useState<'foto' | 'contar' | 'cierre'>('foto');
   const [eleccionActual, setEleccionActual] = useState<string>(elecciones[0]?.id || '');
   const [votosUninominal, setVotosUninominal] = useState<Record<string, number>>({});
   const [votosLista, setVotosLista] = useState<Record<string, number>>({});
@@ -106,6 +110,9 @@ export function FormularioMesaMultiple({
   const [votosNoMarcados, setVotosNoMarcados] = useState(0);
   const [observaciones, setObservaciones] = useState('');
   const [fotosManual, setFotosManual] = useState<{ orden: number; blob: Blob }[]>([]);
+  const [sinFotoMotivo, setSinFotoMotivo] = useState('');
+  const [fotosMesaCount, setFotosMesaCount] = useState(0);
+  const [guardandoFotos, setGuardandoFotos] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -211,6 +218,19 @@ export function FormularioMesaMultiple({
     }
   }, [elecciones, eleccionActual]);
 
+  // Cargar fotos existentes en IndexedDB para esta mesa
+  useEffect(() => {
+    let mounted = true;
+    getFotosByMesa(mesaId, { campanaId, testigoId })
+      .then((fotos) => {
+        if (mounted) setFotosMesaCount(fotos.length);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [mesaId, campanaId, testigoId, guardado, refreshProgreso]);
+
   const limpiarFormulario = useCallback(() => {
     setVotosUninominal({});
     setVotosLista({});
@@ -220,6 +240,7 @@ export function FormularioMesaMultiple({
     setVotosNoMarcados(0);
     setObservaciones('');
     setFotosManual([]);
+    setSinFotoMotivo('');
     setGuardado(false);
     setGuardando(false);
     setError(null);
@@ -229,7 +250,7 @@ export function FormularioMesaMultiple({
     setYaRegistrado(false);
     setResultadosExistentes([]);
     setCargandoResultados(true);
-    setPasoActivo('contar');
+    setPasoActivo('foto');
   }, []);
 
   const eleccion = elecciones.find((e) => e.id === eleccionActual) || elecciones[0];
@@ -247,6 +268,13 @@ export function FormularioMesaMultiple({
 
   const totalVotos = calcularTotal();
   const hayAlertaFraude = totalVotos > totalSufragantes;
+
+  const tieneFotos =
+    fotosManual.length > 0 ||
+    fotosMesaCount > 0 ||
+    ocrJobs.jobs.some((j) => (j.fotos?.length ?? 0) > 0);
+  const motivoSinFotoValido = sinFotoMotivo.trim().length >= 10;
+  const puedeCerrar = tieneFotos || motivoSinFotoValido;
 
   const handleGuardar = async () => {
     if (!eleccion) return;
@@ -377,19 +405,33 @@ export function FormularioMesaMultiple({
         }
       }
 
-      // Fotos E-14 de evidencia (modo manual, pueden ser varias)
-      const fotosData = fotosManual.map((f, i) => ({
-        id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
-        mesaId,
-        testigoId,
-        blob: f.blob,
-        capturedAt: now,
-        deviceId,
-      }));
+      // Fotos E-14 de evidencia: verificar si ya fueron guardadas en IDB en el paso 1
+      const fotosExistentes = (await getFotosByMesa(mesaId)).length > 0;
+      let fotosData: Array<{
+        id: string;
+        mesaId: string;
+        testigoId: string;
+        campanaId?: string;
+        blob: Blob;
+        capturedAt: string;
+        deviceId: string;
+      }> | undefined = undefined;
+
+      if (!fotosExistentes && fotosManual.length > 0) {
+        fotosData = fotosManual.map((f, i) => ({
+          id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
+          mesaId,
+          testigoId,
+          campanaId: campanaId || undefined,
+          blob: f.blob,
+          capturedAt: now,
+          deviceId,
+        }));
+      }
 
       // ─── Paso 2: Guardar TODO en una sola transacción IDB ──────
       // Atómico: el auto-sync de fondo ve todo o nada.
-      await guardarResultadosYFoto(resultadosBatch, fotosData.length > 0 ? fotosData : undefined);
+      await guardarResultadosYFoto(resultadosBatch, fotosData);
 
       setGuardado(true);
       if (typeof window !== 'undefined') {
@@ -430,11 +472,37 @@ export function FormularioMesaMultiple({
   };
 
   const handleCerrarActa = async () => {
+    if (!puedeCerrar) return;
     setCerrando(true);
+    setError(null);
     try {
-      const codigo = await generarCodigoActa(mesaId, eleccionActual, totalVotos);
+      const jornada = await jornadaService.cerrar(mesaId, {
+        observaciones: observaciones || undefined,
+        sinFotoMotivo: sinFotoMotivo.trim() || undefined,
+        deviceId,
+      });
+      const codigo =
+        jornada?.codigoVerificacion || (await generarCodigoActa(mesaId, eleccionActual, totalVotos));
       setCodigoActa(codigo);
       setActaCerrada(true);
+      if (onMesaCerrada) onMesaCerrada(codigo);
+    } catch (err: any) {
+      const errData = err?.response?.data;
+      let msg = '';
+      if (
+        errData?.codigo === 'E14_FOTO_REQUERIDA' ||
+        String(errData?.error || '').includes('E14_FOTO_REQUERIDA') ||
+        String(err?.message || '').includes('E14_FOTO_REQUERIDA')
+      ) {
+        msg =
+          'Se requiere la foto del acta E-14 como evidencia obligatoria, o justificar por qué no fue posible tomarla (mínimo 10 caracteres).';
+      } else {
+        msg =
+          errData?.error ||
+          err?.message ||
+          'No se pudo cerrar el acta. Verifica tu conexión e inténtalo de nuevo.';
+      }
+      setError(formatearErrorAmigable(err, msg));
     } finally {
       setCerrando(false);
     }
@@ -551,19 +619,19 @@ export function FormularioMesaMultiple({
 
           {/* Stepper de Pasos de la Jornada de Conteo */}
           <div className="flex rounded-2xl bg-gray-100 p-1 mb-5 border border-gray-200" role="tablist" aria-label="Pasos de la jornada de conteo">
-            <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
-              <span>1. Contar</span>
-            </button>
             <button type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
-              <span>2. Foto E-14</span>
-              {fotosManual.length > 0 && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length}</span>}
+              <span>1. Foto E-14</span>
+              {(fotosManual.length > 0 || fotosMesaCount > 0) && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length || fotosMesaCount}</span>}
+            </button>
+            <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+              <span>2. Revisar votos</span>
             </button>
             <button type="button" role="tab" id="tab-cierre" aria-controls="panel-cierre" aria-selected={pasoActivo === 'cierre'} onClick={() => setPasoActivo('cierre')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'cierre' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
               <span>3. Cerrar</span>
             </button>
           </div>
 
-          {/* ── Paso 2: Foto E-14 (Evidencia y OCR) ─────────────────── */}
+          {/* ── Paso 1: Foto E-14 (Evidencia obligatoria) ─────────────── */}
           {pasoActivo === 'foto' && (
             <div id="panel-foto" role="tabpanel" aria-labelledby="tab-foto" className="space-y-4 mb-6">
               {ocrCompletado && (
@@ -572,19 +640,41 @@ export function FormularioMesaMultiple({
                   <div>
                     <p className="text-sm font-black text-green-800">Fotos del E-14 recibidas</p>
                     <p className="text-xs text-green-700 mt-0.5">
-                      Revisa y confirma los resultados extraidos abajo.
+                      Revisa y confirma los resultados extraídos abajo.
                     </p>
                   </div>
                 </div>
               )}
               <CapturaMultipleE14
-                onFotosListas={(fotos) => {
+                onFotosListas={async (fotos) => {
                   setFotosManual(fotos);
                   setGuardado(false);
                   setSyncStatus(null);
-                  ocrJobs.guardar(fotos);
+                  setGuardandoFotos(true);
+                  try {
+                    const now = new Date().toISOString();
+                    const fotosData = fotos.map((f, i) => ({
+                      id: `foto_${mesaId}_${i + 1}_${Date.now()}`,
+                      mesaId,
+                      testigoId,
+                      campanaId: campanaId || undefined,
+                      blob: f.blob,
+                      capturedAt: now,
+                      deviceId,
+                    }));
+
+                    await guardarResultadosYFoto([], fotosData);
+                    setFotosMesaCount((prev) => prev + fotosData.length);
+
+                    // Subida directa a S3 en segundo plano si hay red
+                    if (typeof navigator !== 'undefined' && navigator.onLine) {
+                      sincronizar().catch(() => {});
+                    }
+                  } finally {
+                    setGuardandoFotos(false);
+                  }
                 }}
-                disabled={guardado || ocrJobs.saving}
+                disabled={guardado || guardandoFotos}
                 title="Fotos del E-14 (evidencia)"
                 submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
               />
@@ -603,6 +693,21 @@ export function FormularioMesaMultiple({
                 }}
                 eleccionReportada={yaRegistrado}
               />
+
+              {/* Botón para avanzar al paso 2 */}
+              <button
+                type="button"
+                onClick={() => setPasoActivo('contar')}
+                className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95"
+              >
+                Continuar a revisar votos →
+              </button>
+
+              {!tieneFotos && (
+                <p className="text-center text-xs text-gray-500 pt-1">
+                  Si no es posible tomar la foto, podrás justificarlo en el paso de cierre.
+                </p>
+              )}
             </div>
           )}
 
@@ -996,12 +1101,56 @@ export function FormularioMesaMultiple({
             </div>
           )}
 
+          {/* ── Evidencia de foto obligatoria para cierre ─────────── */}
+          {!tieneFotos && (
+            <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+              <div className="flex items-start gap-2 mb-2">
+                <IconoAlerta className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-black text-amber-900 uppercase tracking-wide">
+                    Evidencia de foto obligatoria
+                  </p>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    Para cerrar el acta debes adjuntar la foto del E-14 o justificar por qué no pudiste tomarla (mínimo 10 caracteres).
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                <label className="block text-xs font-bold text-gray-700">
+                  Justificación (No pude tomar la foto):
+                </label>
+                <textarea
+                  value={sinFotoMotivo}
+                  onChange={(e) => setSinFotoMotivo(e.target.value)}
+                  placeholder="Explica detalladamente por qué no fue posible tomar la foto (mínimo 10 caracteres)..."
+                  rows={3}
+                  className="w-full p-2.5 text-xs rounded-xl border border-gray-300 focus:outline-none focus:border-editorial-red resize-none bg-white"
+                />
+                <div className="flex justify-between items-center text-xs">
+                  <span className={motivoSinFotoValido ? 'text-green-700 font-bold' : 'text-amber-700 font-semibold'}>
+                    {motivoSinFotoValido
+                      ? '✓ Justificación completa'
+                      : `Faltan ${Math.max(0, 10 - sinFotoMotivo.trim().length)} caracteres`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPasoActivo('foto')}
+                    className="text-xs font-bold text-editorial-red underline"
+                  >
+                    Tomar foto ahora
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Lock del acta ───────────────────────────────────────── */}
           {guardado && !actaCerrada && (
             <button
               onClick={handleCerrarActa}
-              disabled={cerrando}
-              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-900 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50"
+              disabled={cerrando || !puedeCerrar}
+              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-900 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="flex items-center justify-center gap-2">
                 {cerrando ? (
@@ -1037,7 +1186,12 @@ export function FormularioMesaMultiple({
             <button
               type="button"
               onClick={() => setShowWizardCierre(true)}
-              className="w-full py-4 mb-6 rounded-2xl border-2 border-editorial-red text-editorial-red font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] hover:bg-editorial-red/5"
+              disabled={!puedeCerrar}
+              className={`w-full py-4 mb-6 rounded-2xl border-2 font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] ${
+                puedeCerrar
+                  ? 'border-editorial-red text-editorial-red hover:bg-editorial-red/5'
+                  : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
+              }`}
             >
               <span className="flex items-center justify-center gap-2">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1045,8 +1199,10 @@ export function FormularioMesaMultiple({
                 </svg>
                 <span>Cerrar Acta de Mesa</span>
               </span>
-              <p className="text-xs text-editorial-red/80 font-normal mt-1 tracking-normal">
-                Validación final, firma digital y comprobante para el testigo
+              <p className={`text-xs mt-1 tracking-normal font-normal ${puedeCerrar ? 'text-editorial-red/80' : 'text-gray-400'}`}>
+                {puedeCerrar
+                  ? 'Validación final, firma digital y comprobante para el testigo'
+                  : 'Requiere foto del E-14 o justificación (mín. 10 caracteres)'}
               </p>
             </button>
           )}
@@ -1059,6 +1215,7 @@ export function FormularioMesaMultiple({
               mesaId={mesaId}
               mesaNumero={mesaNumero}
               elecciones={elecciones.map((e) => ({ id: e.id, nombre: e.nombre }))}
+              sinFotoMotivo={sinFotoMotivo}
               onCerrado={(codigo) => {
                 setShowWizardCierre(false);
                 setActaCerrada(true);
