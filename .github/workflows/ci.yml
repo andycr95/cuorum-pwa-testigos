@@ -1,0 +1,27 @@
+name: CI
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm exec vite build
+      - name: Nombres prohibidos
+        env:
+          # Secreto y no variable: en un repo público los registros son públicos y una variable saldría en claro.
+          PATRONES_PROHIBIDOS: ${{ secrets.PATRONES_PROHIBIDOS }}
+        run: bash scripts/check-nombres-prohibidos.sh
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
