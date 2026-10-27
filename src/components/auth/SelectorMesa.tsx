@@ -90,7 +90,7 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout }: Selec
           <span>RECUERDA</span>
         </p>
         <p className="text-xs text-red-900 text-center mt-2 leading-relaxed font-medium">
-          Solo puedes reportar los datos oficiales del acta E-14 una vez haya finalizado el conteo en la mesa.
+          Solo puedes reportar los datos del acta E-14 una vez haya finalizado el conteo en la mesa.
         </p>
       </div>
     </div>

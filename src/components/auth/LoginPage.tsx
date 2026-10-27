@@ -69,7 +69,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             Cuorum Testigos
           </h1>
           <p className="text-sm text-gray-500 font-semibold uppercase tracking-wider mt-2" style={{ letterSpacing: '0.1em' }}>
-            Sistema Oficial de Reporte
+            Reporte de testigos · Cuorum
           </p>
         </div>
 
