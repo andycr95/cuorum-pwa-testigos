@@ -20,7 +20,7 @@ interface UseOcrJobsE14Options {
   deviceId: string;
 }
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 3_000;
 
 export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, deviceId }: UseOcrJobsE14Options) {
   const [jobs, setJobs] = useState<OcrJobEntry[]>([]);
@@ -29,36 +29,101 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
   const syncingRef = useRef(false);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Sincroniza desde el servidor la lista de jobs de la mesa ──────────
+  const sincronizarConServidor = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.onLine) return;
+    try {
+      const resp = await api.get<Array<{
+        id: string;
+        eleccionId: string;
+        testigoId: string;
+        campanaId: string;
+        estado: OcrJobEntry['estado'];
+        resultadoOcr?: Record<string, number | null>;
+        serialE14?: string;
+        errorMsg?: string;
+        candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null; listaNombre?: string }>;
+        fotos?: Array<{ orden: number; url: string; capturedAt: string }>;
+        createdAt: string;
+      }>>(`/testigos/actas/by-mesa/${mesaId}`);
+
+      if (resp.data && Array.isArray(resp.data)) {
+        const local = await getOcrJobsByMesa(mesaId);
+        for (const serverJob of resp.data) {
+          const existente = local.find(j => j.id === serverJob.id || j.serverJobId === serverJob.id);
+          if (!existente) {
+            await guardarOcrJob({
+              id: serverJob.id,
+              mesaId,
+              testigoId: serverJob.testigoId || testigoId,
+              eleccionId: serverJob.eleccionId || eleccionId,
+              campanaId: serverJob.campanaId || campanaId,
+              deviceId,
+              fotos: (serverJob.fotos || []).map((f) => ({
+                orden: f.orden,
+                blob: new Blob(),
+                capturedAt: f.capturedAt || new Date().toISOString(),
+              })),
+              estado: serverJob.estado,
+              serverJobId: serverJob.id,
+              resultadoOcr: serverJob.resultadoOcr,
+              serialE14: serverJob.serialE14 ?? undefined,
+              candidatosMap: serverJob.candidatosMap,
+              capturedAt: serverJob.createdAt || new Date().toISOString(),
+              lastSyncError: serverJob.errorMsg ?? undefined,
+            }, { synced: 1 });
+          } else if (existente.estado !== serverJob.estado || serverJob.resultadoOcr) {
+            await updateOcrJobEstado(existente.id, serverJob.estado, {
+              resultadoOcr: serverJob.resultadoOcr,
+              serialE14: serverJob.serialE14 ?? undefined,
+              lastSyncError: serverJob.errorMsg ?? undefined,
+              candidatosMap: serverJob.candidatosMap,
+            });
+          }
+        }
+      }
+    } catch {
+      // Sin conexión o fallo temporal
+    }
+  }, [mesaId, testigoId, eleccionId, campanaId, deviceId]);
+
   const cargarJobs = useCallback(async () => {
+    await sincronizarConServidor();
     const all = await getOcrJobsByMesa(mesaId);
     setJobs(all);
     return all;
-  }, [mesaId]);
+  }, [mesaId, sincronizarConServidor]);
 
   useEffect(() => {
     cargarJobs();
   }, [cargarJobs]);
 
-  // ── Polling: checks server status for jobs in PROCESANDO state ──────────
+  // ── Polling: verifica estado de jobs en PROCESANDO o SUBIENDO ─────────
   const pollProcessingJobs = useCallback(async () => {
     const all = await getOcrJobsByMesa(mesaId);
-    const procesando = all.filter(j => j.estado === 'PROCESANDO' && j.serverJobId);
+    const procesando = all.filter(j => (j.estado === 'PROCESANDO' || j.estado === 'SUBIENDO') && j.serverJobId);
 
-    if (procesando.length === 0) return false; // nothing to poll
+    if (procesando.length === 0) {
+      // También chequear si hay nuevos jobs en el servidor
+      await sincronizarConServidor();
+      const updated = await getOcrJobsByMesa(mesaId);
+      setJobs(updated);
+      return updated.some(j => (j.estado === 'PROCESANDO' || j.estado === 'SUBIENDO') && j.serverJobId);
+    }
 
     let changed = false;
     for (const job of procesando) {
       try {
         const resp = await api.get<{
           estado: OcrJobEntry['estado'];
-          resultadoOcr?: Record<string, number>;
+          resultadoOcr?: Record<string, number | null>;
           serialE14?: string;
           errorMsg?: string;
           candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null }>;
         }>(`/testigos/actas/ocr-job/${job.serverJobId}`);
 
         const serverEstado = resp.data.estado;
-        if (serverEstado === 'COMPLETADO' || serverEstado === 'ERROR') {
+        if (serverEstado === 'COMPLETADO' || serverEstado === 'ERROR' || serverEstado === 'CONFIRMADO') {
           await updateOcrJobEstado(job.id, serverEstado, {
             resultadoOcr: resp.data.resultadoOcr,
             serialE14: resp.data.serialE14,
@@ -68,15 +133,18 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
           changed = true;
         }
       } catch {
-        // network error — keep polling on next tick
+        // Red inestable — reintentará en el siguiente tick
       }
     }
 
-    if (changed) await cargarJobs();
+    if (changed) {
+      const refreshed = await getOcrJobsByMesa(mesaId);
+      setJobs(refreshed);
+    }
     return procesando.length > 0;
-  }, [mesaId, cargarJobs]);
+  }, [mesaId, sincronizarConServidor]);
 
-  // Start/stop polling based on whether there are PROCESANDO jobs
+  // Iniciar / detener polling
   const startPolling = useCallback(() => {
     if (pollTimerRef.current) return;
     pollTimerRef.current = setInterval(async () => {
@@ -88,7 +156,6 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
     }, POLL_INTERVAL_MS);
   }, [pollProcessingJobs]);
 
-  // Stop polling on unmount
   useEffect(() => {
     return () => {
       if (pollTimerRef.current) {
@@ -98,14 +165,13 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
     };
   }, []);
 
-  // ── Sync: upload pending jobs to backend ────────────────────────────────
+  // ── Sync: subir jobs pendientes al backend ─────────────────────────────
   const syncJobs = useCallback(async () => {
     if (syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
     try {
       const allPending = await getOcrJobsPendientes();
-      console.log(allPending);
 
       for (const job of allPending) {
         try {
@@ -130,10 +196,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
 
           if (resp.status >= 400) throw new Error(`HTTP ${resp.status}`);
 
-          // Store server job ID so we can poll for COMPLETADO/ERROR
           await marcarOcrJobSyncado(job.id, 'PROCESANDO', resp.data.id);
-
-          // Kick off polling immediately
           startPolling();
         } catch (err) {
           await updateOcrJobEstado(job.id, 'ERROR', {
@@ -176,6 +239,36 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
     [mesaId, testigoId, eleccionId, campanaId, deviceId, cargarJobs, syncJobs],
   );
 
+  const consultarJob = useCallback(
+    async (jobId: string) => {
+      try {
+        const resp = await api.get<{
+          id: string;
+          estado: OcrJobEntry['estado'];
+          resultadoOcr?: Record<string, number | null>;
+          serialE14?: string;
+          errorMsg?: string;
+          candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null }>;
+        }>(`/testigos/actas/ocr-job/${jobId}`);
+
+        if (resp.data) {
+          await updateOcrJobEstado(jobId, resp.data.estado, {
+            resultadoOcr: resp.data.resultadoOcr,
+            serialE14: resp.data.serialE14,
+            lastSyncError: resp.data.errorMsg,
+            candidatosMap: resp.data.candidatosMap,
+          });
+          await cargarJobs();
+          return resp.data;
+        }
+      } catch {
+        // Ignorar error de red
+      }
+      return null;
+    },
+    [cargarJobs],
+  );
+
   const confirmarJob = useCallback(
     async (jobId: string, datos: {
       resultados: Record<string, number>;
@@ -187,97 +280,55 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
       testigoId: string;
       deviceId: string;
       forzar?: boolean;
+      origen?: 'sin_cambios' | 'corregido';
     }) => {
-      // Find the job's serverJobId
       const allJobs = await getOcrJobsByMesa(mesaId);
-      const job = allJobs.find(j => j.id === jobId);
-      if (!job?.serverJobId) throw new Error('Job no tiene serverJobId');
+      const job = allJobs.find(j => j.id === jobId || j.serverJobId === jobId);
+      const serverJobId = job?.serverJobId || job?.id || jobId;
 
-      const resp = await api.post(`/testigos/actas/ocr-job/${job.serverJobId}/confirmar`, datos);
+      const resp = await api.post(`/testigos/actas/ocr-job/${serverJobId}/confirmar`, datos);
 
       if (resp.data.advertencia) {
         return resp.data; // { advertencia: true, mensaje: "..." }
       }
 
-      // Update local IDB to CONFIRMADO
-      await updateOcrJobEstado(jobId, 'CONFIRMADO');
+      // Actualizar IDB local a CONFIRMADO con origen
+      const localId = job?.id || jobId;
+      await updateOcrJobEstado(localId, 'CONFIRMADO', { origen: datos.origen });
       await cargarJobs();
       return resp.data;
     },
     [mesaId, cargarJobs],
   );
 
-  // On mount: hydrate from server if IDB is empty, and start polling for PROCESANDO jobs
-  const hydrationDone = useRef(false);
+  // Al montar: revisar si hay jobs en proceso y lanzar polling si aplica
   useEffect(() => {
     const init = async () => {
-      const local = await getOcrJobsByMesa(mesaId);
-
-      // If IDB has no jobs for this mesa, try to hydrate from server
-      if (local.length === 0 && navigator.onLine && !hydrationDone.current) {
-        hydrationDone.current = true;
-        try {
-          const resp = await api.get<Array<{
-            id: string;
-            eleccionId: string;
-            testigoId: string;
-            campanaId: string;
-            estado: OcrJobEntry['estado'];
-            resultadoOcr?: Record<string, number>;
-            serialE14?: string;
-            errorMsg?: string;
-            candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null }>;
-            fotos: Array<{ orden: number; url: string; capturedAt: string }>;
-            createdAt: string;
-          }>>(`/testigos/actas/by-mesa/${mesaId}`);
-
-          for (const serverJob of resp.data) {
-            // Store as a synced IDB entry (no blob fotos — already on server)
-            await guardarOcrJob({
-              id: serverJob.id, // use server ID as local ID
-              mesaId,
-              testigoId: serverJob.testigoId,
-              eleccionId: serverJob.eleccionId,
-              campanaId: serverJob.campanaId,
-              deviceId,
-              fotos: serverJob.fotos.map(f => ({
-                orden: f.orden,
-                blob: new Blob(), // placeholder — photos are on server
-                capturedAt: f.capturedAt,
-              })),
-              estado: serverJob.estado,
-              serverJobId: serverJob.id,
-              resultadoOcr: serverJob.resultadoOcr as Record<string, number> | undefined,
-              serialE14: serverJob.serialE14 ?? undefined,
-              candidatosMap: serverJob.candidatosMap,
-              capturedAt: serverJob.createdAt,
-              lastSyncError: serverJob.errorMsg ?? undefined,
-            }, { synced: 1 });
-          }
-
-          if (resp.data.length > 0) {
-            await cargarJobs();
-          }
-        } catch {
-          // Offline or error — will work with local data only
-        }
-      }
-
-      // Start polling for any PROCESANDO jobs
       const allJobs = await getOcrJobsByMesa(mesaId);
-      const hasProcessing = allJobs.some(j => j.estado === 'PROCESANDO' && j.serverJobId);
+      const hasProcessing = allJobs.some(j => (j.estado === 'PROCESANDO' || j.estado === 'SUBIENDO') && j.serverJobId);
       if (hasProcessing) startPolling();
     };
-
     init();
-  }, [mesaId, startPolling, cargarJobs, deviceId]);
+  }, [mesaId, startPolling]);
 
-  // Listen for online event
+  // Reconexión en línea
   useEffect(() => {
-    const handleOnline = () => syncJobs();
+    const handleOnline = () => {
+      cargarJobs();
+      syncJobs();
+    };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
-  }, [syncJobs]);
+  }, [syncJobs, cargarJobs]);
 
-  return { jobs, saving, syncing, guardar, syncJobs, recargar: cargarJobs, confirmarJob };
+  return {
+    jobs,
+    saving,
+    syncing,
+    guardar,
+    syncJobs,
+    recargar: cargarJobs,
+    consultarJob,
+    confirmarJob,
+  };
 }

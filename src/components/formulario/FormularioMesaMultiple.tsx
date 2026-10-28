@@ -20,6 +20,7 @@ import { WizardCierre } from '../jornada/WizardCierre';
 import { IconoAlerta, IconoCandado, IconoDocumento, IconoCheck } from '../ui/Iconos';
 import { EstadoVacio } from '../ui/EstadoVacio';
 import { formatearErrorAmigable } from '../../utils/formatoError';
+import { determinarModoRevision } from '../../services/borradorVotosLogic';
 
 /**
  * FormularioMesaMultiple — Captura de resultados electorales
@@ -151,14 +152,7 @@ export function FormularioMesaMultiple({
     deviceId,
   });
 
-  // Si hay un job OCR COMPLETADO para la elección actual, forzar tab foto y bloquear manual
-  const ocrCompletado = ocrJobs.jobs.some(
-    j => (j.estado === 'COMPLETADO' || j.estado === 'CONFIRMADO') && j.eleccionId === eleccionActual,
-  );
-
-  useEffect(() => {
-    if (ocrCompletado) setPasoActivo('foto');
-  }, [ocrCompletado]);
+  const [forzarConteoManual, setForzarConteoManual] = useState(false);
 
   // Verificar si ya existen resultados para esta mesa + elección
   useEffect(() => {
@@ -276,6 +270,94 @@ export function FormularioMesaMultiple({
   const motivoSinFotoValido = sinFotoMotivo.trim().length >= 10;
   const puedeCerrar = tieneFotos || motivoSinFotoValido;
 
+  const handleConfirmarOcr = async (jobId: string, datos: {
+    resultados: Record<string, number>;
+    votosBlanco: number;
+    votosNulos: number;
+    votosNoMarcados: number;
+    totalVotosMesa: number;
+    forzar?: boolean;
+    origen?: 'sin_cambios' | 'corregido';
+  }) => {
+    const resp = await ocrJobs.confirmarJob(jobId, {
+      ...datos,
+      mesaId,
+      testigoId,
+      deviceId,
+    });
+
+    if (resp?.advertencia) {
+      return resp;
+    }
+
+    const origenFinal = datos.origen || 'sin_cambios';
+    const now = new Date().toISOString();
+    const batch: Parameters<typeof guardarResultadosYFoto>[0] = [];
+    const job = ocrJobs.jobs.find(j => j.id === jobId || j.serverJobId === jobId);
+    const candMap = job?.candidatosMap || {};
+
+    for (const [key, v] of Object.entries(datos.resultados)) {
+      if (key.startsWith('_circ:')) continue;
+      const isLista = key.startsWith('_lista:');
+      const realId = isLista ? key.replace('_lista:', '') : key;
+      const info = candMap[key] || candMap[realId];
+
+      batch.push({
+        id: `${mesaId}_${eleccionActual}_${key}_${Date.now()}`,
+        mesaId,
+        testigoId,
+        eleccionId: eleccionActual,
+        candidato: info?.nombre || (isLista ? 'Agrupación' : 'Candidato'),
+        partido: info?.partido || '',
+        candidatoId: isLista ? undefined : realId,
+        listaId: isLista ? realId : undefined,
+        tipoVoto: isLista ? 'LISTA' : 'CANDIDATO',
+        votos: v,
+        votosBlanco: datos.votosBlanco,
+        votosNulos: datos.votosNulos,
+        votosNoMarcados: datos.votosNoMarcados,
+        totalVotosMesa: datos.totalVotosMesa,
+        capturedAt: now,
+        deviceId,
+        origen: origenFinal,
+      });
+    }
+
+    if (datos.votosBlanco > 0) {
+      batch.push({
+        id: `${mesaId}_${eleccionActual}_BLANCO_${Date.now()}`,
+        mesaId,
+        testigoId,
+        eleccionId: eleccionActual,
+        candidato: 'BLANCO',
+        partido: '',
+        tipoVoto: 'BLANCO',
+        votos: datos.votosBlanco,
+        votosBlanco: datos.votosBlanco,
+        votosNulos: datos.votosNulos,
+        votosNoMarcados: datos.votosNoMarcados,
+        totalVotosMesa: datos.totalVotosMesa,
+        capturedAt: now,
+        deviceId,
+        origen: origenFinal,
+      });
+    }
+
+    if (batch.length > 0) {
+      await guardarResultadosYFoto(batch);
+
+      setResultadosExistentes(batch as any);
+      setYaRegistrado(true);
+      setGuardado(true);
+      setRefreshProgreso(prev => prev + 1);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cuorum:sync-status'));
+      }
+    }
+
+    return resp;
+  };
+
   const handleGuardar = async () => {
     if (!eleccion) return;
     // Alerta si el candidato propio tiene 0 votos
@@ -329,6 +411,7 @@ export function FormularioMesaMultiple({
             observaciones: observaciones || undefined,
             capturedAt: now,
             deviceId,
+            origen: 'manual',
           });
         }
       } else {
@@ -350,6 +433,7 @@ export function FormularioMesaMultiple({
             observaciones: observaciones || undefined,
             capturedAt: now,
             deviceId,
+            origen: 'manual',
           });
 
           if (eleccion.votoPreferente) {
@@ -374,6 +458,7 @@ export function FormularioMesaMultiple({
                   observaciones: observaciones || undefined,
                   capturedAt: now,
                   deviceId,
+                  origen: 'manual',
                 });
               }
             }
@@ -401,6 +486,7 @@ export function FormularioMesaMultiple({
             observaciones: observaciones || undefined,
             capturedAt: now,
             deviceId,
+            origen: 'manual',
           });
         }
       }
@@ -613,6 +699,7 @@ export function FormularioMesaMultiple({
             eleccionActual={eleccionActual}
             onCambiar={(id) => {
               setEleccionActual(id);
+              setForzarConteoManual(false);
               limpiarFormulario();
             }}
           />
@@ -634,17 +721,6 @@ export function FormularioMesaMultiple({
           {/* ── Paso 1: Foto E-14 (Evidencia obligatoria) ─────────────── */}
           {pasoActivo === 'foto' && (
             <div id="panel-foto" role="tabpanel" aria-labelledby="tab-foto" className="space-y-4 mb-6">
-              {ocrCompletado && (
-                <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
-                  <IconoCheck className="w-6 h-6 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-black text-green-800">Fotos del E-14 recibidas</p>
-                    <p className="text-xs text-green-700 mt-0.5">
-                      Revisa y confirma los resultados extraídos abajo.
-                    </p>
-                  </div>
-                </div>
-              )}
               <CapturaMultipleE14
                 onFotosListas={async (fotos) => {
                   setFotosManual(fotos);
@@ -678,27 +754,12 @@ export function FormularioMesaMultiple({
                 title="Fotos del E-14 (evidencia)"
                 submitLabel={`Confirmar ${fotosManual.length > 0 ? fotosManual.length + ' foto' + (fotosManual.length !== 1 ? 's' : '') : 'fotos'} como evidencia`}
               />
-              <EstadoOcrE14
-                jobs={ocrJobs.jobs}
-                onRetry={ocrJobs.syncJobs}
-                onSync={ocrJobs.syncJobs}
-                syncing={ocrJobs.syncing}
-                onConfirmar={async (jobId, datos) => {
-                  return ocrJobs.confirmarJob(jobId, {
-                    ...datos,
-                    mesaId,
-                    testigoId,
-                    deviceId,
-                  });
-                }}
-                eleccionReportada={yaRegistrado}
-              />
 
               {/* Botón para avanzar al paso 2 */}
               <button
                 type="button"
                 onClick={() => setPasoActivo('contar')}
-                className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95"
+                className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 min-h-[48px]"
               >
                 Continuar a revisar votos →
               </button>
@@ -803,30 +864,89 @@ export function FormularioMesaMultiple({
           )}
 
           {/* ── Formulario editable (solo si NO hay resultados previos) ── */}
-          {!cargandoResultados && !yaRegistrado && (<>
+          {!cargandoResultados && !yaRegistrado && (() => {
+            const jobEleccion = ocrJobs.jobs.find(
+              (j) => j.eleccionId === eleccionActual,
+            ) || ocrJobs.jobs[0];
 
-          {/* Alerta de fraude */}
-          {hayAlertaFraude && (
-            <div className="mb-6 relative overflow-hidden rounded-2xl bg-red-600">
-              <div className="relative px-5 py-4 flex items-start gap-3">
-                <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                  <IconoAlerta className="w-6 h-6 text-red-600" />
+            const modoRevision = determinarModoRevision({
+              estadoJob: jobEleccion?.estado,
+              tieneResultadoOcr: !!jobEleccion?.resultadoOcr,
+              forzarConteoManual,
+              isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+            });
+
+            if (modoRevision === 'borrador' && jobEleccion) {
+              return (
+                <div className="mb-6">
+                  <EstadoOcrE14
+                    jobs={[jobEleccion]}
+                    onRetry={ocrJobs.syncJobs}
+                    onSync={ocrJobs.syncJobs}
+                    syncing={ocrJobs.syncing}
+                    onConfirmar={handleConfirmarOcr}
+                    eleccionReportada={yaRegistrado}
+                    onConteoManual={() => setForzarConteoManual(true)}
+                  />
                 </div>
-                <div className="flex-1 pt-1">
-                  <p className="font-black text-white text-base uppercase tracking-wide mb-1">
-                    ALERTA DE FRAUDE
-                  </p>
-                  <p className="text-sm text-red-50 font-semibold leading-snug">
-                    Total de votos (<span className="font-black">{totalVotos}</span>) SUPERA
-                    sufragantes habilitados (<span className="font-black">{totalSufragantes}</span>)
-                  </p>
-                  <p className="text-xs text-red-100 mt-2 font-medium">
-                    Verifique los datos antes de guardar
-                  </p>
+              );
+            }
+
+            if (modoRevision === 'leyendo' && jobEleccion) {
+              return (
+                <div className="mb-6">
+                  <EstadoOcrE14
+                    jobs={[jobEleccion]}
+                    onRetry={ocrJobs.syncJobs}
+                    onSync={ocrJobs.syncJobs}
+                    syncing={ocrJobs.syncing}
+                    onConteoManual={() => setForzarConteoManual(true)}
+                  />
                 </div>
-              </div>
-            </div>
-          )}
+              );
+            }
+
+            return (
+              <>
+                {forzarConteoManual && jobEleccion && (
+                  <div className="bg-gray-100 border border-gray-300 rounded-xl p-3 mb-4 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-700">
+                      Conteo manual activado como respaldo.
+                    </p>
+                    {(jobEleccion.estado === 'COMPLETADO' || jobEleccion.estado === 'CONFIRMADO') && (
+                      <button
+                        type="button"
+                        onClick={() => setForzarConteoManual(false)}
+                        className="text-xs font-bold text-editorial-red hover:underline"
+                      >
+                        Ver borrador
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Alerta de fraude */}
+                {hayAlertaFraude && (
+                  <div className="mb-6 relative overflow-hidden rounded-2xl bg-red-600">
+                    <div className="relative px-5 py-4 flex items-start gap-3">
+                      <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                        <IconoAlerta className="w-6 h-6 text-red-600" />
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <p className="font-black text-white text-base uppercase tracking-wide mb-1">
+                          ALERTA DE FRAUDE
+                        </p>
+                        <p className="text-sm text-red-50 font-semibold leading-snug">
+                          Total de votos (<span className="font-black">{totalVotos}</span>) SUPERA
+                          sufragantes habilitados (<span className="font-black">{totalSufragantes}</span>)
+                        </p>
+                        <p className="text-xs text-red-100 mt-2 font-medium">
+                          Verifique los datos antes de guardar
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
           {/* ── Formulario Uninominal ───────────────────────────────── */}
           {eleccion.tipoCargo === 'UNINOMINAL' && (
@@ -995,8 +1115,9 @@ export function FormularioMesaMultiple({
             </button>
           )}
 
-          {/* Fin paso 1: Contar votos */}
-          </>)}
+          {/* Fin paso 2: Revisar votos o conteo manual */}
+          </>);
+          })()}
           </div>
           )}
 
