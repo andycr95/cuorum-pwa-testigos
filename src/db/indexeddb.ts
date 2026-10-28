@@ -392,14 +392,29 @@ export async function guardarResultadosYFoto(
   const tx = db.transaction(storeNames, 'readwrite');
   const storeResultados = tx.objectStore('resultados');
 
-  // Limpiar resultados anteriores de la misma mesa y elección para no dejar
-  // capturas manuales previas (synced=0) pendientes tras confirmar OCR o guardar
-  const paresMesaEleccion = new Set(resultados.map((r) => `${r.mesaId}:::${r.eleccionId}`));
+  // Limpiar resultados anteriores de la misma mesa y elección del testigo activo
+  // para no dejar capturas manuales previas (synced=0) pendientes tras confirmar OCR o guardar,
+  // conservando intactas las capturas de otros testigos en la misma mesa y elección.
+  const sesion = obtenerSesionActivaLocal();
   const todosResultados = await storeResultados.getAll();
-  for (const row of todosResultados) {
-    if (paresMesaEleccion.has(`${row.mesaId}:::${row.eleccionId}`)) {
-      await storeResultados.delete(row.id);
+  const idsParaEliminar = new Set<string>();
+
+  for (const r of resultados) {
+    const targetTestigoId = r.testigoId || sesion?.testigoId;
+    for (const row of todosResultados) {
+      if (row.mesaId === r.mesaId && row.eleccionId === r.eleccionId) {
+        const mismoPropietario = targetTestigoId
+          ? (!row.testigoId || row.testigoId === targetTestigoId)
+          : !row.testigoId;
+        if (mismoPropietario) {
+          idsParaEliminar.add(row.id);
+        }
+      }
     }
+  }
+
+  for (const id of idsParaEliminar) {
+    await storeResultados.delete(id);
   }
 
   for (const data of resultados) {
@@ -409,7 +424,6 @@ export async function guardarResultadosYFoto(
   }
 
   if (hayFotos) {
-    const sesion = obtenerSesionActivaLocal();
     for (const foto of fotos!) {
       const campanaId = foto.campanaId || sesion?.campanaId || undefined;
       const synced = (foto as any).synced ?? 0;
@@ -619,10 +633,19 @@ export async function getResultadosByMesa(mesaId: string) {
   return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
 }
 
-export async function eliminarResultadosPorMesaEleccion(mesaId: string, eleccionId: string): Promise<void> {
+export async function eliminarResultadosPorMesaEleccion(
+  mesaId: string,
+  eleccionId: string,
+  filtro?: FiltroTenencia,
+): Promise<void> {
   const db = await getDB();
   const all = await db.getAllFromIndex('resultados', 'by-mesa', mesaId);
-  const toDelete = all.filter((r) => r.eleccionId === eleccionId);
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  const toDelete = all.filter((r) => {
+    if (r.eleccionId !== eleccionId) return false;
+    if (f?.testigoId && r.testigoId && r.testigoId !== f.testigoId) return false;
+    return true;
+  });
   if (toDelete.length > 0) {
     const tx = db.transaction('resultados', 'readwrite');
     for (const r of toDelete) {
