@@ -270,6 +270,19 @@ export function FormularioMesaMultiple({
   const motivoSinFotoValido = sinFotoMotivo.trim().length >= 10;
   const puedeCerrar = tieneFotos || motivoSinFotoValido;
 
+  const jobEleccion = ocrJobs.jobs.find((j) => j.eleccionId === eleccionActual);
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const modoRevision =
+    typeof determinarModoRevision === 'function'
+      ? determinarModoRevision({
+          estadoJob: jobEleccion?.estado,
+          tieneResultadoOcr: !!jobEleccion?.resultadoOcr,
+          forzarConteoManual,
+          isOnline,
+        })
+      : 'manual';
+  const borradorActivo = !yaRegistrado && !cargandoResultados && (modoRevision === 'borrador' || modoRevision === 'leyendo');
+
   const handleConfirmarOcr = async (jobId: string, datos: {
     resultados: Record<string, number>;
     votosBlanco: number;
@@ -365,7 +378,7 @@ export function FormularioMesaMultiple({
   };
 
   const handleGuardar = async () => {
-    if (!eleccion) return;
+    if (!eleccion || borradorActivo) return;
     // Alerta si el candidato propio tiene 0 votos
     if (miCandidatoId || miListaId) {
       let propioTieneZero = false;
@@ -871,17 +884,6 @@ export function FormularioMesaMultiple({
 
           {/* ── Formulario editable (solo si NO hay resultados previos) ── */}
           {!cargandoResultados && !yaRegistrado && (() => {
-            const jobEleccion = ocrJobs.jobs.find(
-              (j) => j.eleccionId === eleccionActual,
-            );
-
-            const modoRevision = determinarModoRevision({
-              estadoJob: jobEleccion?.estado,
-              tieneResultadoOcr: !!jobEleccion?.resultadoOcr,
-              forzarConteoManual,
-              isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-            });
-
             if (modoRevision === 'borrador' && jobEleccion) {
               return (
                 <div className="mb-6">
@@ -1377,9 +1379,22 @@ export function FormularioMesaMultiple({
           <button
             type="button"
             onClick={handleGuardar}
-            disabled={guardado || guardando || yaRegistrado || actaCerrada}
+            disabled={guardado || guardando || yaRegistrado || actaCerrada || borradorActivo}
             data-testid="btn-guardar-barra"
-            aria-label={guardado ? 'Resultados guardados' : hayAlertaFraude ? 'Guardar resultados con alerta de fraude' : 'Guardar resultados de la mesa'}
+            aria-label={
+              borradorActivo
+                ? 'Revisión de borrador en curso'
+                : guardado
+                ? 'Resultados guardados'
+                : hayAlertaFraude
+                ? 'Guardar resultados con alerta de fraude'
+                : 'Guardar resultados de la mesa'
+            }
+            title={
+              borradorActivo
+                ? 'Usa el botón de confirmar en el borrador de arriba o pulsa Contar a mano'
+                : undefined
+            }
             className={`min-h-[48px] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wide transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${
               guardado ? 'bg-green-600 text-white cursor-default' : 'bg-editorial-red hover:bg-red-700 text-white'
             } disabled:opacity-70 disabled:cursor-not-allowed`}

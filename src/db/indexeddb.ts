@@ -390,11 +390,22 @@ export async function guardarResultadosYFoto(
   if (hayFotos) storeNames.push('fotosE14');
 
   const tx = db.transaction(storeNames, 'readwrite');
+  const storeResultados = tx.objectStore('resultados');
+
+  // Limpiar resultados anteriores de la misma mesa y elección para no dejar
+  // capturas manuales previas (synced=0) pendientes tras confirmar OCR o guardar
+  const paresMesaEleccion = new Set(resultados.map((r) => `${r.mesaId}:::${r.eleccionId}`));
+  const todosResultados = await storeResultados.getAll();
+  for (const row of todosResultados) {
+    if (paresMesaEleccion.has(`${row.mesaId}:::${row.eleccionId}`)) {
+      await storeResultados.delete(row.id);
+    }
+  }
 
   for (const data of resultados) {
     const synced = (data as any).synced ?? 0;
     const syncAttempts = (data as any).syncAttempts ?? 0;
-    await tx.objectStore('resultados').put({ ...data, synced, syncAttempts });
+    await storeResultados.put({ ...data, synced, syncAttempts });
   }
 
   if (hayFotos) {
@@ -606,6 +617,19 @@ export async function getResultadosByMesa(mesaId: string) {
   const db = await getDB();
   const all = await db.getAllFromIndex('resultados', 'by-mesa', mesaId);
   return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+}
+
+export async function eliminarResultadosPorMesaEleccion(mesaId: string, eleccionId: string): Promise<void> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('resultados', 'by-mesa', mesaId);
+  const toDelete = all.filter((r) => r.eleccionId === eleccionId);
+  if (toDelete.length > 0) {
+    const tx = db.transaction('resultados', 'readwrite');
+    for (const r of toDelete) {
+      await tx.objectStore('resultados').delete(r.id);
+    }
+    await tx.done;
+  }
 }
 
 // ─── Escrutinio cache helpers ─────────────────────────────────
