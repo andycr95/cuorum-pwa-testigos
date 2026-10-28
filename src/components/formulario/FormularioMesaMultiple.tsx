@@ -161,7 +161,7 @@ export function FormularioMesaMultiple({
       setCargandoResultados(true);
       try {
         // 1. Verificar en IndexedDB local
-        const locales = await getResultadosByMesa(mesaId);
+        const locales = await getResultadosByMesa(mesaId, { testigoId });
         const deEstaEleccion = locales.filter(r => r.eleccionId === eleccionActual);
 
         if (deEstaEleccion.length > 0 && !cancelled) {
@@ -203,7 +203,7 @@ export function FormularioMesaMultiple({
 
     verificar();
     return () => { cancelled = true; };
-  }, [mesaId, eleccionActual]);
+  }, [mesaId, eleccionActual, testigoId]);
 
   // Si cambia la lista de elecciones y no hay elección actual válida, sincronizar
   useEffect(() => {

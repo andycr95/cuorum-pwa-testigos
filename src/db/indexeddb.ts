@@ -627,10 +627,18 @@ export async function logSync(
   });
 }
 
-export async function getResultadosByMesa(mesaId: string) {
+export async function getResultadosByMesa(
+  mesaId: string,
+  filtro?: FiltroTenencia,
+) {
   const db = await getDB();
   const all = await db.getAllFromIndex('resultados', 'by-mesa', mesaId);
-  return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  const filtered = all.filter((r) => {
+    if (f?.testigoId && r.testigoId && r.testigoId !== f.testigoId) return false;
+    return true;
+  });
+  return filtered.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
 }
 
 export async function eliminarResultadosPorMesaEleccion(
