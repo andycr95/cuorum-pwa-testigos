@@ -87,17 +87,6 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
     }
   }, [mesaId, testigoId, eleccionId, campanaId, deviceId]);
 
-  const cargarJobs = useCallback(async () => {
-    await sincronizarConServidor();
-    const all = await getOcrJobsByMesa(mesaId);
-    setJobs(all);
-    return all;
-  }, [mesaId, sincronizarConServidor]);
-
-  useEffect(() => {
-    cargarJobs();
-  }, [cargarJobs]);
-
   // ── Polling: verifica estado de jobs en PROCESANDO o SUBIENDO ─────────
   const pollProcessingJobs = useCallback(async () => {
     const all = await getOcrJobsByMesa(mesaId);
@@ -141,7 +130,8 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
       const refreshed = await getOcrJobsByMesa(mesaId);
       setJobs(refreshed);
     }
-    return procesando.length > 0;
+    const remaining = await getOcrJobsByMesa(mesaId);
+    return remaining.some(j => (j.estado === 'PROCESANDO' || j.estado === 'SUBIENDO') && j.serverJobId);
   }, [mesaId, sincronizarConServidor]);
 
   // Iniciar / detener polling
@@ -164,6 +154,23 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
       }
     };
   }, []);
+
+  const cargarJobs = useCallback(async () => {
+    await sincronizarConServidor();
+    const all = await getOcrJobsByMesa(mesaId);
+    setJobs(all);
+    const hasProcessing = all.some(
+      j => (j.estado === 'PROCESANDO' || j.estado === 'SUBIENDO') && j.serverJobId,
+    );
+    if (hasProcessing) {
+      startPolling();
+    }
+    return all;
+  }, [mesaId, sincronizarConServidor, startPolling]);
+
+  useEffect(() => {
+    cargarJobs();
+  }, [cargarJobs]);
 
   // ── Sync: subir jobs pendientes al backend ─────────────────────────────
   const syncJobs = useCallback(async () => {

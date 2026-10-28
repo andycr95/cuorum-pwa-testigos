@@ -565,22 +565,34 @@ export function RevisionOcrInline({
             )}
 
             {[
-              { label: 'Votos en blanco', value: votosBlanco, setter: setVotosBlanco },
-              { label: 'Votos nulos', value: votosNulos, setter: setVotosNulos },
-              { label: 'Tarjetas no marcadas', value: votosNoMarcados, setter: setVotosNoMarcados },
-            ].map(({ label, value, setter }) => (
-              <div key={label} className="flex items-center justify-between gap-2">
-                <p className="text-xs text-gray-700">{label}</p>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  value={value}
-                  onChange={(e) => setter(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-16 px-2 py-1.5 text-xs text-right font-bold border-2 border-gray-200 rounded-lg focus:border-editorial-red focus:outline-none"
-                />
-              </div>
-            ))}
+              { key: '_votosBlanco', label: 'Votos en blanco', value: votosBlanco, setter: setVotosBlanco },
+              { key: '_votosNulos', label: 'Votos nulos', value: votosNulos, setter: setVotosNulos },
+              { key: '_votosNoMarcados', label: 'Tarjetas no marcadas', value: votosNoMarcados, setter: setVotosNoMarcados },
+            ].map(({ key, label, value, setter }) => {
+              const isBajaConfianza = bajaConfianzaIds.has(key);
+              return (
+                <div
+                  key={label}
+                  className={`flex items-center justify-between gap-2 p-1.5 rounded-lg ${
+                    isBajaConfianza ? 'bg-amber-50 border border-amber-300' : ''
+                  }`}
+                >
+                  <p className={`text-xs ${isBajaConfianza ? 'text-amber-900 font-semibold' : 'text-gray-700'}`}>{label}</p>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    value={value}
+                    onChange={(e) => setter(Math.max(0, parseInt(e.target.value) || 0))}
+                    className={`w-16 px-2 py-1.5 text-xs text-right font-bold border-2 rounded-lg focus:outline-none ${
+                      isBajaConfianza
+                        ? 'border-amber-400 focus:border-amber-600 bg-amber-50 text-amber-900'
+                        : 'border-gray-200 focus:border-editorial-red'
+                    }`}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 

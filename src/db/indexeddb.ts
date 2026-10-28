@@ -371,8 +371,18 @@ export async function guardarFotoE14(
  * evitando la race condition donde se envían resultados sin la foto.
  */
 export async function guardarResultadosYFoto(
-  resultados: Array<Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>>,
-  fotos?: Array<Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>>,
+  resultados: Array<
+    Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'> & {
+      synced?: 0 | 1;
+      syncAttempts?: number;
+    }
+  >,
+  fotos?: Array<
+    Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'> & {
+      synced?: 0 | 1;
+      syncAttempts?: number;
+    }
+  >,
 ) {
   const db = await getDB();
   const hayFotos = fotos && fotos.length > 0;
@@ -382,14 +392,18 @@ export async function guardarResultadosYFoto(
   const tx = db.transaction(storeNames, 'readwrite');
 
   for (const data of resultados) {
-    await tx.objectStore('resultados').put({ ...data, synced: 0, syncAttempts: 0 });
+    const synced = (data as any).synced ?? 0;
+    const syncAttempts = (data as any).syncAttempts ?? 0;
+    await tx.objectStore('resultados').put({ ...data, synced, syncAttempts });
   }
 
   if (hayFotos) {
     const sesion = obtenerSesionActivaLocal();
     for (const foto of fotos!) {
       const campanaId = foto.campanaId || sesion?.campanaId || undefined;
-      await tx.objectStore('fotosE14').put({ ...foto, campanaId, synced: 0, syncAttempts: 0 });
+      const synced = (foto as any).synced ?? 0;
+      const syncAttempts = (foto as any).syncAttempts ?? 0;
+      await tx.objectStore('fotosE14').put({ ...foto, campanaId, synced, syncAttempts });
     }
   }
 

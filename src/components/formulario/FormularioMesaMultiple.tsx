@@ -294,7 +294,9 @@ export function FormularioMesaMultiple({
     const now = new Date().toISOString();
     const batch: Parameters<typeof guardarResultadosYFoto>[0] = [];
     const job = ocrJobs.jobs.find(j => j.id === jobId || j.serverJobId === jobId);
+    const targetEleccionId = job?.eleccionId || eleccionActual;
     const candMap = job?.candidatosMap || {};
+    const capturedAt = job?.capturedAt || now;
 
     for (const [key, v] of Object.entries(datos.resultados)) {
       if (key.startsWith('_circ:')) continue;
@@ -303,10 +305,10 @@ export function FormularioMesaMultiple({
       const info = candMap[key] || candMap[realId];
 
       batch.push({
-        id: `${mesaId}_${eleccionActual}_${key}_${Date.now()}`,
+        id: `${mesaId}_${targetEleccionId}_${key}_${Date.now()}`,
         mesaId,
         testigoId,
-        eleccionId: eleccionActual,
+        eleccionId: targetEleccionId,
         candidato: info?.nombre || (isLista ? 'Agrupación' : 'Candidato'),
         partido: info?.partido || '',
         candidatoId: isLista ? undefined : realId,
@@ -317,18 +319,20 @@ export function FormularioMesaMultiple({
         votosNulos: datos.votosNulos,
         votosNoMarcados: datos.votosNoMarcados,
         totalVotosMesa: datos.totalVotosMesa,
-        capturedAt: now,
+        capturedAt,
         deviceId,
         origen: origenFinal,
+        synced: 1,
+        syncAttempts: 0,
       });
     }
 
     if (datos.votosBlanco > 0) {
       batch.push({
-        id: `${mesaId}_${eleccionActual}_BLANCO_${Date.now()}`,
+        id: `${mesaId}_${targetEleccionId}_BLANCO_${Date.now()}`,
         mesaId,
         testigoId,
-        eleccionId: eleccionActual,
+        eleccionId: targetEleccionId,
         candidato: 'BLANCO',
         partido: '',
         tipoVoto: 'BLANCO',
@@ -337,9 +341,11 @@ export function FormularioMesaMultiple({
         votosNulos: datos.votosNulos,
         votosNoMarcados: datos.votosNoMarcados,
         totalVotosMesa: datos.totalVotosMesa,
-        capturedAt: now,
+        capturedAt,
         deviceId,
         origen: origenFinal,
+        synced: 1,
+        syncAttempts: 0,
       });
     }
 
@@ -867,7 +873,7 @@ export function FormularioMesaMultiple({
           {!cargandoResultados && !yaRegistrado && (() => {
             const jobEleccion = ocrJobs.jobs.find(
               (j) => j.eleccionId === eleccionActual,
-            ) || ocrJobs.jobs[0];
+            );
 
             const modoRevision = determinarModoRevision({
               estadoJob: jobEleccion?.estado,

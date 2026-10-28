@@ -32,8 +32,10 @@ export function evaluarOrigenBorrador(datos: DatosComparacionBorrador): 'sin_cam
   // Comparar votos de candidatos y listas
   for (const [id, val] of Object.entries(datos.votos)) {
     const origVal = orig[id];
-    // Si en el borrador era null (baja confianza o casilla ilegible) y se ingresó un número distinto de 0 o modificado
-    if (origVal === null || origVal === undefined) {
+    // Si en el borrador era null (baja confianza o casilla ilegible), cualquier valor asignado es corrección
+    if (origVal === null) {
+      return 'corregido';
+    } else if (origVal === undefined) {
       if (val !== 0) return 'corregido';
     } else if (origVal !== val) {
       return 'corregido';
@@ -41,15 +43,15 @@ export function evaluarOrigenBorrador(datos: DatosComparacionBorrador): 'sin_cam
   }
 
   // Comparar votos especiales y totales
-  if (datos.votosBlanco !== (orig['_votosBlanco'] ?? 0)) return 'corregido';
-  if (datos.votosNulos !== (orig['_votosNulos'] ?? 0)) return 'corregido';
-  if (datos.votosNoMarcados !== (orig['_votosNoMarcados'] ?? 0)) return 'corregido';
-  if (datos.totalVotosMesa !== (orig['_totalVotosMesa'] ?? 0)) return 'corregido';
+  if (orig['_votosBlanco'] === null || datos.votosBlanco !== (orig['_votosBlanco'] ?? 0)) return 'corregido';
+  if (orig['_votosNulos'] === null || datos.votosNulos !== (orig['_votosNulos'] ?? 0)) return 'corregido';
+  if (orig['_votosNoMarcados'] === null || datos.votosNoMarcados !== (orig['_votosNoMarcados'] ?? 0)) return 'corregido';
+  if (orig['_totalVotosMesa'] === null || datos.totalVotosMesa !== (orig['_totalVotosMesa'] ?? 0)) return 'corregido';
 
   // Comparar circunscripciones si existen
   if (datos.circValues) {
     for (const [k, v] of Object.entries(datos.circValues)) {
-      if ((orig[k] ?? 0) !== v) return 'corregido';
+      if (orig[k] === null || (orig[k] ?? 0) !== v) return 'corregido';
     }
   }
 
@@ -70,7 +72,6 @@ export function identificarBajaConfianza(
   if (!resultadoOcr) return bajaConfianza;
 
   for (const [key, val] of Object.entries(resultadoOcr)) {
-    if (key.startsWith('_')) continue;
     if (val === null || val === undefined) {
       bajaConfianza.add(key);
     }
@@ -81,7 +82,6 @@ export function identificarBajaConfianza(
     for (const alerta of alertas) {
       const msg = alerta.mensaje?.toLowerCase() || '';
       for (const key of Object.keys(resultadoOcr)) {
-        if (key.startsWith('_')) continue;
         if (msg.includes(key.toLowerCase())) {
           bajaConfianza.add(key);
         }
