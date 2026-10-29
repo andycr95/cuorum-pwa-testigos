@@ -61,6 +61,7 @@ export interface CuorumDB extends DBSchema {
       synced: 0 | 1;
       syncAttempts: number;
       lastSyncError?: string;
+      origen?: 'sin_cambios' | 'corregido' | 'manual';
     };
     indexes: { 'by-synced': 0 | 1; 'by-mesa': string; 'by-eleccion': string };
   };
@@ -104,7 +105,7 @@ export interface CuorumDB extends DBSchema {
       fotos: { orden: number; blob: Blob; capturedAt: string }[];
       estado: 'PENDIENTE' | 'SUBIENDO' | 'PROCESANDO' | 'COMPLETADO' | 'CONFIRMADO' | 'ERROR';
       serverJobId?: string;
-      resultadoOcr?: Record<string, number>;
+      resultadoOcr?: Record<string, number | null>;
       serialE14?: string;
       candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null; listaNombre?: string }>;
       synced: 0 | 1;
@@ -112,6 +113,7 @@ export interface CuorumDB extends DBSchema {
       lastSyncError?: string;
       capturedAt: string;
       deviceId: string;
+      origen?: 'sin_cambios' | 'corregido' | 'manual';
     };
     indexes: { 'by-synced': 0 | 1; 'by-mesa': string };
   };
@@ -369,8 +371,18 @@ export async function guardarFotoE14(
  * evitando la race condition donde se envían resultados sin la foto.
  */
 export async function guardarResultadosYFoto(
-  resultados: Array<Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>>,
-  fotos?: Array<Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>>,
+  resultados: Array<
+    Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'> & {
+      synced?: 0 | 1;
+      syncAttempts?: number;
+    }
+  >,
+  fotos?: Array<
+    Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'> & {
+      synced?: 0 | 1;
+      syncAttempts?: number;
+    }
+  >,
 ) {
   const db = await getDB();
   const hayFotos = fotos && fotos.length > 0;
@@ -378,16 +390,45 @@ export async function guardarResultadosYFoto(
   if (hayFotos) storeNames.push('fotosE14');
 
   const tx = db.transaction(storeNames, 'readwrite');
+  const storeResultados = tx.objectStore('resultados');
+
+  // Limpiar resultados anteriores de la misma mesa y elección del testigo activo
+  // para no dejar capturas manuales previas (synced=0) pendientes tras confirmar OCR o guardar,
+  // conservando intactas las capturas de otros testigos en la misma mesa y elección.
+  const sesion = obtenerSesionActivaLocal();
+  const todosResultados = await storeResultados.getAll();
+  const idsParaEliminar = new Set<string>();
+
+  for (const r of resultados) {
+    const targetTestigoId = r.testigoId || sesion?.testigoId;
+    for (const row of todosResultados) {
+      if (row.mesaId === r.mesaId && row.eleccionId === r.eleccionId) {
+        const mismoPropietario = targetTestigoId
+          ? (!row.testigoId || row.testigoId === targetTestigoId)
+          : !row.testigoId;
+        if (mismoPropietario) {
+          idsParaEliminar.add(row.id);
+        }
+      }
+    }
+  }
+
+  for (const id of idsParaEliminar) {
+    await storeResultados.delete(id);
+  }
 
   for (const data of resultados) {
-    await tx.objectStore('resultados').put({ ...data, synced: 0, syncAttempts: 0 });
+    const synced = (data as any).synced ?? 0;
+    const syncAttempts = (data as any).syncAttempts ?? 0;
+    await storeResultados.put({ ...data, synced, syncAttempts });
   }
 
   if (hayFotos) {
-    const sesion = obtenerSesionActivaLocal();
     for (const foto of fotos!) {
       const campanaId = foto.campanaId || sesion?.campanaId || undefined;
-      await tx.objectStore('fotosE14').put({ ...foto, campanaId, synced: 0, syncAttempts: 0 });
+      const synced = (foto as any).synced ?? 0;
+      const syncAttempts = (foto as any).syncAttempts ?? 0;
+      await tx.objectStore('fotosE14').put({ ...foto, campanaId, synced, syncAttempts });
     }
   }
 
@@ -586,10 +627,40 @@ export async function logSync(
   });
 }
 
-export async function getResultadosByMesa(mesaId: string) {
+export async function getResultadosByMesa(
+  mesaId: string,
+  filtro?: FiltroTenencia,
+) {
   const db = await getDB();
   const all = await db.getAllFromIndex('resultados', 'by-mesa', mesaId);
-  return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  const filtered = all.filter((r) => {
+    if (f?.testigoId && r.testigoId && r.testigoId !== f.testigoId) return false;
+    return true;
+  });
+  return filtered.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+}
+
+export async function eliminarResultadosPorMesaEleccion(
+  mesaId: string,
+  eleccionId: string,
+  filtro?: FiltroTenencia,
+): Promise<void> {
+  const db = await getDB();
+  const all = await db.getAllFromIndex('resultados', 'by-mesa', mesaId);
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  const toDelete = all.filter((r) => {
+    if (r.eleccionId !== eleccionId) return false;
+    if (f?.testigoId && r.testigoId && r.testigoId !== f.testigoId) return false;
+    return true;
+  });
+  if (toDelete.length > 0) {
+    const tx = db.transaction('resultados', 'readwrite');
+    for (const r of toDelete) {
+      await tx.objectStore('resultados').delete(r.id);
+    }
+    await tx.done;
+  }
 }
 
 // ─── Escrutinio cache helpers ─────────────────────────────────
@@ -714,11 +785,16 @@ export async function marcarOcrJobSyncado(
 export async function updateOcrJobEstado(
   id: string,
   estado: CuorumDB['e14OcrJobs']['value']['estado'],
-  extra?: { resultadoOcr?: Record<string, number>; serialE14?: string; lastSyncError?: string; candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null }> },
+  extra?: {
+    resultadoOcr?: Record<string, number | null>;
+    serialE14?: string;
+    lastSyncError?: string;
+    candidatosMap?: Record<string, { nombre: string; partido: string; posicion: number | null; listaNombre?: string }>;
+    origen?: 'sin_cambios' | 'corregido' | 'manual';
+  },
 ) {
   const db = await getDB();
   const item = await db.get('e14OcrJobs', id);
-  console.log(item);
 
   if (item) {
     await db.put('e14OcrJobs', { ...item, estado, ...extra });

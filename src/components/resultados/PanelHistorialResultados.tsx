@@ -56,7 +56,7 @@ function agruparPorSesion(capturedAt: string): string {
   return d.toISOString();
 }
 
-export function PanelHistorialResultados({ mesaId, elecciones, mesaNumero }: Props) {
+export function PanelHistorialResultados({ mesaId, testigoId, elecciones, mesaNumero }: Props) {
   const [abierto, setAbierto] = useState(false);
   const [resultados, setResultados] = useState<ResultadoDisplay[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -65,7 +65,7 @@ export function PanelHistorialResultados({ mesaId, elecciones, mesaNumero }: Pro
     setCargando(true);
     try {
       // Fuente 1: pendientes locales (IndexedDB synced=0)
-      const locales = await getResultadosByMesa(mesaId);
+      const locales = await getResultadosByMesa(mesaId, { testigoId });
       const pendientes: ResultadoLocal[] = locales
         .filter((r) => r.synced === 0)
         .map((r) => ({
@@ -125,7 +125,7 @@ export function PanelHistorialResultados({ mesaId, elecciones, mesaNumero }: Pro
     } finally {
       setCargando(false);
     }
-  }, [mesaId]);
+  }, [mesaId, testigoId]);
 
   useEffect(() => {
     if (abierto) recargar();
