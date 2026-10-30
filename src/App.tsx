@@ -6,6 +6,7 @@ import { EscrutinioDashboard } from './components/escrutinio/EscrutinioDashboard
 import { CheckinTestigo } from './components/jornada/CheckinTestigo';
 import { AperturaMesa } from './components/jornada/AperturaMesa';
 import { authService, TestigoData } from './services/authService';
+import { mesasDelTestigo } from './services/mesasTestigo';
 import { jornadaService, JornadaMesa } from './services/jornadaService';
 import { clearEscrutinioCache, guardarJornada, getJornadaByMesa } from './db/indexeddb';
 import { BarraEstadoEnvio } from './components/sync/BarraEstadoSync';
@@ -55,7 +56,7 @@ export function App() {
         setIsAuthenticated(true);
 
         // Autoseleccionar si solo hay una mesa
-        const listaMesas = data.mesas && data.mesas.length > 0 ? data.mesas || [data.mesa] : [];
+        const listaMesas = mesasDelTestigo(data);
         if (listaMesas.length === 1) {
           setSelectedMesaId(listaMesas[0].id);
         }
@@ -77,7 +78,7 @@ export function App() {
       setTestigoData(data);
       setIsAuthenticated(true);
 
-      const listaMesas = data.mesas || [data.mesa];
+      const listaMesas = mesasDelTestigo(data);
       if (listaMesas.length === 1) {
         setSelectedMesaId(listaMesas[0].id);
       }
@@ -196,7 +197,7 @@ export function App() {
   }
 
   // Obtener mesa seleccionada (flujo ELECTORAL)
-  const listaMesas = testigoData.mesas || [testigoData.mesa];
+  const listaMesas = mesasDelTestigo(testigoData);
   const mesaSeleccionada = listaMesas.find(m => m.id === selectedMesaId);
 
   // Si no hay mesa seleccionada, mostrar el selector
