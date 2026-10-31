@@ -57,7 +57,10 @@
 
   --focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px #B91C1C;
 
-  /* Tema compartido (CUO-1029 / CUO-1172): canales RGB para usar con opacidad en Tailwind (bg-app-*). */
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
   color-scheme: light;
   --app-canvas: 253 252 252;    /* #FDFCFC */
   --app-surface: 255 255 255;   /* #FFFFFF */
@@ -67,10 +70,6 @@
   --app-muted: 87 83 78;        /* #57534E */
   --app-accent: 220 38 38;      /* #DC2626 */
   --app-accent-fg: 185 28 28;   /* #B91C1C, texto rojo AA sobre claro */
-
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -90,13 +89,8 @@
   --app-accent-fg: 248 113 113; /* #F87171, texto rojo AA sobre oscuro */
 }
 
-@layer base {
-  body {
-    @apply bg-app-canvas text-app-fg font-sans;
-  }
-}
-
 body {
+  @apply bg-app-canvas text-app-fg font-sans;
   margin: 0;
   min-width: 320px;
   min-height: 100vh;

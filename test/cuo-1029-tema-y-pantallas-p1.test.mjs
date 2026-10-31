@@ -183,6 +183,7 @@ describe('CUO-1029 · Paridad de variables CSS :root/.dark y contraste WCAG AA',
 });
 
 describe('CUO-1029 · Pantallas fuera de jornada, ui/* y barra de sincronización', () => {
+  const appCode = fs.readFileSync(path.join(pwaDir, 'src/App.tsx'), 'utf8');
   const loginCode = fs.readFileSync(path.join(pwaDir, 'src/components/auth/LoginPage.tsx'), 'utf8');
   const selectorCode = fs.readFileSync(path.join(pwaDir, 'src/components/auth/SelectorMesa.tsx'), 'utf8');
   const controlTemaCode = fs.readFileSync(path.join(pwaDir, 'src/components/ui/ControlTema.tsx'), 'utf8');
@@ -210,5 +211,20 @@ describe('CUO-1029 · Pantallas fuera de jornada, ui/* y barra de sincronizació
     assert.match(loginCode, /<ControlTema\s*\/>/);
     assert.match(barraSyncCode, /ESTILOS_OSCURO/);
     assert.match(offlineBannerCode, /dark:bg-\[#451A03\]/);
+  });
+
+  it('las cuatro ramas de jornada en App.tsx conservan un fondo claro fijo y no usan bg-app-canvas', () => {
+    const seccionJornada = appCode.slice(appCode.indexOf('// CERRADA/FIRMADA'));
+    const mainsJornada = [...seccionJornada.matchAll(/<main\s+className="([^"]+)"/g)].map((m) => m[1]);
+    assert.equal(mainsJornada.length, 4, 'Deben existir los 4 <main> de jornada (CERRADA/FIRMADA, PENDIENTE, CHECKIN, ABIERTA/EN_CONTEO)');
+    for (const clases of mainsJornada) {
+      assert.doesNotMatch(clases, /\bbg-app-canvas\b/, `Rama de jornada no debe usar bg-app-canvas: ${clases}`);
+      assert.match(clases, /\b(bg-gray-50|bg-\[#FDFCFC\])\b/, `Rama de jornada debe tener fondo claro fijo: ${clases}`);
+    }
+    const seccionSelector = appCode.slice(
+      appCode.indexOf('if (!selectedMesaId || !mesaSeleccionada)'),
+      appCode.indexOf('// Jornada loading state')
+    );
+    assert.match(seccionSelector, /bg-white border border-app-line rounded-btn[\s\S]*?<img src="\/logo\.svg"/);
   });
 });

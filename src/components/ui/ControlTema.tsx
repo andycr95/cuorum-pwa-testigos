@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  type Theme,
-  CLAVE_TEMA,
-  CONSULTA_OSCURO,
-  EVENTO_TEMA,
-  TEMA_PREDETERMINADO,
-  leerTemaGuardado,
-  resolverTemaOscuro,
-  aplicarTema,
-} from './temaLogic';
+import { type Theme, CLAVE_TEMA, CONSULTA_OSCURO, EVENTO_TEMA, TEMA_PREDETERMINADO, leerTemaGuardado, resolverTemaOscuro, aplicarTema } from './temaLogic';
 
 export { type Theme, TEMA_PREDETERMINADO, leerTemaGuardado, resolverTemaOscuro, aplicarTema };
 
@@ -29,9 +20,7 @@ export function useTheme() {
     const sync = () => {
       const actual = leerTemaGuardado();
       const oscuro = resolverTemaOscuro(actual);
-      setThemeEstado(actual);
-      setIsDark(oscuro);
-      aplicarTema(oscuro);
+      setThemeEstado(actual); setIsDark(oscuro); aplicarTema(oscuro);
     };
     sync();
     window.addEventListener(EVENTO_TEMA, sync);
@@ -44,9 +33,7 @@ export function useTheme() {
 }
 
 const OPCIONES: { valor: Theme; etiqueta: string }[] = [
-  { valor: 'light', etiqueta: 'Claro' },
-  { valor: 'dark', etiqueta: 'Oscuro' },
-  { valor: 'system', etiqueta: 'Sistema' },
+  { valor: 'light', etiqueta: 'Claro' }, { valor: 'dark', etiqueta: 'Oscuro' }, { valor: 'system', etiqueta: 'Sistema' },
 ];
 
 export function ControlTema({ className = '' }: { className?: string }) {
@@ -54,9 +41,7 @@ export function ControlTema({ className = '' }: { className?: string }) {
   return (
     <div role="group" aria-label="Tema de apariencia" data-testid="control-tema" className={`inline-grid grid-cols-3 gap-1 p-1 bg-app-elevated border border-app-line rounded-card ${className}`}>
       {OPCIONES.map(({ valor, etiqueta }) => (
-        <button key={valor} type="button" data-testid={`tema-${valor}`} onClick={() => setTheme(valor)} aria-pressed={theme === valor} className={`min-h-[44px] min-w-[44px] px-2.5 py-1.5 rounded-btn text-xs font-semibold transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-editorial-red/40 ${theme === valor ? 'bg-app-surface text-app-fg border border-app-line' : 'text-app-muted hover:text-app-fg border border-transparent'}`}>
-          {etiqueta}
-        </button>
+        <button key={valor} type="button" data-testid={`tema-${valor}`} onClick={() => setTheme(valor)} aria-pressed={theme === valor} className={`min-h-[44px] min-w-[44px] px-2.5 py-1.5 rounded-btn text-xs font-semibold transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-editorial-red/40 ${theme === valor ? 'bg-app-surface text-app-fg border border-app-line' : 'text-app-muted hover:text-app-fg border border-transparent'}`}>{etiqueta}</button>
       ))}
     </div>
   );
