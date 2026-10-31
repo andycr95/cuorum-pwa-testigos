@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { authService, mapearErrorAuth } from '../../services/authService';
 import { IconoAlerta } from '../ui/Iconos';
+import { ControlTema } from '../ui/ControlTema';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -58,26 +59,30 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-app-canvas text-app-fg font-sans flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+        <div className="flex justify-end mb-4">
+          <ControlTema />
+        </div>
+
         {/* Logo y Header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-editorial-red rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-            <img src="/logo.svg" alt="Cuorum" className="w-12 h-12" />
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-editorial-red rounded-card flex items-center justify-center mx-auto mb-4 border border-app-line">
+            <img src="/logo.svg" alt="Cuorum" className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-black text-editorial-black tracking-tight uppercase" style={{ letterSpacing: '0.05em' }}>
+          <h1 className="text-2xl font-bold text-app-fg tracking-tight uppercase" style={{ letterSpacing: '0.04em' }}>
             Cuorum Testigos
           </h1>
-          <p className="text-sm text-gray-500 font-semibold uppercase tracking-wider mt-2" style={{ letterSpacing: '0.1em' }}>
+          <p className="text-xs text-app-muted font-semibold uppercase tracking-wider mt-1.5" style={{ letterSpacing: '0.08em' }}>
             Reporte de testigos · Cuorum
           </p>
         </div>
 
         {/* Card de Login */}
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 p-8">
+        <div className="bg-app-surface rounded-card border border-app-line p-6 sm:p-8">
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Iniciar Sesión</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-xl font-bold text-app-fg mb-1.5">Iniciar Sesión</h2>
+            <p className="text-sm text-app-muted">
               Ingresa tus credenciales para acceder al sistema de reporte electoral.
             </p>
           </div>
@@ -85,7 +90,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Cédula */}
             <div>
-              <label htmlFor="cedula" className="block text-sm font-bold text-gray-700 mb-2">
+              <label htmlFor="cedula" className="block text-sm font-semibold text-app-fg mb-2">
                 Cédula de Ciudadanía
               </label>
               <input
@@ -107,8 +112,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   }
                 }}
                 placeholder="Ej: 1234567890"
-                className={`w-full min-h-[48px] px-4 py-3 border-2 rounded-xl focus:border-editorial-red focus:ring-2 focus:ring-red-100 outline-none transition-all text-base font-medium ${
-                  cedulaError ? 'border-editorial-red bg-red-50/20' : 'border-gray-200'
+                className={`w-full min-h-[48px] px-4 py-3 bg-app-surface text-app-fg placeholder:text-app-muted border rounded-field focus:border-editorial-red focus:ring-2 focus:ring-editorial-red/20 outline-none transition-colors text-base font-medium ${
+                  cedulaError ? 'border-editorial-red' : 'border-app-line'
                 }`}
                 disabled={loading}
                 maxLength={15}
@@ -120,9 +125,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   id="cedula-error"
                   role="alert"
                   aria-live="polite"
-                  className="text-xs text-editorial-red font-medium mt-1.5 flex items-center gap-1"
+                  className="text-xs text-app-accent-fg font-medium mt-1.5 flex items-center gap-1"
                 >
-                  <IconoAlerta className="w-4 h-4 text-editorial-red flex-shrink-0" />
+                  <IconoAlerta className="w-4 h-4 text-app-accent-fg flex-shrink-0" />
                   <span>{cedulaError}</span>
                 </p>
               )}
@@ -130,7 +135,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
             {/* PIN */}
             <div>
-              <label htmlFor="pin" className="block text-sm font-bold text-gray-700 mb-2">
+              <label htmlFor="pin" className="block text-sm font-semibold text-app-fg mb-2">
                 PIN de Acceso
               </label>
               <input
@@ -153,8 +158,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   }
                 }}
                 placeholder="••••••"
-                className={`w-full min-h-[48px] px-4 py-3 border-2 rounded-xl focus:border-editorial-red focus:ring-2 focus:ring-red-100 outline-none transition-all text-center text-2xl font-black tracking-[0.5em] font-mono ${
-                  pinError ? 'border-editorial-red bg-red-50/20' : 'border-gray-200'
+                className={`w-full min-h-[48px] px-4 py-3 bg-app-surface text-app-fg placeholder:text-app-muted border rounded-field focus:border-editorial-red focus:ring-2 focus:ring-editorial-red/20 outline-none transition-colors text-center text-2xl font-bold tracking-[0.5em] font-mono ${
+                  pinError ? 'border-editorial-red' : 'border-app-line'
                 }`}
                 disabled={loading}
                 maxLength={6}
@@ -166,13 +171,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   id="pin-error"
                   role="alert"
                   aria-live="polite"
-                  className="text-xs text-editorial-red font-medium mt-1.5 flex items-center gap-1 justify-center"
+                  className="text-xs text-app-accent-fg font-medium mt-1.5 flex items-center gap-1 justify-center"
                 >
-                  <IconoAlerta className="w-4 h-4 text-editorial-red flex-shrink-0" />
+                  <IconoAlerta className="w-4 h-4 text-app-accent-fg flex-shrink-0" />
                   <span>{pinError}</span>
                 </p>
               )}
-              <p id="pin-ayuda" className="text-xs text-gray-600 mt-2">
+              <p id="pin-ayuda" className="text-xs text-app-muted mt-2">
                 El PIN de 6 dígitos fue enviado a tu email
               </p>
             </div>
@@ -182,10 +187,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               <div
                 role="alert"
                 aria-live="polite"
-                className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3"
+                className="bg-err-50 dark:bg-[#450A0A] border border-red-200 dark:border-[#7F1D1D] rounded-btn p-4 flex items-start gap-3"
               >
-                <IconoAlerta className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700 font-medium">{error}</p>
+                <IconoAlerta className="w-5 h-5 text-err-700 dark:text-[#FCA5A5] flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-err-700 dark:text-[#FCA5A5] font-medium">{error}</p>
               </div>
             )}
 
@@ -193,8 +198,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full min-h-[48px] bg-editorial-red hover:bg-red-700 text-white font-black py-4 px-6 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider text-sm flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-200"
-              style={{ letterSpacing: '0.1em' }}
+              className="w-full min-h-[48px] bg-editorial-red hover:bg-brand-700 text-white font-bold py-3.5 px-6 rounded-btn disabled:opacity-50 disabled:cursor-not-allowed transition-colors uppercase tracking-wider text-sm flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+              style={{ letterSpacing: '0.08em' }}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -211,10 +216,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           </form>
 
           {/* Footer Info */}
-          <div className="mt-6 pt-6 border-t-2 border-gray-100">
-            <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4">
-              <p className="text-xs text-blue-700 font-medium">
-                <strong>¿No recibiste tu PIN?</strong><br />
+          <div className="mt-6 pt-5 border-t border-app-line">
+            <div className="bg-app-elevated border border-app-line rounded-btn p-4">
+              <p className="text-xs text-app-muted font-medium">
+                <strong className="text-app-fg">¿No recibiste tu PIN?</strong><br />
                 Contacta al coordinador de tu campaña para que te reenvíe las credenciales.
               </p>
             </div>
@@ -222,7 +227,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-600 mt-6">
+        <p className="text-center text-xs text-app-muted mt-6">
           Sistema Seguro de Reporte Electoral • Cuorum {new Date().getFullYear()}
         </p>
       </div>

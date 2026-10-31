@@ -5,17 +5,25 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { themeExtend } from '../tailwind.tokens.js';
+import { temaPanel } from '../tailwind.tema.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pwaDir = path.resolve(__dirname, '..');
 
 const fixtureWebAdminTokensPath = path.join(pwaDir, 'test/fixtures/web-admin.tailwind.tokens.js');
+const fixtureWebAdminTemaPath = path.join(pwaDir, 'test/fixtures/web-admin.tailwind.tema.js');
 
 const candidateExternalWebAdminPaths = [
   process.env.WEB_ADMIN_TOKENS_PATH,
   path.resolve(pwaDir, '../cuorum-platform/web-admin/tailwind.tokens.js'),
   path.resolve(pwaDir, '../../cuorum-platform/web-admin/tailwind.tokens.js'),
+].filter(Boolean);
+
+const candidateExternalWebAdminTemaPaths = [
+  process.env.WEB_ADMIN_TEMA_PATH,
+  path.resolve(pwaDir, '../cuorum-platform/web-admin/tailwind.tema.js'),
+  path.resolve(pwaDir, '../../cuorum-platform/web-admin/tailwind.tema.js'),
 ].filter(Boolean);
 
 // Función estándar WCAG 2.1 para cálculo de contraste de luminancia relativa
@@ -67,6 +75,39 @@ test('tokens compartidos: tailwind.tokens.js es idéntico a la contraparte fijad
         pwaContent,
         externalContent,
         `tailwind.tokens.js debe ser idéntico al encontrado en ${externalPath}`
+      );
+      break;
+    }
+  }
+});
+
+test('tema compartido (CUO-1029): tailwind.tema.js es idéntico al fixture fijado y a web-admin', () => {
+  const pwaTemaPath = path.join(pwaDir, 'tailwind.tema.js');
+
+  assert.ok(fs.existsSync(pwaTemaPath), 'cuorum-pwa-testigos/tailwind.tema.js debe existir');
+  assert.ok(fs.existsSync(fixtureWebAdminTemaPath), 'test/fixtures/web-admin.tailwind.tema.js debe existir');
+
+  const pwaTemaContent = fs.readFileSync(pwaTemaPath, 'utf8').trim();
+  const fixtureTemaContent = fs.readFileSync(fixtureWebAdminTemaPath, 'utf8').trim();
+
+  assert.equal(
+    pwaTemaContent,
+    fixtureTemaContent,
+    'El archivo tailwind.tema.js debe ser idéntico al fixture versionado de web-admin'
+  );
+
+  assert.deepEqual(
+    Object.keys(temaPanel.app).sort(),
+    ['accent', 'accent-fg', 'canvas', 'elevated', 'fg', 'line', 'muted', 'surface']
+  );
+
+  for (const externalPath of candidateExternalWebAdminTemaPaths) {
+    if (fs.existsSync(externalPath)) {
+      const externalContent = fs.readFileSync(externalPath, 'utf8').trim();
+      assert.equal(
+        pwaTemaContent,
+        externalContent,
+        `tailwind.tema.js debe ser idéntico al encontrado en ${externalPath}`
       );
       break;
     }
