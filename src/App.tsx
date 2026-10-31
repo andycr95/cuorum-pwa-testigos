@@ -10,6 +10,7 @@ import { mesasDelTestigo } from './services/mesasTestigo';
 import { jornadaService, JornadaMesa } from './services/jornadaService';
 import { clearEscrutinioCache, guardarJornada, getJornadaByMesa } from './db/indexeddb';
 import { BarraEstadoEnvio } from './components/sync/BarraEstadoSync';
+import { ControlTema } from './components/ui/ControlTema';
 
 /**
  * PWA Testigos Electorales
@@ -169,13 +170,13 @@ export function App() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-app-canvas text-app-fg flex items-center justify-center">
         <div className="text-center">
           <div className="relative w-16 h-16 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red border-t-transparent animate-spin"></div>
           </div>
-          <p className="text-sm font-semibold text-gray-700 tracking-wide">VERIFICANDO SESIÓN</p>
+          <p className="text-sm font-semibold text-app-muted tracking-wide">VERIFICANDO SESIÓN</p>
           <div className="mt-2 flex items-center justify-center gap-1">
             <div className="w-1.5 h-1.5 bg-editorial-red rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-1.5 h-1.5 bg-editorial-red rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -203,21 +204,27 @@ export function App() {
   // Si no hay mesa seleccionada, mostrar el selector
   if (!selectedMesaId || !mesaSeleccionada) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-editorial-red px-4 py-3 min-h-[64px] flex items-center justify-between shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+      <div className="min-h-screen bg-app-canvas text-app-fg font-sans">
+        <header className="bg-app-surface border-b border-app-line px-4 py-3">
+          <div className="max-w-md mx-auto flex items-center justify-between gap-2 min-h-[48px]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white border border-app-line rounded-btn flex items-center justify-center">
+                <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+              </div>
+              <span className="text-app-fg font-bold text-base">Cuorum Testigos</span>
             </div>
-            <span className="text-white font-bold text-base">Cuorum Testigos</span>
+            <button
+              onClick={handleLogout}
+              className="min-h-[48px] min-w-[48px] px-3 py-2 text-app-fg hover:bg-app-elevated text-xs font-bold uppercase tracking-wider rounded-btn border border-app-line transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+              aria-label="Cerrar sesión"
+            >
+              Cerrar Sesión
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="min-h-[48px] min-w-[48px] px-3 py-2 text-white hover:text-white/90 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-white/40"
-            aria-label="Cerrar sesión"
-          >
-            Cerrar Sesión
-          </button>
+          <div className="max-w-md mx-auto mt-2.5 pt-2.5 border-t border-app-line flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-app-muted">Tema</span>
+            <ControlTema />
+          </div>
         </header>
         <main>
           <SelectorMesa
@@ -249,7 +256,7 @@ export function App() {
   // CERRADA/FIRMADA — Mesa cerrada screen
   if (jornadaEstado === 'CERRADA' || jornadaEstado === 'FIRMADA') {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light] flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border-2 border-gray-200 p-8 text-center">
           <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
             <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
@@ -290,7 +297,7 @@ export function App() {
   // PENDIENTE — Show CheckinTestigo
   if (jornadaEstado === 'PENDIENTE') {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light]">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -330,7 +337,7 @@ export function App() {
   // CHECKIN — Show AperturaMesa
   if (jornadaEstado === 'CHECKIN') {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light]">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -368,7 +375,7 @@ export function App() {
 
   // ABIERTA / EN_CONTEO — Show FormularioMesaMultiple (existing main flow)
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light]">
       {/* Contenedor sticky con cabecera y barra de estado fija bajo ella */}
       <div className="sticky top-0 z-50 shadow-md">
         <header data-testid="cabecera-roja" className="bg-editorial-red text-white">

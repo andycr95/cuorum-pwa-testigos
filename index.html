@@ -5,7 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#DC2626" />
+    <script id="tema-inicial">
+      (function () {
+        var g = null; try { g = window.localStorage.getItem('theme'); } catch (e) {}
+        var t = g === 'light' || g === 'dark' || g === 'system' ? g : 'system';
+        var d = t === 'dark' || (t === 'system' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', d); document.documentElement.style.colorScheme = d ? 'dark' : 'light';
+      })();
+    </script>
     <meta name="description" content="PWA Testigos Electorales - Cuorum" />
     <title>Cuorum Testigos</title>
   </head>

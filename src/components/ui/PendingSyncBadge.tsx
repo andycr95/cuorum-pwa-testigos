@@ -27,41 +27,41 @@ export function PendingSyncBadge() {
       {showPopover && (
         <>
           <div className="fixed inset-0 z-[60]" onClick={() => setShowPopover(false)} />
-          <div className="absolute right-0 top-full mt-2 z-[61] bg-white rounded-xl shadow-2xl border border-gray-200 p-3 min-w-[180px]">
-            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pendientes de sync</p>
+          <div className="absolute right-0 top-full mt-2 z-[61] bg-app-surface rounded-card border border-app-line p-3 min-w-[180px]">
+            <p className="text-[10px] font-bold text-app-muted uppercase tracking-wider mb-2">Pendientes de sync</p>
             {breakdown.resultados > 0 && (
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs text-gray-600">Resultados</span>
-                <span className="text-xs font-black text-gray-900">{breakdown.resultados}</span>
+                <span className="text-xs text-app-muted">Resultados</span>
+                <span className="text-xs font-bold text-app-fg">{breakdown.resultados}</span>
               </div>
             )}
             {breakdown.fotos > 0 && (
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs text-gray-600">Fotos E-14</span>
-                <span className="text-xs font-black text-gray-900">{breakdown.fotos}</span>
+                <span className="text-xs text-app-muted">Fotos E-14</span>
+                <span className="text-xs font-bold text-app-fg">{breakdown.fotos}</span>
               </div>
             )}
             {breakdown.ocrJobs > 0 && (
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs text-gray-600">Fotos OCR</span>
-                <span className="text-xs font-black text-gray-900">{breakdown.ocrJobs}</span>
+                <span className="text-xs text-app-muted">Fotos OCR</span>
+                <span className="text-xs font-bold text-app-fg">{breakdown.ocrJobs}</span>
               </div>
             )}
             {breakdown.incidencias > 0 && (
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs text-gray-600">Incidencias</span>
-                <span className="text-xs font-black text-gray-900">{breakdown.incidencias}</span>
+                <span className="text-xs text-app-muted">Incidencias</span>
+                <span className="text-xs font-bold text-app-fg">{breakdown.incidencias}</span>
               </div>
             )}
             {breakdown.jornadas > 0 && (
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-xs text-gray-600">Jornadas</span>
-                <span className="text-xs font-black text-gray-900">{breakdown.jornadas}</span>
+                <span className="text-xs text-app-muted">Jornadas</span>
+                <span className="text-xs font-bold text-app-fg">{breakdown.jornadas}</span>
               </div>
             )}
-            <div className="border-t border-gray-100 mt-1.5 pt-1.5 flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-500">Total</span>
-              <span className="text-xs font-black text-editorial-red">{pendingCount}</span>
+            <div className="border-t border-app-line mt-1.5 pt-1.5 flex items-center justify-between">
+              <span className="text-xs font-bold text-app-muted">Total</span>
+              <span className="text-xs font-bold text-app-accent-fg">{pendingCount}</span>
             </div>
           </div>
         </>

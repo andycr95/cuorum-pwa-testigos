@@ -267,46 +267,118 @@ async function run() {
       return seriousAndCritical;
     };
 
-    // 1. Pantalla de Login
+    // 1. Pantalla de Login (Claro)
     await page.goto(`http://localhost:${pwaPort}`);
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('theme', 'light');
+    });
     await page.reload({ waitUntil: 'networkidle' });
-    const loginViolations = await auditScreen('Login', 'pwa-cuo209-01-login-390px.png');
+    const loginViolations = await auditScreen('Login (Claro)', 'pwa-cuo209-01-login-390px.png');
 
-    // 2. Pantalla de Selector de Mesa
+    // 2. Pantalla de Selector de Mesa (Claro)
     await page.evaluate((data) => {
+      localStorage.setItem('theme', 'light');
       localStorage.setItem('cuorum_testigo_token', 'synth-token-12345');
       localStorage.setItem('cuorum_testigo_data', JSON.stringify(data));
       localStorage.setItem('cuorum_testigo_campana', data.campana.id);
     }, mockTestigoData);
     await page.reload({ waitUntil: 'networkidle' });
-    const selectorViolations = await auditScreen('Selector de Mesa', 'pwa-cuo209-02-selector-390px.png');
+    const selectorViolations = await auditScreen('Selector de Mesa (Claro)', 'pwa-cuo209-02-selector-390px.png');
 
-    // 3. Pantalla de Apertura de Mesa
+    // 3. Pantalla de Apertura de Mesa (Claro)
     currentJornadaEstado = 'CHECKIN';
-    // Click on mesa 12
     await page.click('button:has-text("#12")');
     await page.waitForTimeout(600);
-    const aperturaViolations = await auditScreen('Apertura de Mesa', 'pwa-cuo209-03-apertura-390px.png');
+    const aperturaViolations = await auditScreen('Apertura de Mesa (Claro)', 'pwa-cuo209-03-apertura-390px.png');
 
-    // 4. Pantalla de Conteo (FormularioMesaMultiple)
+    // 4. Pantalla de Conteo (Claro)
     currentJornadaEstado = 'ABIERTA';
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForTimeout(800);
-    const conteoViolations = await auditScreen('Conteo de Mesa', 'pwa-cuo209-04-conteo-390px.png');
+    const conteoViolations = await auditScreen('Conteo de Mesa (Claro)', 'pwa-cuo209-04-conteo-390px.png');
+
+    // 5. Pantalla de Login (Oscuro)
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('theme', 'dark');
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    const loginDarkViolations = await auditScreen('Login (Oscuro)', 'pwa-cuo1029-login-oscuro-390px.png');
+
+    // 6. Pantalla de Selector de Mesa (Oscuro)
+    await page.evaluate((data) => {
+      localStorage.setItem('theme', 'dark');
+      localStorage.setItem('cuorum_testigo_token', 'synth-token-12345');
+      localStorage.setItem('cuorum_testigo_data', JSON.stringify(data));
+      localStorage.setItem('cuorum_testigo_campana', data.campana.id);
+    }, mockTestigoData);
+    await page.reload({ waitUntil: 'networkidle' });
+    const selectorDarkViolations = await auditScreen('Selector de Mesa (Oscuro)', 'pwa-cuo1029-selector-oscuro-390px.png');
+
+    // 7. Pantalla de Apertura de Mesa (Oscuro)
+    currentJornadaEstado = 'CHECKIN';
+    await page.click('button:has-text("#12")');
+    await page.waitForTimeout(600);
+    const aperturaDarkViolations = await auditScreen('Apertura de Mesa (Oscuro)', 'pwa-cuo1029-apertura-oscuro-390px.png');
+
+    // 8. Pantalla de Conteo (Oscuro)
+    currentJornadaEstado = 'ABIERTA';
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(800);
+    const conteoDarkViolations = await auditScreen('Conteo de Mesa (Oscuro)', 'pwa-cuo1029-conteo-oscuro-390px.png');
+
+    // 9. Capturas a 360px (Claro y Oscuro) y verificación de objetivos táctiles >= 44px
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem('theme', 'light');
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+    await auditScreen('Login 360px (Claro)', 'pwa-cuo1029-login-claro-360px.png');
+
+    await page.evaluate(() => localStorage.setItem('theme', 'dark'));
+    await page.reload({ waitUntil: 'networkidle' });
+    await auditScreen('Login 360px (Oscuro)', 'pwa-cuo1029-login-oscuro-360px.png');
+
+    await page.evaluate((data) => {
+      localStorage.setItem('theme', 'light');
+      localStorage.setItem('cuorum_testigo_token', 'synth-token-12345');
+      localStorage.setItem('cuorum_testigo_data', JSON.stringify(data));
+      localStorage.setItem('cuorum_testigo_campana', data.campana.id);
+    }, mockTestigoData);
+    await page.reload({ waitUntil: 'networkidle' });
+    await auditScreen('Selector 360px (Claro)', 'pwa-cuo1029-selector-claro-360px.png');
+
+    await page.evaluate(() => localStorage.setItem('theme', 'dark'));
+    await page.reload({ waitUntil: 'networkidle' });
+    await auditScreen('Selector 360px (Oscuro)', 'pwa-cuo1029-selector-oscuro-360px.png');
+
+    const botonesTema = page.locator('[data-testid="control-tema"] button');
+    const cantBotonesTema = await botonesTema.count();
+    for (let i = 0; i < cantBotonesTema; i++) {
+      const box = await botonesTema.nth(i).boundingBox();
+      if (!box || box.height < 44 || box.width < 44) {
+        throw new Error(`Botón de tema #${i + 1} mide ${box?.width}x${box?.height}px, requerido >= 44x44px`);
+      }
+    }
 
     const totalViolations =
       loginViolations.length +
       selectorViolations.length +
       aperturaViolations.length +
-      conteoViolations.length;
+      conteoViolations.length +
+      loginDarkViolations.length +
+      selectorDarkViolations.length +
+      aperturaDarkViolations.length +
+      conteoDarkViolations.length;
 
     console.log(`\n========================================`);
-    console.log(`RESUMEN FINAL AUDITORÍA AXE:`);
-    console.log(`- Login serious/critical: ${loginViolations.length}`);
-    console.log(`- Selector serious/critical: ${selectorViolations.length}`);
-    console.log(`- Apertura serious/critical: ${aperturaViolations.length}`);
-    console.log(`- Conteo serious/critical: ${conteoViolations.length}`);
+    console.log(`RESUMEN FINAL AUDITORÍA AXE (CLARO + OSCURO):`);
+    console.log(`- Login (Claro/Oscuro): ${loginViolations.length} / ${loginDarkViolations.length}`);
+    console.log(`- Selector (Claro/Oscuro): ${selectorViolations.length} / ${selectorDarkViolations.length}`);
+    console.log(`- Apertura (Claro/Oscuro): ${aperturaViolations.length} / ${aperturaDarkViolations.length}`);
+    console.log(`- Conteo (Claro/Oscuro): ${conteoViolations.length} / ${conteoDarkViolations.length}`);
     console.log(`Total serious/critical: ${totalViolations}`);
     console.log(`========================================\n`);
 
