@@ -57,7 +57,7 @@ export function CapturaFoto({
       {/* Título de la sección */}
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full"></div>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <p className="text-xs font-bold text-app-muted uppercase tracking-wider">
           Foto del E-14 (Evidencia)
         </p>
       </div>
@@ -66,7 +66,7 @@ export function CapturaFoto({
       {fotoPreview ? (
         <div className="relative">
           {/* Preview de la foto */}
-          <div className="relative rounded-2xl overflow-hidden border-3 border-editorial-red/30 shadow-xl">
+          <div className="relative rounded-card overflow-hidden border-2 border-editorial-red/30">
             <img
               src={fotoPreview}
               alt="Formulario E-14"
@@ -74,7 +74,7 @@ export function CapturaFoto({
             />
 
             {/* Badge superior */}
-            <div className="absolute top-3 left-3 px-3 py-1.5 bg-green-500 rounded-full shadow-lg">
+            <div className="absolute top-3 left-3 px-3 py-1.5 bg-green-600 rounded-full">
               <p className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-1.5">
                 <span>✓</span>
                 <span>Foto capturada</span>
@@ -87,9 +87,9 @@ export function CapturaFoto({
             <button
               type="button"
               onClick={onEliminar}
-              className="mt-3 w-full py-3 px-4 bg-red-50 hover:bg-red-100 border-2 border-red-300 text-red-700 rounded-xl font-bold text-sm uppercase tracking-wide hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="mt-3 w-full py-3 px-4 min-h-[44px] bg-red-500/10 hover:bg-red-500/20 border-2 border-red-500/30 text-red-800 dark:text-red-300 rounded-btn font-bold text-sm uppercase tracking-wide active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <IconoPapelera className="w-5 h-5 text-red-700" />
+              <IconoPapelera className="w-5 h-5 text-red-700 dark:text-red-300" />
               <span>Eliminar foto</span>
             </button>
           )}
@@ -99,23 +99,23 @@ export function CapturaFoto({
           type="button"
           onClick={handleCapturar}
           disabled={disabled || capturando}
-          className="relative w-full overflow-hidden rounded-2xl py-6 border-2 border-dashed border-gray-300 hover:border-editorial-red/50 bg-gray-50 hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+          className="relative w-full overflow-hidden rounded-card py-6 border-2 border-dashed border-app-line hover:border-editorial-red/50 bg-app-elevated hover:bg-editorial-red/5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
         >
           {/* Patrón de fondo */}
           <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImRvdHMiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNkb3RzKSIvPjwvc3ZnPg==')]"></div>
 
           <div className="relative flex flex-col items-center gap-3">
             {/* Ícono cámara */}
-            <div className="w-16 h-16 rounded-2xl bg-editorial-red shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-16 h-16 rounded-card bg-editorial-red flex items-center justify-center group-hover:scale-110 transition-transform">
               <IconoCamara className="w-8 h-8 text-white" />
             </div>
 
             {/* Texto */}
             <div>
-              <p className="text-base font-black text-gray-800 group-hover:text-editorial-red transition-colors">
+              <p className="text-base font-black text-app-fg group-hover:text-app-accent-fg transition-colors">
                 {capturando ? 'Procesando...' : 'Tomar foto del E-14'}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-app-muted mt-1">
                 Toca para abrir la cámara
               </p>
             </div>
@@ -135,8 +135,8 @@ export function CapturaFoto({
       )}
 
       {/* Nota informativa */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <p className="text-xs text-blue-700 leading-relaxed">
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-card p-3">
+        <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
           <span className="font-bold">Consejo:</span> Asegúrate de que la foto sea clara y legible.
           La foto se guardará localmente y se sincronizará automáticamente cuando haya conexión.
         </p>
