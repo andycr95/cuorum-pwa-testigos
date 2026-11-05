@@ -64,19 +64,19 @@ export function ProgresoElecciones({
   const porcentaje = total > 0 ? Math.round((reportadas / total) * 100) : 0;
 
   return (
-    <div className="mb-5">
+    <div className="mb-5 bg-app-elevated text-app-fg border border-app-line rounded-card p-3.5">
       {/* Progress Header */}
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-black text-gray-600 uppercase tracking-wider">
+        <p className="text-xs font-black text-app-muted uppercase tracking-wider">
           Progreso
         </p>
-        <p className="text-xs font-bold text-gray-600">
+        <p className="text-xs font-bold text-app-muted">
           {reportadas} de {total} elecciones reportadas
         </p>
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden mb-3">
+      <div className="w-full h-2.5 bg-app-surface border border-app-line rounded-full overflow-hidden mb-3">
         <div
           className="h-full bg-editorial-red rounded-full transition-all duration-500 ease-out"
           style={{ width: `${porcentaje}%` }}
@@ -94,21 +94,21 @@ export function ProgresoElecciones({
               key={eleccion.id}
               type="button"
               onClick={() => onSelectEleccion(eleccion.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 ${
+              className={`flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs font-bold transition-all active:scale-95 ${
                 isActive
-                  ? 'bg-editorial-red text-white shadow-md shadow-red-200'
+                  ? 'bg-editorial-red text-white'
                   : reported
-                  ? 'bg-green-100 text-green-700 border border-green-300'
-                  : 'bg-gray-100 text-gray-500 border border-gray-200'
+                  ? 'bg-green-500/15 text-green-800 dark:text-green-300 border border-green-500/30'
+                  : 'bg-app-surface text-app-muted border border-app-line'
               }`}
             >
               {reported ? (
-                <svg className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-green-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-green-800 dark:text-green-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               ) : (
                 <span className={`w-3.5 h-3.5 rounded-full border-2 ${
-                  isActive ? 'border-white' : 'border-gray-300'
+                  isActive ? 'border-white' : 'border-app-line'
                 }`} />
               )}
               <span className="truncate max-w-[100px]">

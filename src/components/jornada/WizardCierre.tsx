@@ -104,12 +104,12 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
-      <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="w-full max-w-md bg-app-surface text-app-fg border border-app-line rounded-t-3xl sm:rounded-card max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="wizard-cierre-titulo">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+        <div className="sticky top-0 bg-app-elevated border-b border-app-line px-6 py-4 flex items-center justify-between rounded-t-3xl sm:rounded-t-card z-10">
           <div>
-            <h3 className="text-lg font-black text-gray-900">Cerrar Acta</h3>
-            <p className="text-xs text-gray-500">Mesa #{mesaNumero}</p>
+            <h3 id="wizard-cierre-titulo" className="text-lg font-black text-app-fg">Cerrar Acta</h3>
+            <p className="text-xs text-app-muted">Mesa #{mesaNumero}</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Step indicators */}
@@ -118,11 +118,7 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
                 <div
                   key={s}
                   className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    s === step
-                      ? 'bg-editorial-red scale-125'
-                      : s < step
-                      ? 'bg-green-400'
-                      : 'bg-gray-200'
+                    s === step ? 'bg-editorial-red scale-125' : s < step ? 'bg-green-500' : 'bg-app-line'
                   }`}
                 />
               ))}
@@ -130,9 +126,10 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
             {step < 4 && (
               <button
                 onClick={onCancel}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Cerrar asistente de cierre"
+                className="min-w-[44px] min-h-[44px] p-2 hover:bg-app-surface rounded-btn transition-colors flex items-center justify-center"
               >
-                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-5 h-5 text-app-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -144,33 +141,33 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
           {/* Step 1: Summary & Validations */}
           {step === 1 && (
             <div>
-              <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">
+              <h4 className="text-sm font-black text-app-fg uppercase tracking-wider mb-4">
                 Resumen de elecciones
               </h4>
               <div className="space-y-3">
                 {validaciones.map((v) => (
                   <div
                     key={v.id}
-                    className={`p-4 rounded-2xl border-2 transition-all ${
+                    className={`p-4 rounded-card border transition-all ${
                       v.loading
-                        ? 'bg-gray-50 border-gray-200'
+                        ? 'bg-app-elevated border-app-line'
                         : v.alertas.some((a) => a.severidad === 'error')
-                        ? 'bg-red-50 border-red-300'
+                        ? 'bg-red-500/10 border-red-500/30'
                         : v.alertas.length > 0
-                        ? 'bg-amber-50 border-amber-300'
-                        : 'bg-green-50 border-green-300'
+                        ? 'bg-amber-500/10 border-amber-500/30'
+                        : 'bg-green-500/10 border-green-500/30'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-bold text-gray-800">{v.nombre}</p>
+                      <p className="text-sm font-bold text-app-fg">{v.nombre}</p>
                       {v.loading ? (
-                        <span className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                        <span className="w-4 h-4 border-2 border-app-line border-t-transparent rounded-full animate-spin" />
                       ) : v.alertas.length === 0 ? (
-                        <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <svg className="w-5 h-5 text-green-800 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       ) : (
-                        <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="w-5 h-5 text-amber-800 dark:text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                         </svg>
                       )}
@@ -179,7 +176,7 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
                       <p
                         key={i}
                         className={`text-xs font-medium mt-1 ${
-                          alerta.severidad === 'error' ? 'text-red-600' : 'text-amber-600'
+                          alerta.severidad === 'error' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'
                         }`}
                       >
                         {alerta.severidad === 'error' ? '!' : '!'} {alerta.mensaje}
@@ -190,21 +187,21 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
               </div>
 
               {eleccionesSinReportar.length > 0 && (
-                <div className="mt-4 bg-red-50 border-2 border-red-300 rounded-xl p-3">
-                  <p className="text-xs text-red-600 font-bold mb-1">
+                <div role="alert" className="mt-4 bg-red-500/10 border border-red-500/30 rounded-card p-3">
+                  <p className="text-xs text-red-800 dark:text-red-300 font-bold mb-1">
                     Faltan resultados por reportar:
                   </p>
                   <ul className="list-disc list-inside">
                     {eleccionesSinReportar.map((e) => (
-                      <li key={e.id} className="text-xs text-red-600">{e.nombre}</li>
+                      <li key={e.id} className="text-xs text-red-800 dark:text-red-300">{e.nombre}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
               {hasErrors && allValidated && eleccionesSinReportar.length === 0 && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3">
-                  <p className="text-xs text-red-600 font-bold">
+                <div role="alert" className="mt-4 bg-red-500/10 border border-red-500/30 rounded-card p-3">
+                  <p className="text-xs text-red-800 dark:text-red-300 font-bold">
                     Hay errores en la validacion. Revisa los resultados antes de cerrar.
                   </p>
                 </div>
@@ -213,7 +210,7 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
               <button
                 onClick={() => setStep(2)}
                 disabled={!canProceed}
-                className="w-full mt-6 py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:shadow-lg active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full mt-6 py-4 min-h-[48px] rounded-btn font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:bg-red-700 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {!allValidated ? 'Validando...' : eleccionesSinReportar.length > 0 ? 'Reporta todas las elecciones' : 'Continuar'}
               </button>
@@ -223,10 +220,10 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
           {/* Step 2: Observations */}
           {step === 2 && (
             <div>
-              <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">
+              <h4 className="text-sm font-black text-app-fg uppercase tracking-wider mb-4">
                 Observaciones finales
               </h4>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs text-app-muted mb-4">
                 Agrega cualquier nota o comentario sobre la jornada electoral en esta mesa (opcional).
               </p>
               <textarea
@@ -234,20 +231,20 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
                 onChange={(e) => setObservaciones(e.target.value.slice(0, 1000))}
                 placeholder="Escribe tus observaciones aqui..."
                 rows={5}
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:border-editorial-red focus:outline-none resize-none"
+                className="w-full px-4 py-3 rounded-card border border-app-line bg-app-elevated text-app-fg placeholder:text-app-muted text-sm focus:border-editorial-red focus:outline-none resize-none"
               />
-              <p className="text-[10px] text-gray-400 text-right mt-1">{observaciones.length}/1000</p>
+              <p className="text-xs text-app-muted text-right mt-1">{observaciones.length}/1000</p>
 
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setStep(1)}
-                  className="flex-1 py-4 rounded-2xl font-bold text-gray-600 uppercase tracking-wide text-sm border-2 border-gray-200 hover:bg-gray-50 transition-all"
+                  className="flex-1 py-4 min-h-[48px] rounded-btn font-bold text-app-fg uppercase tracking-wide text-sm border border-app-line bg-app-elevated hover:bg-app-canvas transition-all"
                 >
                   Atras
                 </button>
                 <button
                   onClick={() => setStep(3)}
-                  className="flex-1 py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:shadow-lg active:scale-[0.97] transition-all"
+                  className="flex-1 py-4 min-h-[48px] rounded-btn font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:bg-red-700 active:scale-[0.97] transition-all"
                 >
                   Continuar
                 </button>
@@ -258,10 +255,10 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
           {/* Step 3: Signature */}
           {step === 3 && (
             <div>
-              <h4 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">
+              <h4 className="text-sm font-black text-app-fg uppercase tracking-wider mb-4">
                 Firma digital
               </h4>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs text-app-muted mb-4">
                 Dibuja tu firma en el recuadro para confirmar el cierre del acta.
               </p>
 
@@ -270,22 +267,22 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
               />
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mt-4">
-                  <p className="text-xs text-red-600 font-medium">{error}</p>
+                <div role="alert" className="bg-red-500/10 border border-red-500/30 rounded-card p-3 mt-4">
+                  <p className="text-xs text-red-800 dark:text-red-300 font-medium">{error}</p>
                 </div>
               )}
 
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setStep(2)}
-                  className="flex-1 py-4 rounded-2xl font-bold text-gray-600 uppercase tracking-wide text-sm border-2 border-gray-200 hover:bg-gray-50 transition-all"
+                  className="flex-1 py-4 min-h-[48px] rounded-btn font-bold text-app-fg uppercase tracking-wide text-sm border border-app-line bg-app-elevated hover:bg-app-canvas transition-all"
                 >
                   Atras
                 </button>
                 <button
                   onClick={handleCerrar}
                   disabled={loading}
-                  className="flex-1 py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:shadow-lg active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-4 min-h-[48px] rounded-btn font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:bg-red-700 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -303,35 +300,35 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
           {/* Step 4: Confirmation */}
           {step === 4 && (
             <div className="text-center py-6">
-              <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <div className="w-20 h-20 mx-auto mb-6 bg-green-500/10 border border-green-500/30 rounded-full flex items-center justify-center">
+                <svg className="w-10 h-10 text-green-800 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
 
-              <h4 className="text-xl font-black text-gray-900 mb-2">
+              <h4 className="text-xl font-black text-app-fg mb-2">
                 Acta firmada exitosamente
               </h4>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-app-muted mb-6">
                 Mesa #{mesaNumero} cerrada correctamente
               </p>
 
               {/* Verification Code */}
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-5 mb-6">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
+              <div className="bg-app-elevated border border-app-line rounded-card p-5 mb-6">
+                <p className="text-xs font-black text-app-muted uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
                   Codigo de verificacion
                 </p>
-                <p className="text-3xl font-black text-gray-900 tracking-[0.3em] font-mono">
+                <p className="text-3xl font-black text-app-fg tracking-[0.3em] font-mono">
                   {codigoVerificacion}
                 </p>
-                <p className="text-[10px] text-gray-400 mt-2">
+                <p className="text-xs text-app-muted mt-2">
                   Guarda este codigo como comprobante
                 </p>
               </div>
 
               <button
                 onClick={() => onCerrado(codigoVerificacion || '')}
-                className="w-full py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-green-600 hover:shadow-lg active:scale-[0.97] transition-all"
+                className="w-full py-4 min-h-[48px] rounded-btn font-black text-white uppercase tracking-wide text-sm bg-green-700 hover:bg-green-800 active:scale-[0.97] transition-all"
               >
                 Finalizar
               </button>
@@ -439,7 +436,7 @@ function SignatureCanvas({ onSign }: { onSign: (dataUrl: string) => void }) {
 
   return (
     <div>
-      <div className="relative border-2 border-gray-300 rounded-2xl overflow-hidden bg-white">
+      <div className="relative border border-app-line rounded-card overflow-hidden bg-[#FFFFFF]">
         <canvas
           ref={canvasRef}
           className="w-full touch-none"
@@ -454,14 +451,14 @@ function SignatureCanvas({ onSign }: { onSign: (dataUrl: string) => void }) {
         />
         {!hasSignature && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-sm text-gray-300 font-medium">Firma aqui</p>
+            <p className="text-sm text-[#57534E] font-medium">Firma aqui</p>
           </div>
         )}
       </div>
       <button
         type="button"
         onClick={clearCanvas}
-        className="mt-2 px-4 py-2 text-xs font-bold text-gray-500 hover:text-editorial-red transition-colors"
+        className="mt-2 px-4 py-2 min-h-[44px] text-xs font-bold text-app-muted hover:text-app-accent-fg transition-colors inline-flex items-center"
       >
         Limpiar firma
       </button>

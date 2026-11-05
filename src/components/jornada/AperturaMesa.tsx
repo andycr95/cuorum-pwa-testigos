@@ -152,14 +152,14 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
   if (showSuccess) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="text-center">
-          <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center animate-[scaleIn_0.3s_ease-out]">
-            <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+        <div className="text-center bg-app-surface border border-app-line rounded-card p-8">
+          <div className="w-24 h-24 mx-auto mb-6 bg-green-500/10 border border-green-500/30 rounded-full flex items-center justify-center animate-[scaleIn_0.3s_ease-out]">
+            <svg className="w-12 h-12 text-green-800 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-xl font-black text-gray-800">Mesa abierta</p>
-          <p className="text-sm text-gray-500 mt-2">Iniciando reporte de resultados...</p>
+          <p className="text-xl font-black text-app-fg">Mesa abierta</p>
+          <p className="text-sm text-app-muted mt-2">Iniciando reporte de resultados...</p>
         </div>
       </div>
     );
@@ -167,20 +167,20 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
-      <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
+      <div className="bg-app-surface text-app-fg rounded-card overflow-hidden border border-app-line">
         {/* Header */}
-        <div className="bg-gray-50 px-6 py-6 border-b-2 border-gray-200">
+        <div className="bg-app-elevated px-6 py-6 border-b border-app-line">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-editorial-red/10 rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-editorial-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="w-12 h-12 bg-editorial-red/10 rounded-btn flex items-center justify-center">
+              <svg className="w-6 h-6 text-app-accent-fg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-900">
+              <h2 className="text-xl font-black text-app-fg">
                 Apertura de Mesa #{mesaNumero}
               </h2>
-              <p className="text-xs text-gray-500 font-medium">
+              <p className="text-xs text-app-muted font-medium">
                 Verifica las condiciones de la mesa
               </p>
             </div>
@@ -194,18 +194,18 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
               key={item.key}
               type="button"
               onClick={() => toggleItem(item.key)}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
+              className={`w-full flex items-center gap-4 p-4 rounded-card border transition-all active:scale-[0.98] min-h-[48px] ${
                 checklist[item.key]
-                  ? 'bg-green-50 border-green-300 shadow-sm shadow-green-100'
-                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                  ? 'bg-green-500/10 border-green-500/40'
+                  : 'bg-app-elevated border-app-line hover:bg-app-canvas'
               }`}
             >
               {/* Toggle */}
               <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                className={`w-7 h-7 rounded-btn flex items-center justify-center flex-shrink-0 transition-all ${
                   checklist[item.key]
-                    ? 'bg-green-500 text-white shadow-md shadow-green-200'
-                    : 'bg-gray-200 text-gray-600'
+                    ? 'bg-green-700 text-white'
+                    : 'bg-app-surface border border-app-line text-app-muted'
                 }`}
               >
                 {checklist[item.key] ? (
@@ -213,26 +213,26 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 ) : (
-                  <span className={checklist[item.key] ? 'text-white' : 'text-gray-600'}>{item.icon}</span>
+                  <span className={checklist[item.key] ? 'text-white' : 'text-app-muted'}>{item.icon}</span>
                 )}
               </div>
 
               {/* Label */}
               <div className="flex-1 text-left">
                 <p className={`text-sm font-bold ${
-                  checklist[item.key] ? 'text-green-800' : 'text-gray-700'
+                  checklist[item.key] ? 'text-green-800 dark:text-green-300' : 'text-app-fg'
                 }`}>
                   {item.label}
                 </p>
                 {item.required && !checklist[item.key] && (
-                  <p className="text-[10px] text-editorial-red font-bold uppercase tracking-wider mt-0.5">
+                  <p className="text-xs text-app-accent-fg font-bold uppercase tracking-wider mt-0.5">
                     Requerido
                   </p>
                 )}
               </div>
 
               {/* Icon */}
-              <span className={checklist[item.key] ? 'text-green-500' : 'text-gray-600'}>
+              <span className={checklist[item.key] ? 'text-green-800 dark:text-green-300' : 'text-app-muted'}>
                 {item.icon}
               </span>
             </button>
@@ -240,7 +240,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
 
           {/* Observaciones */}
           <div className="pt-3">
-            <label htmlFor="observaciones-apertura" className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
+            <label htmlFor="observaciones-apertura" className="block text-xs font-black text-app-muted uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
               Observaciones (opcional)
             </label>
             <textarea id="observaciones-apertura"
@@ -248,14 +248,14 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
               onChange={(e) => setObservaciones(e.target.value.slice(0, 500))}
               placeholder="Notas adicionales sobre el estado de la mesa..."
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:border-editorial-red focus:outline-none resize-none"
+              className="w-full px-4 py-3 rounded-card border border-app-line bg-app-elevated text-app-fg placeholder:text-app-muted text-sm focus:border-editorial-red focus:outline-none resize-none"
             />
-            <p className="text-[10px] text-gray-600 text-right mt-1">{observaciones.length}/500</p>
+            <p className="text-xs text-app-muted text-right mt-1">{observaciones.length}/500</p>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-              <p className="text-xs text-red-600 font-medium">{error}</p>
+            <div role="alert" className="bg-red-500/10 border border-red-500/30 rounded-card p-3">
+              <p className="text-xs text-red-800 dark:text-red-300 font-medium">{error}</p>
             </div>
           )}
 
@@ -263,10 +263,10 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
           <button
             onClick={handleApertura}
             disabled={!requiredMet || loading}
-            className={`relative w-full overflow-hidden rounded-2xl py-5 font-black uppercase tracking-widest text-base transition-all shadow-xl min-h-[48px] ${
+            className={`relative w-full overflow-hidden rounded-btn py-5 font-black uppercase tracking-widest text-base transition-all min-h-[48px] ${
               requiredMet
-                ? 'bg-editorial-red hover:bg-red-700 text-white active:scale-[0.97] shadow-red-300/50'
-                : 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none'
+                ? 'bg-editorial-red hover:bg-red-700 text-white active:scale-[0.97]'
+                : 'bg-app-elevated border border-app-line text-app-muted cursor-not-allowed'
             } disabled:opacity-70 disabled:cursor-not-allowed`}
             style={{ letterSpacing: '0.1em' }}
           >
@@ -288,9 +288,7 @@ export function AperturaMesa({ mesaId, mesaNumero, onAperturaComplete }: Props) 
           </button>
 
           {!requiredMet && (
-            <p className="text-center text-xs text-gray-600 font-medium">
-              Completa los items requeridos para continuar
-            </p>
+            <p className="text-center text-xs text-app-muted font-medium">Completa los items requeridos para continuar</p>
           )}
         </div>
       </div>
