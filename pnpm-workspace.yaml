@@ -1,2 +1,8 @@
+# Cadena de suministro (CUO-1866). pnpm (versión exacta en packageManager del package.json) rechaza
+# instalar, incluso con --frozen-lockfile, un paquete publicado hace menos de 24 h: da tiempo a que
+# npm retire una versión maliciosa. Una excepción urgente va en minimumReleaseAgeExclude, con fecha
+# y motivo, y se quita en cuanto la versión cumple 24 h.
+minimumReleaseAge: 1440
+
 allowBuilds:
   esbuild: true

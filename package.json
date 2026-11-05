@@ -2,6 +2,7 @@
   "name": "@cuorum/pwa-testigos",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@11.28.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
