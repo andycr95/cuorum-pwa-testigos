@@ -656,26 +656,26 @@ export function FormularioMesaMultiple({
 
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-32">
-      <div className="bg-white rounded-3xl shadow-2xl shadow-gray-300/50 overflow-hidden border-2 border-gray-200">
+      <div className="bg-app-surface text-app-fg rounded-card overflow-hidden border border-app-line">
 
         {/* Header Card Info */}
-        <div className="bg-gray-50 px-6 py-6 border-b-2 border-gray-200 relative overflow-hidden">
+        <div className="bg-app-elevated px-6 py-6 border-b border-app-line relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-editorial-red/5 rounded-full -mr-16 -mt-16" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-200/50 rounded-full -ml-12 -mb-12" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-app-line/30 rounded-full -ml-12 -mb-12" />
           <div className="relative flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
+              <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-1.5">
                 Mesa Electoral
               </p>
-              <h2 className="text-4xl font-black text-editorial-black leading-none tabular-nums">
+              <h2 className="text-4xl font-black text-app-fg leading-none tabular-nums">
                 #{mesaNumero}
               </h2>
             </div>
             <div className="text-right">
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
+              <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-1.5">
                 Sufragantes
               </p>
-              <p className="text-3xl font-black text-editorial-red leading-none tabular-nums">
+              <p className="text-3xl font-black text-app-accent-fg leading-none tabular-nums">
                 {totalSufragantes}
               </p>
             </div>
@@ -683,15 +683,15 @@ export function FormularioMesaMultiple({
 
           {/* Badge acta cerrada */}
           {actaCerrada && codigoActa && (
-            <div className="mt-4 px-4 py-3 bg-green-50 border-2 border-green-400 rounded-2xl">
+            <div className="mt-4 px-4 py-3 bg-green-500/10 border-2 border-green-500/30 rounded-card">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-green-600 font-black text-sm"><IconoCandado className="w-4 h-4 inline mr-1" />Acta cerrada y firmada</span>
+                <span className="text-green-800 dark:text-green-300 font-black text-sm"><IconoCandado className="w-4 h-4 inline mr-1" />Acta cerrada y firmada</span>
               </div>
-              <p className="text-xs text-green-700 font-semibold">
+              <p className="text-xs text-green-800 dark:text-green-300 font-semibold">
                 Código de verificación:{' '}
-                <span className="font-black text-green-900 tracking-widest">{codigoActa}</span>
+                <span className="font-black text-green-900 dark:text-green-200 tracking-widest">{codigoActa}</span>
               </p>
-              <p className="text-xs text-green-600 mt-1">
+              <p className="text-xs text-green-700 dark:text-green-300 mt-1">
                 Guarda este código como comprobante de tu reporte
               </p>
             </div>
@@ -711,7 +711,6 @@ export function FormularioMesaMultiple({
             }}
             refreshTrigger={refreshProgreso}
           />
-
           {/* Selector de Elección */}
           <SelectorEleccion
             elecciones={elecciones}
@@ -724,15 +723,15 @@ export function FormularioMesaMultiple({
           />
 
           {/* Stepper de Pasos de la Jornada de Conteo */}
-          <div className="flex rounded-2xl bg-gray-100 p-1 mb-5 border border-gray-200" role="tablist" aria-label="Pasos de la jornada de conteo">
-            <button type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+          <div className="flex rounded-card bg-app-elevated p-1 mb-5 border border-app-line" role="tablist" aria-label="Pasos de la jornada de conteo">
+            <button type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-btn font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-app-muted hover:text-app-fg hover:bg-app-surface'}`}>
               <span>1. Foto E-14</span>
               {(fotosManual.length > 0 || fotosMesaCount > 0) && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length || fotosMesaCount}</span>}
             </button>
-            <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+            <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-btn font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-app-muted hover:text-app-fg hover:bg-app-surface'}`}>
               <span>2. Revisar votos</span>
             </button>
-            <button type="button" role="tab" id="tab-cierre" aria-controls="panel-cierre" aria-selected={pasoActivo === 'cierre'} onClick={() => setPasoActivo('cierre')} className={`flex-1 py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'cierre' ? 'bg-editorial-red text-white shadow-sm' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200'}`}>
+            <button type="button" role="tab" id="tab-cierre" aria-controls="panel-cierre" aria-selected={pasoActivo === 'cierre'} onClick={() => setPasoActivo('cierre')} className={`flex-1 py-2.5 px-2 rounded-btn font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'cierre' ? 'bg-editorial-red text-white shadow-sm' : 'text-app-muted hover:text-app-fg hover:bg-app-surface'}`}>
               <span>3. Cerrar</span>
             </button>
           </div>
@@ -778,13 +777,13 @@ export function FormularioMesaMultiple({
               <button
                 type="button"
                 onClick={() => setPasoActivo('contar')}
-                className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 min-h-[48px]"
+                className="w-full py-4 bg-app-elevated hover:bg-app-surface text-app-fg border border-app-line rounded-btn font-bold text-xs uppercase tracking-wider transition-all active:scale-95 min-h-[48px]"
               >
                 Continuar a revisar votos →
               </button>
 
               {!tieneFotos && (
-                <p className="text-center text-xs text-gray-500 pt-1">
+                <p className="text-center text-xs text-app-muted pt-1">
                   Si no es posible tomar la foto, podrás justificarlo en el paso de cierre.
                 </p>
               )}
@@ -799,7 +798,7 @@ export function FormularioMesaMultiple({
           {cargandoResultados && (
             <div className="py-8 text-center">
               <span className="inline-block w-6 h-6 border-2 border-editorial-red/40 border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs text-gray-500 font-semibold">Verificando resultados previos...</p>
+              <p className="text-xs text-app-muted font-semibold">Verificando resultados previos...</p>
             </div>
           )}
 
@@ -807,14 +806,14 @@ export function FormularioMesaMultiple({
           {!cargandoResultados && yaRegistrado && (
             <div className="space-y-4 mb-6">
               {/* Banner */}
-              <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4">
+              <div className="bg-green-500/10 border-2 border-green-500/30 rounded-card p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-md flex-shrink-0">
+                  <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-xl">✓</span>
                   </div>
                   <div>
-                    <p className="text-sm font-black text-green-800">Resultados ya registrados</p>
-                    <p className="text-xs text-green-600 mt-0.5">
+                    <p className="text-sm font-black text-green-800 dark:text-green-300">Resultados ya registrados</p>
+                    <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">
                       Los resultados para esta elección ya fueron capturados. Solo puedes registrar incidentes.
                     </p>
                   </div>
@@ -822,20 +821,20 @@ export function FormularioMesaMultiple({
               </div>
 
               {/* Resumen de resultados */}
-              <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                  <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Resumen de votos registrados</p>
+              <div className="bg-app-surface border-2 border-app-line rounded-card overflow-hidden">
+                <div className="px-4 py-3 bg-app-elevated border-b border-app-line">
+                  <p className="text-xs font-black text-app-muted uppercase tracking-wider">Resumen de votos registrados</p>
                 </div>
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-app-line">
                   {resultadosExistentes
                     .filter(r => r.tipoVoto === 'CANDIDATO' || r.tipoVoto === 'LISTA')
                     .map((r, i) => (
                       <div key={i} className="flex items-center justify-between px-4 py-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-800 truncate">{r.candidato}</p>
-                          {r.partido && <p className="text-xs text-gray-500">{r.partido}</p>}
+                          <p className="text-sm font-bold text-app-fg truncate">{r.candidato}</p>
+                          {r.partido && <p className="text-xs text-app-muted">{r.partido}</p>}
                         </div>
-                        <span className="text-lg font-black text-editorial-red ml-3">{r.votos}</span>
+                        <span className="text-lg font-black text-app-accent-fg ml-3">{r.votos}</span>
                       </div>
                     ))}
                 </div>
@@ -843,31 +842,31 @@ export function FormularioMesaMultiple({
                 {((resultadosExistentes[0]?.votosBlanco ?? 0) > 0 ||
                   (resultadosExistentes[0]?.votosNulos ?? 0) > 0 ||
                   (resultadosExistentes[0]?.votosNoMarcados ?? 0) > 0) && (
-                  <div className="border-t-2 border-dashed border-gray-200 divide-y divide-gray-100">
+                  <div className="border-t-2 border-dashed border-app-line divide-y divide-app-line">
                     {(resultadosExistentes[0]?.votosBlanco ?? 0) > 0 && (
                       <div className="flex items-center justify-between px-4 py-2">
-                        <p className="text-xs text-gray-500">Votos en blanco</p>
-                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosBlanco}</span>
+                        <p className="text-xs text-app-muted">Votos en blanco</p>
+                        <span className="text-sm font-bold text-app-fg">{resultadosExistentes[0].votosBlanco}</span>
                       </div>
                     )}
                     {(resultadosExistentes[0]?.votosNulos ?? 0) > 0 && (
                       <div className="flex items-center justify-between px-4 py-2">
-                        <p className="text-xs text-gray-500">Votos nulos</p>
-                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosNulos}</span>
+                        <p className="text-xs text-app-muted">Votos nulos</p>
+                        <span className="text-sm font-bold text-app-fg">{resultadosExistentes[0].votosNulos}</span>
                       </div>
                     )}
                     {(resultadosExistentes[0]?.votosNoMarcados ?? 0) > 0 && (
                       <div className="flex items-center justify-between px-4 py-2">
-                        <p className="text-xs text-gray-500">No marcados</p>
-                        <span className="text-sm font-bold text-gray-700">{resultadosExistentes[0].votosNoMarcados}</span>
+                        <p className="text-xs text-app-muted">No marcados</p>
+                        <span className="text-sm font-bold text-app-fg">{resultadosExistentes[0].votosNoMarcados}</span>
                       </div>
                     )}
                   </div>
                 )}
                 {/* Total */}
-                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                  <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Total votos</p>
-                  <span className="text-xl font-black text-editorial-black">
+                <div className="px-4 py-3 bg-app-elevated border-t border-app-line flex items-center justify-between">
+                  <p className="text-xs font-black text-app-muted uppercase tracking-wider">Total votos</p>
+                  <span className="text-xl font-black text-app-fg">
                     {resultadosExistentes[0]?.totalVotosMesa ?? 0}
                   </span>
                 </div>
@@ -875,7 +874,7 @@ export function FormularioMesaMultiple({
 
               {/* Timestamp */}
               {resultadosExistentes[0]?.capturedAt && (
-                <p className="text-center text-xs text-gray-500 font-semibold">
+                <p className="text-center text-xs text-app-muted font-semibold">
                   Registrado el {new Date(resultadosExistentes[0].capturedAt).toLocaleString('es-CO')}
                 </p>
               )}
@@ -917,15 +916,15 @@ export function FormularioMesaMultiple({
             return (
               <>
                 {forzarConteoManual && jobEleccion && (
-                  <div className="bg-gray-100 border border-gray-300 rounded-xl p-3 mb-4 flex items-center justify-between">
-                    <p className="text-xs font-semibold text-gray-700">
+                  <div className="bg-app-elevated border border-app-line rounded-card p-3 mb-4 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-app-fg">
                       Conteo manual activado como respaldo.
                     </p>
                     {(jobEleccion.estado === 'COMPLETADO' || jobEleccion.estado === 'CONFIRMADO') && (
                       <button
                         type="button"
                         onClick={() => setForzarConteoManual(false)}
-                        className="text-xs font-bold text-editorial-red hover:underline"
+                        className="text-xs font-bold text-app-accent-fg hover:underline"
                       >
                         Ver borrador
                       </button>
@@ -935,9 +934,9 @@ export function FormularioMesaMultiple({
 
                 {/* Alerta de fraude */}
                 {hayAlertaFraude && (
-                  <div className="mb-6 relative overflow-hidden rounded-2xl bg-red-600">
+                  <div className="mb-6 relative overflow-hidden rounded-card bg-red-600">
                     <div className="relative px-5 py-4 flex items-start gap-3">
-                      <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
+                      <div className="flex-shrink-0 w-12 h-12 bg-app-surface rounded-full flex items-center justify-center">
                         <IconoAlerta className="w-6 h-6 text-red-600" />
                       </div>
                       <div className="flex-1 pt-1">
@@ -961,7 +960,7 @@ export function FormularioMesaMultiple({
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-1 h-5 bg-editorial-red rounded-full" />
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Candidatos</p>
+                <p className="text-xs font-bold text-app-muted uppercase tracking-wider">Candidatos</p>
               </div>
               {eleccion.candidatos?.map((candidato) => (
                 <VoteInput
@@ -987,14 +986,14 @@ export function FormularioMesaMultiple({
           {(eleccion.tipoCargo === 'LISTA' || eleccion.tipoCargo === 'LISTA_CON_PREFERENTE') && (
             <div className="space-y-4 mb-6">
               {eleccion.listas?.map((lista) => (
-                <div key={lista.id} className="border border-gray-200 rounded-lg p-3">
+                <div key={lista.id} className="border border-app-line bg-app-surface rounded-card p-3">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-800 truncate">{lista.nombre}</p>
-                      <p className="text-xs text-gray-500">{lista.partido}</p>
+                      <p className="text-sm font-bold text-app-fg truncate">{lista.nombre}</p>
+                      <p className="text-xs text-app-muted">{lista.partido}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-gray-500 mb-1">Votos a lista</p>
+                      <p className="text-xs text-app-muted mb-1">Votos a lista</p>
                       <input
                         type="number"
                         inputMode="numeric"
@@ -1009,17 +1008,17 @@ export function FormularioMesaMultiple({
                             setSyncStatus(null);
                           }
                         }}
-                        className="w-20 px-3 py-2 border-2 border-gray-300 rounded-lg text-center text-lg font-bold focus:border-blue-500 focus:outline-none disabled:bg-gray-50"
+                        className="w-20 px-3 py-2 border-2 border-app-line bg-app-elevated text-app-fg rounded-btn text-center text-lg font-bold focus:border-editorial-red focus:outline-none disabled:opacity-50"
                         placeholder="0"
                       />
                     </div>
                   </div>
                   {eleccion.votoPreferente && lista.tipoLista === 'PREFERENTE' && (
-                    <div className="border-t border-gray-100 pt-3 space-y-2">
-                      <p className="text-xs font-medium text-gray-600 mb-2">Voto Preferente (opcional)</p>
+                    <div className="border-t border-app-line pt-3 space-y-2">
+                      <p className="text-xs font-medium text-app-muted mb-2">Voto Preferente (opcional)</p>
                       {lista.candidatos.map((candidato) => (
                         <div key={candidato.id} className="flex items-center gap-2 text-sm">
-                          <span className="flex-1 text-gray-700 truncate">{candidato.nombre}</span>
+                          <span className="flex-1 text-app-fg truncate">{candidato.nombre}</span>
                           <input
                             type="number"
                             inputMode="numeric"
@@ -1034,7 +1033,7 @@ export function FormularioMesaMultiple({
                                 setSyncStatus(null);
                               }
                             }}
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm font-semibold focus:border-blue-500 focus:outline-none disabled:bg-gray-50"
+                            className="w-16 px-2 py-1 border border-app-line bg-app-elevated text-app-fg rounded text-center text-sm font-semibold focus:border-editorial-red focus:outline-none disabled:opacity-50"
                             placeholder="0"
                           />
                         </div>
@@ -1049,16 +1048,16 @@ export function FormularioMesaMultiple({
           {/* ── Separador Votos Especiales ──────────────────────────── */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-dashed border-gray-200" />
+              <div className="w-full border-t-2 border-dashed border-app-line" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <span className="bg-app-surface px-4 text-xs font-bold text-app-muted uppercase tracking-wider">
                 Votos Especiales
               </span>
             </div>
           </div>
 
-          <div className="space-y-4 mb-6 bg-gray-50 rounded-xl p-4 border border-gray-200">
+          <div className="space-y-4 mb-6 bg-app-elevated rounded-card p-4 border border-app-line">
             <VoteInput
               label="Votos en blanco"
               value={votosBlanco}
@@ -1089,7 +1088,7 @@ export function FormularioMesaMultiple({
               onClick={handleGuardar}
               disabled={guardado || guardando}
               data-testid="btn-guardar-resultados"
-              className={`w-full h-14 min-h-[56px] rounded-xl font-bold text-white uppercase text-sm tracking-wide transition-all my-4 shadow-md flex items-center justify-center gap-2 select-none ${
+              className={`w-full h-14 min-h-[56px] rounded-btn font-bold text-white uppercase text-sm tracking-wide transition-all my-4 flex items-center justify-center gap-2 select-none ${
                 guardado
                   ? 'bg-[#15803D] hover:bg-[#166534] cursor-default'
                   : hayAlertaFraude
@@ -1146,47 +1145,47 @@ export function FormularioMesaMultiple({
             </div>
           {/* ── Confirmación post-sync del servidor ─────────────────── */}
           {syncStatus && (
-            <div className={`mb-4 px-4 py-4 rounded-2xl border-2 ${
+            <div className={`mb-4 px-4 py-4 rounded-card border-2 ${
               syncStatus.success
-                ? 'bg-green-50 border-green-400'
+                ? 'bg-green-500/10 border-green-500/30'
                 : syncStatus.error?.includes('Sin conexión')
-                ? 'bg-blue-50 border-blue-300'
-                : 'bg-orange-50 border-orange-300'
+                ? 'bg-blue-500/10 border-blue-500/30'
+                : 'bg-amber-500/10 border-amber-500/40'
             }`}>
               {syncStatus.success ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <IconoCheck className="w-5 h-5 text-green-600" />
-                    <p className="text-sm font-black text-green-800">Reporte enviado al servidor</p>
+                    <IconoCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    <p className="text-sm font-black text-green-800 dark:text-green-300">Reporte enviado al servidor</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-green-700">
+                  <div className="grid grid-cols-2 gap-2 text-xs text-green-700 dark:text-green-300">
                     <span>{syncStatus.resultadosSincronizados} resultado(s)</span>
                     <span>{syncStatus.fotosSincronizadas} foto(s)</span>
                   </div>
                   {syncStatus.validacionServidor?.alertas && syncStatus.validacionServidor.alertas.length > 0 && (
                     <div className="mt-2 space-y-1">
-                      <p className="text-xs font-bold text-orange-700">Alertas del servidor:</p>
+                      <p className="text-xs font-bold text-amber-800 dark:text-amber-300">Alertas del servidor:</p>
                       {syncStatus.validacionServidor.alertas.map((alerta, i) => (
-                        <p key={i} className="text-xs text-orange-600 pl-2">• {alerta}</p>
+                        <p key={i} className="text-xs text-amber-700 dark:text-amber-300 pl-2">• {alerta}</p>
                       ))}
                     </div>
                   )}
                 </div>
               ) : syncStatus.error?.includes('Sin conexión') ? (
                 <div className="flex items-start gap-2">
-                  <IconoDocumento className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  <IconoDocumento className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-black text-blue-800">Guardado localmente</p>
-                    <p className="text-xs text-blue-600 mt-0.5">Se enviará automáticamente cuando recupere conexión</p>
+                    <p className="text-sm font-black text-blue-800 dark:text-blue-300">Guardado localmente</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">Se enviará automáticamente cuando recupere conexión</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-start gap-2">
-                  <IconoAlerta className="w-5 h-5 text-orange-600 flex-shrink-0" />
+                  <IconoAlerta className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-black text-orange-800">Error al sincronizar</p>
-                    <p className="text-xs text-orange-700 mt-0.5">{formatearErrorAmigable(syncStatus.error)}</p>
-                    <p className="text-xs text-orange-700 mt-1">Los datos están guardados en tu teléfono. Se reintentará automáticamente.</p>
+                    <p className="text-sm font-black text-amber-800 dark:text-amber-300">Error al sincronizar</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{formatearErrorAmigable(syncStatus.error)}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">Los datos están guardados en tu teléfono. Se reintentará automáticamente.</p>
                   </div>
                 </div>
               )}
@@ -1199,10 +1198,10 @@ export function FormularioMesaMultiple({
               {alertasValidacion.map((alerta, i) => (
                 <div
                   key={i}
-                  className={`px-4 py-3 rounded-2xl border-2 flex items-start gap-2 ${
+                  className={`px-4 py-3 rounded-card border-2 flex items-start gap-2 ${
                     alerta.severidad === 'error'
-                      ? 'bg-red-50 border-red-300'
-                      : 'bg-amber-50 border-amber-300'
+                      ? 'bg-red-500/10 border-red-500/30'
+                      : 'bg-amber-500/10 border-amber-500/30'
                   }`}
                 >
                   <svg
@@ -1221,7 +1220,7 @@ export function FormularioMesaMultiple({
                     )}
                   </svg>
                   <p className={`text-xs font-medium ${
-                    alerta.severidad === 'error' ? 'text-red-700' : 'text-amber-700'
+                    alerta.severidad === 'error' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'
                   }`}>
                     {alerta.mensaje}
                   </p>
@@ -1232,21 +1231,21 @@ export function FormularioMesaMultiple({
 
           {/* ── Evidencia de foto obligatoria para cierre ─────────── */}
           {!tieneFotos && (
-            <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+            <div className="mb-6 bg-amber-500/10 border-2 border-amber-500/40 rounded-card p-4">
               <div className="flex items-start gap-2 mb-2">
-                <IconoAlerta className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <IconoAlerta className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-black text-amber-900 uppercase tracking-wide">
+                  <p className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-wide">
                     Evidencia de foto obligatoria
                   </p>
-                  <p className="text-xs text-amber-800 mt-0.5">
+                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
                     Para cerrar el acta debes adjuntar la foto del E-14 o justificar por qué no pudiste tomarla (mínimo 10 caracteres).
                   </p>
                 </div>
               </div>
 
               <div className="mt-3 space-y-2">
-                <label className="block text-xs font-bold text-gray-700">
+                <label className="block text-xs font-bold text-app-fg">
                   Justificación (No pude tomar la foto):
                 </label>
                 <textarea
@@ -1254,10 +1253,10 @@ export function FormularioMesaMultiple({
                   onChange={(e) => setSinFotoMotivo(e.target.value)}
                   placeholder="Explica detalladamente por qué no fue posible tomar la foto (mínimo 10 caracteres)..."
                   rows={3}
-                  className="w-full p-2.5 text-xs rounded-xl border border-gray-300 focus:outline-none focus:border-editorial-red resize-none bg-white"
+                  className="w-full p-2.5 text-xs rounded-btn border border-app-line text-app-fg placeholder:text-app-muted focus:outline-none focus:border-editorial-red resize-none bg-app-surface"
                 />
                 <div className="flex justify-between items-center text-xs">
-                  <span className={motivoSinFotoValido ? 'text-green-700 font-bold' : 'text-amber-700 font-semibold'}>
+                  <span className={motivoSinFotoValido ? 'text-green-700 dark:text-green-300 font-bold' : 'text-amber-800 dark:text-amber-300 font-semibold'}>
                     {motivoSinFotoValido
                       ? '✓ Justificación completa'
                       : `Faltan ${Math.max(0, 10 - sinFotoMotivo.trim().length)} caracteres`}
@@ -1265,7 +1264,7 @@ export function FormularioMesaMultiple({
                   <button
                     type="button"
                     onClick={() => setPasoActivo('foto')}
-                    className="text-xs font-bold text-editorial-red underline"
+                    className="text-xs font-bold text-amber-800 dark:text-amber-300 underline"
                   >
                     Tomar foto ahora
                   </button>
@@ -1279,22 +1278,22 @@ export function FormularioMesaMultiple({
             <button
               onClick={handleCerrarActa}
               disabled={cerrando || !puedeCerrar}
-              className="w-full py-4 mb-4 rounded-2xl border-2 border-gray-700 bg-gray-900 text-white font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg shadow-gray-900/30 hover:shadow-gray-900/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 mb-4 rounded-btn border-2 border-app-line bg-app-elevated text-app-fg font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="flex items-center justify-center gap-2">
                 {cerrando ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-app-fg border-t-transparent rounded-full animate-spin" />
                     Firmando...
                   </>
                 ) : (
                   <>
-                    <IconoCandado className="w-4 h-4 inline-block mr-1 text-white" />
+                    <IconoCandado className="w-4 h-4 inline-block mr-1 text-app-fg" />
                     Cerrar y firmar acta
                   </>
                 )}
               </span>
-              <p className="text-xs text-gray-400 font-normal mt-1 tracking-normal">
+              <p className="text-xs text-app-muted font-normal mt-1 tracking-normal">
                 Genera código de verificación — bloquea ediciones futuras
               </p>
             </button>
@@ -1316,10 +1315,10 @@ export function FormularioMesaMultiple({
               type="button"
               onClick={() => setShowWizardCierre(true)}
               disabled={!puedeCerrar}
-              className={`w-full py-4 mb-6 rounded-2xl border-2 font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] ${
+              className={`w-full py-4 mb-6 rounded-btn border-2 font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] ${
                 puedeCerrar
-                  ? 'border-editorial-red text-editorial-red hover:bg-editorial-red/5'
-                  : 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed'
+                  ? 'border-editorial-red text-app-accent-fg hover:bg-editorial-red/5'
+                  : 'border-app-line text-app-muted bg-app-elevated cursor-not-allowed'
               }`}
             >
               <span className="flex items-center justify-center gap-2">
@@ -1328,7 +1327,7 @@ export function FormularioMesaMultiple({
                 </svg>
                 <span>Cerrar Acta de Mesa</span>
               </span>
-              <p className={`text-xs mt-1 tracking-normal font-normal ${puedeCerrar ? 'text-editorial-red/80' : 'text-gray-400'}`}>
+              <p className={`text-xs mt-1 tracking-normal font-normal ${puedeCerrar ? 'text-app-accent-fg' : 'text-app-muted'}`}>
                 {puedeCerrar
                   ? 'Validación final, firma digital y comprobante para el testigo'
                   : 'Requiere foto del E-14 o justificación (mín. 10 caracteres)'}
@@ -1356,23 +1355,23 @@ export function FormularioMesaMultiple({
           )}
 
           {error && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-xs text-red-600 text-center font-semibold">{error}</p>
+            <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-card">
+              <p className="text-xs text-red-700 dark:text-red-300 text-center font-semibold">{error}</p>
             </div>
           )}
         </div>
       </div>
 
       {/* ── BARRA INFERIOR FIJA: TOTAL CONTADO VS SUFRAGANTES Y GUARDAR ── */}
-      <div data-testid="barra-fija-conteo" className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t-2 border-gray-300 shadow-[0_-4px_20px_rgba(0,0,0,0.12)]">
+      <div data-testid="barra-fija-conteo" className="fixed bottom-0 left-0 right-0 z-40 bg-app-surface border-t-2 border-app-line">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-600">Total votos:</span>
-              <span data-testid="total-votos-barra" className={`text-2xl font-black tabular-nums ${hayAlertaFraude ? 'text-red-600' : 'text-gray-900'}`}>{totalVotos}</span>
-              <span className="text-xs font-bold text-gray-500">/ {totalSufragantes}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-app-muted">Total votos:</span>
+              <span data-testid="total-votos-barra" className={`text-2xl font-black tabular-nums ${hayAlertaFraude ? 'text-red-600 dark:text-red-400' : 'text-app-fg'}`}>{totalVotos}</span>
+              <span className="text-xs font-bold text-app-muted">/ {totalSufragantes}</span>
             </div>
-            <p data-testid="estado-conteo-barra" className={`text-xs font-bold truncate mt-0.5 ${hayAlertaFraude ? 'text-red-600' : totalVotos === totalSufragantes ? 'text-green-700' : totalVotos > 0 ? 'text-amber-700' : 'text-gray-500'}`}>
+            <p data-testid="estado-conteo-barra" className={`text-xs font-bold truncate mt-0.5 ${hayAlertaFraude ? 'text-red-600 dark:text-red-400' : totalVotos === totalSufragantes ? 'text-green-700 dark:text-green-400' : totalVotos > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-app-muted'}`}>
               {hayAlertaFraude ? 'Excede sufragantes' : totalVotos === totalSufragantes ? '✓ Mesa completa' : totalVotos > 0 ? 'En conteo' : 'Sin votos registrados'}
             </p>
           </div>
@@ -1395,7 +1394,7 @@ export function FormularioMesaMultiple({
                 ? 'Usa el botón de confirmar en el borrador de arriba o pulsa Contar a mano'
                 : undefined
             }
-            className={`min-h-[48px] px-5 py-2.5 rounded-xl font-black text-sm uppercase tracking-wide transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${
+            className={`min-h-[48px] px-5 py-2.5 rounded-btn font-black text-sm uppercase tracking-wide transition-all active:scale-95 flex items-center justify-center gap-2 flex-shrink-0 select-none ${
               guardado ? 'bg-green-600 text-white cursor-default' : 'bg-editorial-red hover:bg-red-700 text-white'
             } disabled:opacity-70 disabled:cursor-not-allowed`}
           >

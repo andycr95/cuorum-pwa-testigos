@@ -19,8 +19,8 @@ export function SelectorEleccion({
 }: SelectorEleccionProps) {
   if (elecciones.length === 0) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-        <p className="text-sm text-yellow-800">
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-card p-3 mb-4">
+        <p className="text-sm text-amber-800 dark:text-amber-300">
           No hay elecciones configuradas para esta mesa
         </p>
       </div>
@@ -30,24 +30,24 @@ export function SelectorEleccion({
   if (elecciones.length === 1) {
     const eleccion = elecciones[0];
     return (
-      <div className="relative overflow-hidden bg-red-50 border-2 border-editorial-red/30 rounded-xl p-4 mb-6 shadow-md">
+      <div className="relative overflow-hidden bg-editorial-red/5 border-2 border-editorial-red/30 rounded-card p-4 mb-6">
         {/* Patrón de fondo */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-editorial-red/5 rounded-full -mr-16 -mt-16"></div>
 
         <div className="relative">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-10 h-10 bg-editorial-red rounded-lg flex items-center justify-center shadow-md">
+            <div className="flex-shrink-0 w-10 h-10 bg-editorial-red rounded-lg flex items-center justify-center">
               <IconoUrna className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-editorial-red uppercase tracking-wider mb-1">
+              <p className="text-xs font-bold text-app-accent-fg uppercase tracking-wider mb-1">
                 Tarjetón Electoral
               </p>
-              <p className="text-base font-black text-editorial-black mb-1">
+              <p className="text-base font-black text-app-fg mb-1">
                 {eleccion.nombre}
               </p>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-block px-2 py-0.5 bg-white rounded-md text-xs font-bold text-editorial-red uppercase border border-editorial-red/20">
+                <span className="inline-block px-2 py-0.5 bg-app-surface rounded-md text-xs font-bold text-app-accent-fg uppercase border border-editorial-red/20">
                   {eleccion.tipoEleccion}
                 </span>
                 <span className="inline-block px-2 py-0.5 bg-editorial-red text-white rounded-md text-xs font-bold uppercase">
@@ -65,7 +65,7 @@ export function SelectorEleccion({
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-1 h-5 bg-editorial-red rounded-full"></div>
-        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <label className="text-xs font-bold text-app-muted uppercase tracking-wider">
           Seleccione Tarjetón
         </label>
       </div>
@@ -75,37 +75,37 @@ export function SelectorEleccion({
             key={eleccion.id}
             type="button"
             onClick={() => onCambiar(eleccion.id)}
-            className={`relative w-full text-left p-4 rounded-xl border-2 transition-all overflow-hidden ${
+            className={`relative w-full text-left p-4 rounded-card border-2 transition-all overflow-hidden ${
               eleccionActual === eleccion.id
-                ? 'border-editorial-red bg-red-50 shadow-md'
-                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                ? 'border-editorial-red bg-editorial-red/10'
+                : 'border-app-line bg-app-surface hover:border-editorial-red/40'
             }`}
           >
             {/* Indicador de seleccionado */}
             {eleccionActual === eleccion.id && (
-              <div className="absolute top-3 right-3 w-6 h-6 bg-editorial-red rounded-full flex items-center justify-center shadow-md">
+              <div className="absolute top-3 right-3 w-6 h-6 bg-editorial-red rounded-full flex items-center justify-center">
                 <span className="text-white text-xs font-bold">✓</span>
               </div>
             )}
 
             <div className="relative">
               <p className={`text-sm font-black mb-1 pr-8 ${
-                eleccionActual === eleccion.id ? 'text-editorial-black' : 'text-gray-800'
+                eleccionActual === eleccion.id ? 'text-app-fg' : 'text-app-fg'
               }`}>
                 {eleccion.nombre}
               </p>
               <div className="flex items-center gap-2">
                 <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold uppercase ${
                   eleccionActual === eleccion.id
-                    ? 'bg-white text-editorial-red border border-editorial-red/20'
-                    : 'bg-gray-100 text-gray-600'
+                    ? 'bg-app-surface text-app-accent-fg border border-editorial-red/30'
+                    : 'bg-app-elevated text-app-muted border border-app-line'
                 }`}>
                   {eleccion.tipoEleccion}
                 </span>
                 <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold uppercase ${
                   eleccionActual === eleccion.id
                     ? 'bg-editorial-red text-white'
-                    : 'bg-gray-200 text-gray-700'
+                    : 'bg-app-elevated text-app-fg border border-app-line'
                 }`}>
                   {eleccion.tipoCargo === 'UNINOMINAL' ? 'Uninominal' : 'Colegiado'}
                 </span>
