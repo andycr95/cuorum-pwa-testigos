@@ -240,7 +240,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg">
+    <div className="min-h-screen bg-app-canvas text-app-fg">
       {/* Header */}
       <header className="bg-app-surface text-app-fg border-b border-app-line">
         <div className="max-w-4xl mx-auto px-4 py-4">
