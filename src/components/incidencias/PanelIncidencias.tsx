@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import { guardarIncidencia, getIncidenciasByMesa, TipoIncidencia } from '../../db/indexeddb';
-import { sincronizar, verificarConectividadReal } from '../../services/syncService';
+import { sincronizar, verificarConectividadReal, comprimirFotoIncidencia } from '../../services/syncService';
 import { IconoAlerta, IconoNovedad, IconoCamara, IconoDocumento, IconoCheck } from '../ui/Iconos';
 
 /** Incidencia ya sincronizada que llega desde el backend */
@@ -145,10 +145,17 @@ export function PanelIncidencias({
   const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const blob = new Blob([await file.arrayBuffer()], { type: file.type });
-    setFotoBlob(blob);
-    setFotoPreview(URL.createObjectURL(blob));
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setError(null);
+    try {
+      const blob = await comprimirFotoIncidencia(file);
+      if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+      setFotoBlob(blob);
+      setFotoPreview(URL.createObjectURL(blob));
+    } catch {
+      setError('Error al procesar la foto. Intenta nuevamente.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleGuardar = async () => {
