@@ -26,12 +26,12 @@ interface Props {
 }
 
 const INCIDENCIA_LABELS: Record<string, { label: string; color: string }> = {
-  MATERIALES_FALTANTES: { label: 'Materiales faltantes', color: 'bg-yellow-100 text-yellow-800' },
-  INTIMIDACION:         { label: 'Intimidaci\u00f3n',    color: 'bg-yellow-100 text-yellow-800' },
-  VIOLENCIA:            { label: 'Violencia',            color: 'bg-red-100 text-red-800' },
-  JURADO_AUSENTE:       { label: 'Jurado ausente',       color: 'bg-blue-100 text-blue-800' },
-  IRREGULARIDAD_ACTA:   { label: 'Irregularidad en acta', color: 'bg-purple-100 text-purple-800' },
-  OTRO:                 { label: 'Otro',                  color: 'bg-gray-100 text-gray-800' },
+  MATERIALES_FALTANTES: { label: 'Materiales faltantes', color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30' },
+  INTIMIDACION:         { label: 'Intimidaci\u00f3n',    color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30' },
+  VIOLENCIA:            { label: 'Violencia',            color: 'bg-red-500/15 text-red-800 dark:text-red-300 border border-red-500/30' },
+  JURADO_AUSENTE:       { label: 'Jurado ausente',       color: 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-500/30' },
+  IRREGULARIDAD_ACTA:   { label: 'Irregularidad en acta', color: 'bg-editorial-red/15 text-app-accent-fg border border-editorial-red/30' },
+  OTRO:                 { label: 'Otro',                  color: 'bg-app-elevated text-app-fg border border-app-line' },
 };
 
 export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
@@ -240,9 +240,9 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-app-canvas text-app-fg">
       {/* Header */}
-      <header className="bg-purple-900 text-white shadow-lg">
+      <header className="bg-app-surface text-app-fg border-b border-app-line">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -251,18 +251,18 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               </div>
               <div>
                 <h1 className="text-lg font-bold">Cuorum Testigos</h1>
-                <p className="text-purple-200 text-xs">
+                <p className="text-app-muted text-xs">
                   {testigoData.testigo.nombres} {testigoData.testigo.apellidos}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-purple-500/40 rounded-md text-xs font-semibold">
+              <span className="px-2 py-1 bg-editorial-red/10 text-app-accent-fg border border-editorial-red/30 rounded-md text-xs font-semibold">
                 Escrutinio
               </span>
               <button
                 onClick={handleLogout}
-                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-app-muted hover:text-app-fg hover:bg-app-elevated rounded-lg transition-colors"
                 title="Cerrar sesión" aria-label="Cerrar sesión"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -276,7 +276,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             {elecciones.length <= 1 ? (
               // Una sola elecci\u00f3n — mostrar como chip informativo
-              <span className="px-3 py-1 bg-white/15 backdrop-blur rounded-lg text-sm font-medium">
+              <span className="px-3 py-1 bg-app-elevated border border-app-line rounded-lg text-sm font-medium text-app-fg">
                 {eleccionActiva?.nombre || 'Sin elecci\u00f3n'}
               </span>
             ) : (
@@ -284,15 +284,15 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               <select
                 value={eleccionId}
                 onChange={(e) => setEleccionId(e.target.value)}
-                className="px-3 py-1 bg-white/15 backdrop-blur rounded-lg text-sm font-medium text-white border border-white/20 focus:ring-2 focus:ring-white/40 focus:outline-none appearance-none cursor-pointer"
+                className="px-3 py-1 bg-app-elevated rounded-lg text-sm font-medium text-app-fg border border-app-line focus:ring-2 focus:ring-editorial-red/40 focus:outline-none appearance-none cursor-pointer"
               >
                 {elecciones.map(e => (
-                  <option key={e.id} value={e.id} className="text-gray-900">{e.nombre}</option>
+                  <option key={e.id} value={e.id} className="bg-app-surface text-app-fg">{e.nombre}</option>
                 ))}
               </select>
             )}
             {eleccionActiva && (
-              <span className="text-purple-300 text-xs">
+              <span className="text-app-muted text-xs">
                 {eleccionActiva.tipoEleccion.replace(/_/g, ' ')}
               </span>
             )}
@@ -301,26 +301,26 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       </header>
 
       {/* Barra de estado + filtros toggle */}
-      <div className="bg-white border-b shadow-sm">
+      <div className="bg-app-surface border-b border-app-line">
         <div className="max-w-4xl mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
             {/* Estado + filtros toggle */}
             <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${isOnline ? 'text-green-600' : 'text-orange-600'}`}>
+              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${isOnline ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-300'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-orange-500'}`} />
                 {isOnline ? 'En l\u00ednea' : 'Sin conexi\u00f3n'}
               </span>
               {isCached && (
-                <span className="text-orange-700 text-xs font-medium">Datos en cach\u00e9</span>
+                <span className="text-amber-800 dark:text-amber-300 text-xs font-medium">Datos en cach\u00e9</span>
               )}
 
               {/* Bot\u00f3n de filtros */}
               <button
                 onClick={() => setFiltrosAbiertos(!filtrosAbiertos)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 min-h-[44px] rounded-lg text-xs font-semibold transition-colors ${
                   filtrosAbiertos || filtrosActivos > 0
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-editorial-red/10 text-app-accent-fg border border-editorial-red/30'
+                    : 'bg-app-elevated text-app-muted hover:text-app-fg border border-app-line'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -328,7 +328,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
                 </svg>
                 Filtrar
                 {filtrosActivos > 0 && (
-                  <span className="w-4 h-4 bg-purple-600 text-white rounded-full text-[10px] flex items-center justify-center">
+                  <span className="w-4 h-4 bg-editorial-red text-white rounded-full text-xs flex items-center justify-center">
                     {filtrosActivos}
                   </span>
                 )}
@@ -338,14 +338,14 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
             {/* Refresh + timestamp */}
             <div className="flex items-center gap-2">
               {lastUpdate && (
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-app-muted">
                   {new Date(lastUpdate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
               <button
                 onClick={fetchData}
                 disabled={loading}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors disabled:opacity-40"
+                aria-label="Actualizar datos" className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-app-muted hover:text-app-accent-fg hover:bg-editorial-red/10 transition-colors disabled:opacity-40"
                 title="Actualizar datos"
               >
                 <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -366,7 +366,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
                     setMunicipioId('');
                     setPuestoVotacionId('');
                   }}
-                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="text-sm border border-app-line rounded-btn px-3 py-2 bg-app-elevated text-app-fg focus:ring-2 focus:ring-editorial-red focus:border-editorial-red"
                 >
                   <option value="">Todos los departamentos</option>
                   {departamentos.map(d => (
@@ -381,7 +381,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
                     setPuestoVotacionId('');
                   }}
                   disabled={!departamentoId}
-                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white disabled:opacity-40 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="text-sm border border-app-line rounded-btn px-3 py-2 bg-app-elevated text-app-fg disabled:opacity-40 focus:ring-2 focus:ring-editorial-red focus:border-editorial-red"
                 >
                   <option value="">Todos los municipios</option>
                   {municipios.map(m => (
@@ -393,7 +393,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
                   value={puestoVotacionId}
                   onChange={(e) => setPuestoVotacionId(e.target.value)}
                   disabled={!municipioId}
-                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white disabled:opacity-40 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="text-sm border border-app-line rounded-btn px-3 py-2 bg-app-elevated text-app-fg disabled:opacity-40 focus:ring-2 focus:ring-editorial-red focus:border-editorial-red"
                 >
                   <option value="">Todos los puestos</option>
                   {puestos.map(p => (
@@ -405,7 +405,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               {filtrosActivos > 0 && (
                 <button
                   onClick={limpiarFiltros}
-                  className="mt-2 text-xs text-purple-600 font-semibold hover:underline"
+                  className="mt-2 text-xs text-app-accent-fg font-semibold hover:underline"
                 >
                   Limpiar filtros
                 </button>
@@ -416,7 +416,7 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b">
+      <div className="bg-app-surface border-b border-app-line">
         <div className="max-w-4xl mx-auto px-4">
           <nav className="flex gap-1 -mb-px overflow-x-auto">
             {([
@@ -431,10 +431,10 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
               <button
                 key={tab.key}
                 onClick={() => setTabActiva(tab.key)}
-                className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                className={`px-4 py-3 min-h-[44px] text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
                   tabActiva === tab.key
-                    ? 'border-purple-600 text-purple-700'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-editorial-red text-app-accent-fg'
+                    : 'border-transparent text-app-muted hover:text-app-fg hover:border-app-line'
                 }`}
               >
                 {tab.label}
@@ -448,14 +448,14 @@ export function EscrutinioDashboard({ testigoData, onLogout }: Props) {
       <div className="max-w-4xl mx-auto px-4 py-4">
         {loading && !isCached && (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full" />
+            <div className="animate-spin w-8 h-8 border-4 border-app-line border-t-editorial-red rounded-full" />
           </div>
         )}
 
         {!loading && !isOnline && !isCached && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 text-center">
-            <p className="text-orange-800 font-semibold">Sin conexi\u00f3n</p>
-            <p className="text-orange-600 text-sm mt-1">No hay datos en cach\u00e9 para estos filtros. Con\u00e9ctate a internet para cargar datos.</p>
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-card p-6 text-center">
+            <p className="text-amber-800 dark:text-amber-300 font-semibold">Sin conexi\u00f3n</p>
+            <p className="text-amber-700 dark:text-amber-300 text-sm mt-1">No hay datos en cach\u00e9 para estos filtros. Con\u00e9ctate a internet para cargar datos.</p>
           </div>
         )}
 
@@ -537,28 +537,28 @@ function TabConsolidado({ consolidado, loading, miCandidatoId, miListaId }: {
     <div className="space-y-4">
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Mesas</p>
-          <p className="text-2xl font-bold text-gray-900">{totales.mesasReportadas}/{totales.totalMesas}</p>
-          <p className="text-xs text-purple-600 font-semibold">{cobertura} cobertura</p>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Mesas</p>
+          <p className="text-2xl font-bold text-app-fg">{totales.mesasReportadas}/{totales.totalMesas}</p>
+          <p className="text-xs text-app-accent-fg font-semibold">{cobertura} cobertura</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Votos válidos</p>
-          <p className="text-2xl font-bold text-gray-900">{totales.totalVotosValidos.toLocaleString('es-CO')}</p>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Votos válidos</p>
+          <p className="text-2xl font-bold text-app-fg">{totales.totalVotosValidos.toLocaleString('es-CO')}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Blancos</p>
-          <p className="text-2xl font-bold text-gray-900">{totales.totalBlancos.toLocaleString('es-CO')}</p>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Blancos</p>
+          <p className="text-2xl font-bold text-app-fg">{totales.totalBlancos.toLocaleString('es-CO')}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Nulos</p>
-          <p className="text-2xl font-bold text-gray-900">{totales.totalNulos.toLocaleString('es-CO')}</p>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Nulos</p>
+          <p className="text-2xl font-bold text-app-fg">{totales.totalNulos.toLocaleString('es-CO')}</p>
         </div>
       </div>
 
       {/* Ranking agrupado por partido */}
       {candidatos.length === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm border">
+        <div className="bg-app-surface rounded-card p-8 text-center text-app-muted text-sm border border-app-line">
           Sin datos de candidatos para estos filtros
         </div>
       ) : (
@@ -568,56 +568,56 @@ function TabConsolidado({ consolidado, loading, miCandidatoId, miListaId }: {
             const isExpanded = !multiPartido || expandedPartidos.has(partido);
             const esPartidoPropio = miPartido ? partido === miPartido : false;
             return (
-              <div key={partido} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${esPartidoPropio ? 'ring-2 ring-purple-500' : ''}`}>
+              <div key={partido} className={`bg-app-surface rounded-card border border-app-line overflow-hidden ${esPartidoPropio ? 'ring-2 ring-editorial-red' : ''}`}>
                 {/* Cabecera del partido */}
                 <button
                   type="button"
                   onClick={() => toggle(partido)}
-                  className={`w-full flex items-center justify-between px-4 py-3 bg-gray-50 border-b text-left ${multiPartido ? 'cursor-pointer active:bg-gray-100' : 'cursor-default'}`}
+                  className={`w-full flex items-center justify-between px-4 py-3 bg-app-elevated border-b border-app-line text-left ${multiPartido ? 'cursor-pointer active:bg-app-surface' : 'cursor-default'}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {multiPartido && (
-                      <svg className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className={`w-4 h-4 text-app-muted flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
                       </svg>
                     )}
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 ${esPartidoPropio ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'}`}>{partido}</span>
-                    {esPartidoPropio && <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[10px] font-bold flex-shrink-0">MI</span>}
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold flex-shrink-0 ${esPartidoPropio ? 'bg-editorial-red text-white' : 'bg-editorial-red/10 text-app-accent-fg border border-editorial-red/30'}`}>{partido}</span>
+                    {esPartidoPropio && <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 rounded text-xs font-bold flex-shrink-0">MI</span>}
                     {rows[0]?.listaNombre && rows[0].listaNombre !== partido ? (
-                      <span className="text-sm font-semibold text-gray-800 truncate">{rows[0].listaNombre}</span>
+                      <span className="text-sm font-semibold text-app-fg truncate">{rows[0].listaNombre}</span>
                     ) : rows.length === 1 ? (
-                      <span className="text-sm font-semibold text-gray-800 truncate">{rows[0].candidato}</span>
+                      <span className="text-sm font-semibold text-app-fg truncate">{rows[0].candidato}</span>
                     ) : (
-                      <span className="text-xs text-gray-500">{rows.length} candidatos</span>
+                      <span className="text-xs text-app-muted">{rows.length} candidatos</span>
                     )}
                   </div>
                   <div className="text-right flex-shrink-0 ml-3">
-                    <p className="text-sm font-bold text-purple-600">{totalVotos.toLocaleString('es-CO')}</p>
-                    <p className="text-xs text-gray-400">{rows.reduce((s, c) => s + parseFloat(c.porcentaje), 0).toFixed(1)}%</p>
+                    <p className="text-sm font-bold text-app-accent-fg">{totalVotos.toLocaleString('es-CO')}</p>
+                    <p className="text-xs text-app-muted">{rows.reduce((s, c) => s + parseFloat(c.porcentaje), 0).toFixed(1)}%</p>
                   </div>
                 </button>
 
                 {/* Candidatos del partido */}
                 {isExpanded && (
-                  <div className="divide-y">
+                  <div className="divide-y divide-app-line">
                     {rows.map((c, i) => {
                       const esMiCandidato = miCandidatoId ? c.candidatoId === miCandidatoId : false;
                       return (
-                      <div key={`${c.candidatoId || c.candidato}-${i}`} className={`px-4 py-3 ${esMiCandidato ? 'bg-purple-50' : ''}`}>
+                      <div key={`${c.candidatoId || c.candidato}-${i}`} className={`px-4 py-3 ${esMiCandidato ? 'bg-editorial-red/5' : ''}`}>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            {rows.length > 1 && <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>}
-                            <p className={`text-sm font-semibold truncate ${esMiCandidato ? 'text-purple-900' : 'text-gray-900'}`}>{c.candidato}</p>
-                            {esMiCandidato && <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded text-[10px] font-bold flex-shrink-0">MI</span>}
+                            {rows.length > 1 && <span className="text-xs font-bold text-app-muted w-5 flex-shrink-0">#{i + 1}</span>}
+                            <p className={`text-sm font-semibold truncate ${esMiCandidato ? 'text-app-accent-fg' : 'text-app-fg'}`}>{c.candidato}</p>
+                            {esMiCandidato && <span className="px-1.5 py-0.5 bg-editorial-red/15 text-app-accent-fg border border-editorial-red/30 rounded text-xs font-bold flex-shrink-0">MI</span>}
                           </div>
                           <div className="text-right flex-shrink-0 ml-2">
-                            <p className="text-sm font-bold text-gray-900">{c.votos.toLocaleString('es-CO')}</p>
-                            <p className="text-xs text-gray-500">{c.porcentaje}%</p>
+                            <p className="text-sm font-bold text-app-fg">{c.votos.toLocaleString('es-CO')}</p>
+                            <p className="text-xs text-app-muted">{c.porcentaje}%</p>
                           </div>
                         </div>
-                        <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div className="w-full bg-app-elevated rounded-full h-1.5">
                           <div
-                            className="bg-purple-500 h-1.5 rounded-full transition-all duration-500"
+                            className="bg-editorial-red h-1.5 rounded-full transition-all duration-500"
                             style={{ width: `${maxVotos > 0 ? (c.votos / maxVotos) * 100 : 0}%` }}
                           />
                         </div>
@@ -651,38 +651,38 @@ function TabResultados({ data, loading, page, onPageChange, miCandidatoId }: {
       {data.data.map((r) => {
         const esMiCandidato = miCandidatoId ? r.candidatoId === miCandidatoId : false;
         return (
-        <div key={r.id} className={`bg-white rounded-xl p-4 shadow-sm border ${esMiCandidato ? 'ring-2 ring-purple-500 bg-purple-50' : ''}`}>
+        <div key={r.id} className={`bg-app-surface rounded-card p-4 border border-app-line ${esMiCandidato ? 'ring-2 ring-editorial-red bg-editorial-red/5' : ''}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-1 rounded">
+              <span className="text-xs font-bold bg-app-elevated text-app-fg border border-app-line px-2 py-1 rounded">
                 Mesa #{r.mesa.numero}
               </span>
               {r.alertaFraude && (
-                <span className="text-xs font-bold bg-red-100 text-red-700 px-2 py-1 rounded">
+                <span className="text-xs font-bold bg-red-500/15 text-red-800 dark:text-red-300 border border-red-500/30 px-2 py-1 rounded">
                   Alerta
                 </span>
               )}
             </div>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-app-muted">
               {new Date(r.capturedAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <p className={`text-sm font-semibold ${esMiCandidato ? 'text-purple-900' : 'text-gray-900'}`}>{r.candidato}</p>
-            {esMiCandidato && <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded text-[10px] font-bold">MI</span>}
+            <p className={`text-sm font-semibold ${esMiCandidato ? 'text-app-accent-fg' : 'text-app-fg'}`}>{r.candidato}</p>
+            {esMiCandidato && <span className="px-1.5 py-0.5 bg-editorial-red/15 text-app-accent-fg border border-editorial-red/30 rounded text-xs font-bold">MI</span>}
           </div>
-          <p className="text-xs text-gray-500">{r.partido}</p>
-          <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
-            <span><strong>{r.votos}</strong> votos</span>
+          <p className="text-xs text-app-muted">{r.partido}</p>
+          <div className="flex items-center gap-4 mt-2 text-xs text-app-muted">
+            <span className="text-app-fg"><strong>{r.votos}</strong> votos</span>
             <span>Blancos: {r.votosBlanco}</span>
             <span>Nulos: {r.votosNulos}</span>
             <span>Total mesa: {r.totalVotosMesa}</span>
           </div>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-app-muted mt-1">
             {r.mesa.puestoVotacion.nombre} — {r.mesa.puestoVotacion.municipio?.nombre}
             {r.mesa.puestoVotacion.municipio?.departamento ? `, ${r.mesa.puestoVotacion.municipio.departamento.nombre}` : ''}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-app-muted">
             Testigo: {r.testigo.nombres} {r.testigo.apellidos}
           </p>
         </div>
@@ -690,7 +690,7 @@ function TabResultados({ data, loading, page, onPageChange, miCandidatoId }: {
       })}
 
       {data.data.length === 0 && (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
+        <div className="bg-app-surface rounded-card p-8 text-center text-app-muted text-sm border border-app-line">
           Sin resultados para estos filtros
         </div>
       )}
@@ -751,7 +751,7 @@ function TabActas({ data, loading, page, onPageChange }: {
         const alertaLines = alertasTexto?.split('\n').filter(l => l.trim()) ?? [];
 
         return (
-          <div key={acta.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div key={acta.id} className="bg-app-surface rounded-card border border-app-line overflow-hidden">
             {/* Header — always visible */}
             <button
               type="button"
@@ -760,66 +760,66 @@ function TabActas({ data, loading, page, onPageChange }: {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                  <span className="text-xs font-bold bg-app-elevated text-app-fg border border-app-line px-2 py-0.5 rounded">
                     Mesa #{acta.mesa.numero}
                   </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${acta.estado === 'CONFIRMADO' ? 'bg-emerald-100 text-emerald-700' : 'bg-green-100 text-green-700'}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${acta.estado === 'CONFIRMADO' ? 'bg-green-500/15 text-green-800 dark:text-green-300 border border-green-500/30' : 'bg-green-500/15 text-green-800 dark:text-green-300 border border-green-500/30'}`}>
                     {acta.estado}
                   </span>
                   {alertasCriticas > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">{alertasCriticas} alerta{alertasCriticas !== 1 ? 's' : ''}</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-red-500/15 text-red-800 dark:text-red-300 border border-red-500/30">{alertasCriticas} alerta{alertasCriticas !== 1 ? 's' : ''}</span>
                   )}
                   {alertasCriticas === 0 && alertasAdvertencia > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">{alertasAdvertencia} advertencia{alertasAdvertencia !== 1 ? 's' : ''}</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">{alertasAdvertencia} advertencia{alertasAdvertencia !== 1 ? 's' : ''}</span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-app-muted truncate">
                   {acta.mesa.puestoVotacion.nombre}
                   {acta.mesa.puestoVotacion.municipio ? ` — ${acta.mesa.puestoVotacion.municipio.nombre}` : ''}
                 </p>
-                <p className="text-[10px] text-gray-400 mt-0.5">
+                <p className="text-xs text-app-muted mt-0.5">
                   {acta.eleccion.nombre} · {acta.testigo.nombres} {acta.testigo.apellidos}
                 </p>
               </div>
-              <span className="text-gray-400 text-lg ml-2">{isExpanded ? '−' : '+'}</span>
+              <span className="text-app-muted text-lg ml-2">{isExpanded ? '−' : '+'}</span>
             </button>
 
             {/* Expanded detail */}
             {isExpanded && (
-              <div className="border-t border-gray-100 px-4 py-3 space-y-3">
+              <div className="border-t border-app-line px-4 py-3 space-y-3">
                 {/* Photos */}
                 {acta.fotos.length > 0 && (
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {acta.fotos.map(f => (
                       <img key={f.id} src={f.url} alt={`Pag ${f.orden}`}
-                        className="w-20 h-20 object-cover rounded-lg border flex-shrink-0" loading="lazy" />
+                        className="w-20 h-20 object-cover rounded-lg border border-app-line flex-shrink-0" loading="lazy" />
                     ))}
                   </div>
                 )}
 
                 {/* Resumen IA */}
                 {resumen && (
-                  <div className="bg-gray-50 rounded-lg px-3 py-2">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Analisis IA</p>
-                    <p className="text-xs text-gray-600 leading-relaxed">{resumen}</p>
+                  <div className="bg-app-elevated rounded-lg px-3 py-2 border border-app-line">
+                    <p className="text-xs font-bold text-app-muted uppercase mb-1">Analisis IA</p>
+                    <p className="text-xs text-app-fg leading-relaxed">{resumen}</p>
                   </div>
                 )}
 
                 {/* Alertas de consistencia */}
                 {totalAlertasOcr > 0 && (
-                  <div className={`rounded-lg px-3 py-2 space-y-1.5 border ${alertasCriticas > 0 ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-200'}`}>
+                  <div className={`rounded-lg px-3 py-2 space-y-1.5 border ${alertasCriticas > 0 ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
                     <div className="flex items-center justify-between">
-                      <p className={`text-[10px] font-bold uppercase ${alertasCriticas > 0 ? 'text-red-500' : 'text-amber-500'}`}>Alertas</p>
+                      <p className={`text-xs font-bold uppercase ${alertasCriticas > 0 ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>Alertas</p>
                       <div className="flex gap-1">
-                        {alertasCriticas > 0 && <span className="px-1.5 py-0.5 bg-red-200 text-red-700 rounded text-[9px] font-bold">{alertasCriticas}</span>}
-                        {alertasAdvertencia > 0 && <span className="px-1.5 py-0.5 bg-amber-200 text-amber-700 rounded text-[9px] font-bold">{alertasAdvertencia}</span>}
+                        {alertasCriticas > 0 && <span className="px-1.5 py-0.5 bg-red-500/20 text-red-800 dark:text-red-300 rounded text-xs font-bold">{alertasCriticas}</span>}
+                        {alertasAdvertencia > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-800 dark:text-amber-300 rounded text-xs font-bold">{alertasAdvertencia}</span>}
                       </div>
                     </div>
                     {alertaLines.map((line, i) => (
-                      <p key={i} className={`text-[11px] leading-relaxed ${
-                        line.includes('[CRITICO]') ? 'text-red-700 font-semibold' :
-                        line.includes('[ADVERTENCIA]') ? 'text-amber-700' :
-                        'text-gray-600'
+                      <p key={i} className={`text-xs leading-relaxed ${
+                        line.includes('[CRITICO]') ? 'text-red-800 dark:text-red-300 font-semibold' :
+                        line.includes('[ADVERTENCIA]') ? 'text-amber-800 dark:text-amber-300' :
+                        'text-app-muted'
                       }`}>{line}</p>
                     ))}
                   </div>
@@ -827,28 +827,28 @@ function TabActas({ data, loading, page, onPageChange }: {
 
                 {/* Otras constancias */}
                 {constancias && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    <p className="text-[10px] font-bold text-amber-500 uppercase mb-1">Otras constancias</p>
-                    <p className="text-xs text-gray-600 leading-relaxed italic">{constancias}</p>
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase mb-1">Otras constancias</p>
+                    <p className="text-xs text-app-fg leading-relaxed italic">{constancias}</p>
                   </div>
                 )}
 
                 {/* Nivelacion */}
                 {(ocr['_totalVotosUrna'] != null || ocr['_totalVotosIncinerados'] != null) && (
-                  <div className="bg-blue-50 rounded-lg px-3 py-2 space-y-1">
-                    <p className="text-[10px] font-bold text-blue-400 uppercase">Nivelacion de la mesa</p>
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-2 space-y-1">
+                    <p className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase">Nivelacion de la mesa</p>
                     {[
                       { label: 'Sufragantes (E-11)', value: ocr['_totalVotosMesa'] },
                       { label: 'Votos en la urna', value: ocr['_totalVotosUrna'] },
                       { label: 'Votos incinerados', value: ocr['_totalVotosIncinerados'] },
                     ].map(({ label, value }) => value != null ? (
                       <div key={label} className="flex justify-between text-xs">
-                        <span className="text-gray-500">{label}</span>
-                        <span className="font-bold text-gray-700 tabular-nums">{value}</span>
+                        <span className="text-app-muted">{label}</span>
+                        <span className="font-bold text-app-fg tabular-nums">{value}</span>
                       </div>
                     ) : null)}
                     {ocr['_huboRecuento'] === 1 && (
-                      <p className="text-[10px] font-bold text-amber-600 mt-1">Hubo recuento de votos</p>
+                      <p className="text-xs font-bold text-amber-800 dark:text-amber-300 mt-1">Hubo recuento de votos</p>
                     )}
                   </div>
                 )}
@@ -856,7 +856,7 @@ function TabActas({ data, loading, page, onPageChange }: {
                 {/* Votes by partido */}
                 {allVotes.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Votos por candidato</p>
+                    <p className="text-xs font-bold text-app-muted uppercase mb-1">Votos por candidato</p>
                     <div className="space-y-0.5 max-h-60 overflow-y-auto">
                       {(() => {
                         let lastPartido = '';
@@ -875,19 +875,19 @@ function TabActas({ data, loading, page, onPageChange }: {
                           return (
                             <div key={id}>
                               {showHeader && partido && (
-                                <div className="bg-gray-100 px-2 py-0.5 rounded mt-1 flex justify-between">
-                                  <span className="text-[10px] font-black text-gray-500 uppercase">
+                                <div className="bg-app-elevated px-2 py-0.5 rounded mt-1 flex justify-between border border-app-line">
+                                  <span className="text-xs font-black text-app-muted uppercase">
                                     {info?.listaNombre || partido} ({partido})
                                   </span>
-                                  <span className="text-[10px] font-black text-gray-600 tabular-nums">{partidoTotals[partido] ?? 0}</span>
+                                  <span className="text-xs font-black text-app-fg tabular-nums">{partidoTotals[partido] ?? 0}</span>
                                 </div>
                               )}
-                              <div className={`flex justify-between px-2 py-0.5 ${isLista ? 'bg-blue-50 rounded' : ''}`}>
-                                <span className={`text-xs truncate ${isLista ? 'text-blue-700 font-bold' : 'text-gray-600'}`}>
+                              <div className={`flex justify-between px-2 py-0.5 ${isLista ? 'bg-blue-500/10 rounded' : ''}`}>
+                                <span className={`text-xs truncate ${isLista ? 'text-blue-800 dark:text-blue-300 font-bold' : 'text-app-muted'}`}>
                                   {!isLista && info?.posicion != null ? `${info.posicion}. ` : ''}
                                   {isLista ? (info?.nombre || 'Agrupacion') : (info?.nombre || id.slice(0, 8))}
                                 </span>
-                                <span className={`text-xs font-bold tabular-nums ${isLista ? 'text-blue-800' : 'text-gray-800'}`}>{v}</span>
+                                <span className={`text-xs font-bold tabular-nums ${isLista ? 'text-blue-800 dark:text-blue-300' : 'text-app-fg'}`}>{v}</span>
                               </div>
                             </div>
                           );
@@ -898,13 +898,13 @@ function TabActas({ data, loading, page, onPageChange }: {
                 )}
 
                 {/* Circunscripciones + totales */}
-                <div className="border-t pt-2 space-y-1">
+                <div className="border-t border-app-line pt-2 space-y-1">
                   {circEntries.length > 0 && (
-                    <div className="bg-gray-50 rounded-lg px-2 py-1.5 space-y-0.5">
+                    <div className="bg-app-elevated rounded-lg px-2 py-1.5 space-y-0.5 border border-app-line">
                       {circEntries.map(([k, v]) => (
-                        <div key={k} className="flex justify-between text-[11px]">
-                          <span className="text-gray-500">{k.replace('_circ:', '')}</span>
-                          <span className="font-bold text-gray-700 tabular-nums">{v}</span>
+                        <div key={k} className="flex justify-between text-xs">
+                          <span className="text-app-muted">{k.replace('_circ:', '')}</span>
+                          <span className="font-bold text-app-fg tabular-nums">{v}</span>
                         </div>
                       ))}
                     </div>
@@ -915,16 +915,16 @@ function TabActas({ data, loading, page, onPageChange }: {
                     { label: 'No marcados', value: ocr['_votosNoMarcados'] },
                   ].map(({ label, value }) => value != null ? (
                     <div key={label} className="flex justify-between text-xs px-1">
-                      <span className="text-gray-500">{label}</span>
-                      <span className="font-bold text-gray-700 tabular-nums">{value}</span>
+                      <span className="text-app-muted">{label}</span>
+                      <span className="font-bold text-app-fg tabular-nums">{value}</span>
                     </div>
                   ) : null)}
                 </div>
 
                 {/* Serial */}
                 {acta.serialE14 && (
-                  <p className="text-[10px] text-gray-400 border-t pt-2">
-                    Serie: <span className="font-mono font-bold text-gray-600">{acta.serialE14}</span>
+                  <p className="text-xs text-app-muted border-t border-app-line pt-2">
+                    Serie: <span className="font-mono font-bold text-app-fg">{acta.serialE14}</span>
                   </p>
                 )}
               </div>
@@ -934,7 +934,7 @@ function TabActas({ data, loading, page, onPageChange }: {
       })}
 
       {data.data.length === 0 && (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
+        <div className="bg-app-surface rounded-card p-8 text-center text-app-muted text-sm border border-app-line">
           Sin actas OCR procesadas para estos filtros
         </div>
       )}
@@ -958,25 +958,25 @@ function TabFotos({ data, loading, page, onPageChange }: {
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {data.data.map((f) => (
-          <div key={f.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div key={f.id} className="bg-app-surface rounded-card border border-app-line overflow-hidden">
             {f.imagenUrl && (
               <img
                 src={f.imagenUrl}
                 alt={`E14 Mesa ${f.mesa.numero}`}
-                className="w-full h-48 object-cover bg-gray-100"
+                className="w-full h-48 object-cover bg-app-elevated"
                 loading="lazy"
               />
             )}
             <div className="p-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                <span className="text-xs font-bold bg-app-elevated text-app-fg border border-app-line px-2 py-1 rounded">
                   Mesa #{f.mesa.numero}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-app-muted">
                   {new Date(f.capturedAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-app-muted mt-1">
                 {f.mesa.puestoVotacion.nombre}
                 {f.mesa.puestoVotacion.municipio ? ` — ${f.mesa.puestoVotacion.municipio.nombre}` : ''}
               </p>
@@ -986,7 +986,7 @@ function TabFotos({ data, loading, page, onPageChange }: {
       </div>
 
       {data.data.length === 0 && (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
+        <div className="bg-app-surface rounded-card p-8 text-center text-app-muted text-sm border border-app-line">
           Sin fotos E14 para estos filtros
         </div>
       )}
@@ -1011,34 +1011,34 @@ function TabNovedades({ data, loading, page, onPageChange }: {
       {data.data.map((inc) => {
         const config = INCIDENCIA_LABELS[inc.tipo] || INCIDENCIA_LABELS.OTRO;
         return (
-          <div key={inc.id} className="bg-white rounded-xl p-4 shadow-sm border">
+          <div key={inc.id} className="bg-app-surface rounded-card p-4 border border-app-line">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2 py-1 rounded ${config.color}`}>
                   {config.label}
                 </span>
-                <span className="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                <span className="text-xs font-bold bg-app-elevated text-app-fg border border-app-line px-2 py-1 rounded">
                   Mesa #{inc.mesa.numero}
                 </span>
               </div>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-app-muted">
                 {new Date(inc.capturedAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
               </span>
             </div>
-            <p className="text-sm text-gray-800">{inc.descripcion}</p>
+            <p className="text-sm text-app-fg">{inc.descripcion}</p>
             {inc.fotoUrl && (
               <img
                 src={inc.fotoUrl}
                 alt="Evidencia"
-                className="mt-2 w-full h-32 object-cover rounded-lg bg-gray-100"
+                className="mt-2 w-full h-32 object-cover rounded-lg bg-app-elevated"
                 loading="lazy"
               />
             )}
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs text-app-muted mt-2">
               {inc.mesa.puestoVotacion.nombre}
               {inc.mesa.puestoVotacion.municipio ? ` — ${inc.mesa.puestoVotacion.municipio.nombre}` : ''}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-app-muted">
               Testigo: {inc.testigo.nombres} {inc.testigo.apellidos} — CC {inc.testigo.cedula}
             </p>
           </div>
@@ -1046,7 +1046,7 @@ function TabNovedades({ data, loading, page, onPageChange }: {
       })}
 
       {data.data.length === 0 && (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm shadow-sm border">
+        <div className="bg-app-surface rounded-card p-8 text-center text-app-muted text-sm border border-app-line">
           Sin novedades para estos filtros
         </div>
       )}
@@ -1112,37 +1112,37 @@ function TabDivulgacion({ data, loading, miCandidatoId, miListaId }: {
     <div className="space-y-4">
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Cobertura</p>
-          <p className="text-2xl font-bold text-gray-900">{estado.coberturaPct}%</p>
-          <p className="text-xs text-blue-600 font-semibold">{estado.mesasConResultadoOficial} mesas</p>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Cobertura</p>
+          <p className="text-2xl font-bold text-app-fg">{estado.coberturaPct}%</p>
+          <p className="text-xs text-blue-700 dark:text-blue-400 font-semibold">{estado.mesasConResultadoOficial} mesas</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Total votos</p>
-          <p className="text-2xl font-bold text-gray-900">{totalVotos.toLocaleString('es-CO')}</p>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Total votos</p>
+          <p className="text-2xl font-bold text-app-fg">{totalVotos.toLocaleString('es-CO')}</p>
           {resultados.boletinNumero != null && (
-            <p className="text-xs text-gray-400">Boletín #{resultados.boletinNumero}</p>
+            <p className="text-xs text-app-muted">Boletín #{resultados.boletinNumero}</p>
           )}
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Comparadas</p>
-          <p className="text-2xl font-bold text-gray-900">{estado.mesasConAmbos}</p>
-          <p className="text-xs text-gray-400">testigo + oficial</p>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Comparadas</p>
+          <p className="text-2xl font-bold text-app-fg">{estado.mesasConAmbos}</p>
+          <p className="text-xs text-app-muted">testigo + oficial</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border">
-          <p className="text-xs text-gray-500 uppercase font-semibold">Discrepancias</p>
-          <p className={`text-2xl font-bold ${estado.mesasConDiscrepancia > 0 ? 'text-red-600' : 'text-green-600'}`}>
+        <div className="bg-app-surface rounded-card p-4 border border-app-line">
+          <p className="text-xs text-app-muted uppercase font-semibold">Discrepancias</p>
+          <p className={`text-2xl font-bold ${estado.mesasConDiscrepancia > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
             {estado.mesasConDiscrepancia}
           </p>
-          <p className="text-xs text-gray-400">&gt;5% diferencia</p>
+          <p className="text-xs text-app-muted">&gt;5% diferencia</p>
         </div>
       </div>
 
       {/* Last sync */}
       {estado.ultimaSincronizacion && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
-          <span className="text-blue-600 text-lg">🔄</span>
-          <p className="text-xs text-blue-700">
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-card p-3 flex items-center gap-2">
+          <span className="text-blue-700 dark:text-blue-300 text-xs font-bold uppercase">Sync</span>
+          <p className="text-xs text-blue-800 dark:text-blue-300">
             Última sincronización:{' '}
             <span className="font-semibold">
               {new Date(estado.ultimaSincronizacion).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
@@ -1153,15 +1153,15 @@ function TabDivulgacion({ data, loading, miCandidatoId, miListaId }: {
 
       {/* Candidate ranking */}
       {candidatos.length === 0 && totalBlancos === 0 && totalNulos === 0 ? (
-        <div className="bg-white rounded-xl p-8 text-center text-gray-400 text-sm border">
+        <div className="bg-app-surface rounded-card p-8 text-center text-app-muted text-sm border border-app-line">
           Sin resultados oficiales de divulgación para estos filtros
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b">
-            <h3 className="text-sm font-bold text-gray-700">Resultados oficiales por candidato</h3>
+        <div className="bg-app-surface rounded-card border border-app-line overflow-hidden">
+          <div className="px-4 py-3 bg-app-elevated border-b border-app-line">
+            <h3 className="text-sm font-bold text-app-fg">Resultados oficiales por candidato</h3>
           </div>
-          <div className="divide-y">
+          <div className="divide-y divide-app-line">
             {candidatos.map((c, i) => {
               const pct = totalVotos > 0 ? ((c.votos / totalVotos) * 100).toFixed(1) : '0.0';
               const barWidth = maxVotos > 0 ? (c.votos / maxVotos) * 100 : 0;
@@ -1169,30 +1169,30 @@ function TabDivulgacion({ data, loading, miCandidatoId, miListaId }: {
                 || (miListaId && c.listaId === miListaId);
 
               return (
-                <div key={c.candidatoId || c.listaId || i} className={`px-4 py-3 ${esMio ? 'bg-purple-50' : ''}`}>
+                <div key={c.candidatoId || c.listaId || i} className={`px-4 py-3 ${esMio ? 'bg-editorial-red/5' : ''}`}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0">#{i + 1}</span>
+                      <span className="text-xs font-bold text-app-muted w-5 flex-shrink-0">#{i + 1}</span>
                       <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${esMio ? 'text-purple-900' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-semibold truncate ${esMio ? 'text-app-accent-fg' : 'text-app-fg'}`}>
                           {c.nombre}
                         </p>
                         {c.partido && (
-                          <p className="text-xs text-gray-500 truncate">{c.partido}</p>
+                          <p className="text-xs text-app-muted truncate">{c.partido}</p>
                         )}
                       </div>
                       {esMio && (
-                        <span className="px-1.5 py-0.5 bg-purple-200 text-purple-800 rounded text-[10px] font-bold flex-shrink-0">MI</span>
+                        <span className="px-1.5 py-0.5 bg-editorial-red/15 text-app-accent-fg border border-editorial-red/30 rounded text-xs font-bold flex-shrink-0">MI</span>
                       )}
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <p className="text-sm font-bold text-gray-900">{c.votos.toLocaleString('es-CO')}</p>
-                      <p className="text-xs text-gray-500">{pct}%</p>
+                      <p className="text-sm font-bold text-app-fg">{c.votos.toLocaleString('es-CO')}</p>
+                      <p className="text-xs text-app-muted">{pct}%</p>
                     </div>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-app-elevated rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${esMio ? 'bg-purple-500' : 'bg-blue-400'}`}
+                      className={`h-full rounded-full transition-all ${esMio ? 'bg-editorial-red' : 'bg-blue-500'}`}
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
@@ -1202,17 +1202,17 @@ function TabDivulgacion({ data, loading, miCandidatoId, miListaId }: {
 
             {/* Special vote types */}
             {(totalBlancos > 0 || totalNulos > 0 || totalNoMarcados > 0) && (
-              <div className="px-4 py-3 bg-gray-50">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Otros votos</p>
+              <div className="px-4 py-3 bg-app-elevated">
+                <p className="text-xs font-semibold text-app-muted uppercase mb-2">Otros votos</p>
                 <div className="flex flex-wrap gap-4 text-sm">
                   {totalBlancos > 0 && (
-                    <span className="text-gray-600">Blancos: <strong>{totalBlancos.toLocaleString('es-CO')}</strong></span>
+                    <span className="text-app-fg">Blancos: <strong>{totalBlancos.toLocaleString('es-CO')}</strong></span>
                   )}
                   {totalNulos > 0 && (
-                    <span className="text-gray-600">Nulos: <strong>{totalNulos.toLocaleString('es-CO')}</strong></span>
+                    <span className="text-app-fg">Nulos: <strong>{totalNulos.toLocaleString('es-CO')}</strong></span>
                   )}
                   {totalNoMarcados > 0 && (
-                    <span className="text-gray-600">No marcados: <strong>{totalNoMarcados.toLocaleString('es-CO')}</strong></span>
+                    <span className="text-app-fg">No marcados: <strong>{totalNoMarcados.toLocaleString('es-CO')}</strong></span>
                   )}
                 </div>
               </div>
@@ -1250,11 +1250,11 @@ function TabE14Oficial({ data, loading, page, onPageChange }: {
   return (
     <div className="space-y-3">
       {data.total > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
-          <span className="text-blue-600 text-lg">📋</span>
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-card p-3 flex items-center gap-2">
+          <span className="text-blue-700 dark:text-blue-300 text-xs font-bold uppercase">PDF</span>
           <div>
-            <p className="text-sm font-semibold text-blue-800">{data.total} actas E-14 oficiales disponibles</p>
-            <p className="text-xs text-blue-600">Documentos descargados del portal de divulgación de la Registraduría Nacional</p>
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">{data.total} actas E-14 oficiales disponibles</p>
+            <p className="text-xs text-blue-700 dark:text-blue-300">Documentos descargados del portal de divulgación de la Registraduría Nacional</p>
           </div>
         </div>
       )}
@@ -1267,27 +1267,27 @@ function TabE14Oficial({ data, loading, page, onPageChange }: {
         const isLoading = loadingUrl === acta.mesaId;
 
         return (
-          <div key={acta.id} className="bg-white rounded-xl p-4 shadow-sm border">
+          <div key={acta.id} className="bg-app-surface rounded-card p-4 border border-app-line">
             {/* Header: Mesa + location */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                <span className="text-xs font-bold bg-editorial-red/10 text-app-accent-fg border border-editorial-red/30 px-2 py-1 rounded">
                   Mesa #{acta.mesa.numero}
                 </span>
-                <span className="text-xs font-medium bg-green-50 text-green-700 px-2 py-1 rounded">
+                <span className="text-xs font-medium bg-green-500/15 text-green-800 dark:text-green-300 border border-green-500/30 px-2 py-1 rounded">
                   PDF oficial
                 </span>
               </div>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-app-muted">
                 {new Date(acta.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
               </span>
             </div>
 
             {/* Location info */}
-            <div className="text-xs text-gray-500 mb-3 space-y-0.5">
-              <p className="font-medium text-gray-700">{puesto}</p>
+            <div className="text-xs text-app-muted mb-3 space-y-0.5">
+              <p className="font-medium text-app-fg">{puesto}</p>
               <p>{muni}{depto ? ` — ${depto}` : ''}</p>
-              <p className="text-gray-400">{kb} KB</p>
+              <p className="text-app-muted">{kb} KB</p>
             </div>
 
             {/* Action buttons */}
@@ -1295,7 +1295,7 @@ function TabE14Oficial({ data, loading, page, onPageChange }: {
               <button
                 onClick={() => handleVerPdf(acta.mesaId, 'inline')}
                 disabled={isLoading}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] text-xs font-semibold bg-editorial-red text-white rounded-btn hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
                 {isLoading ? (
                   <div className="animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
@@ -1306,7 +1306,7 @@ function TabE14Oficial({ data, loading, page, onPageChange }: {
               <button
                 onClick={() => handleVerPdf(acta.mesaId, 'attachment')}
                 disabled={isLoading}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] text-xs font-semibold bg-app-elevated text-app-fg border border-app-line rounded-btn hover:bg-app-surface disabled:opacity-50 transition-colors"
               >
                 ⬇️ Descargar
               </button>
@@ -1316,9 +1316,9 @@ function TabE14Oficial({ data, loading, page, onPageChange }: {
       })}
 
       {data.data.length === 0 && (
-        <div className="bg-white rounded-xl p-8 text-center shadow-sm border">
-          <p className="text-gray-400 text-sm">No hay actas E-14 oficiales para estos filtros</p>
-          <p className="text-gray-300 text-xs mt-1">Las actas se importan desde el portal de divulgación de la Registraduría</p>
+        <div className="bg-app-surface rounded-card p-8 text-center border border-app-line">
+          <p className="text-app-muted text-sm">No hay actas E-14 oficiales para estos filtros</p>
+          <p className="text-app-muted text-xs mt-1">Las actas se importan desde el portal de divulgación de la Registraduría</p>
         </div>
       )}
 
@@ -1339,22 +1339,22 @@ function Pagination({ page, totalPages, total, onPageChange }: {
 
   return (
     <div className="flex items-center justify-between pt-2">
-      <span className="text-xs text-gray-500">{total} registros</span>
+      <span className="text-xs text-app-muted">{total} registros</span>
       <div className="flex items-center gap-2">
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="px-3 py-1.5 text-xs font-semibold bg-white border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+          className="px-3 py-1.5 min-h-[44px] text-xs font-semibold bg-app-surface text-app-fg border border-app-line rounded-btn disabled:opacity-40 hover:bg-app-elevated"
         >
           Anterior
         </button>
-        <span className="text-xs text-gray-600">
+        <span className="text-xs text-app-muted">
           {page} / {totalPages}
         </span>
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="px-3 py-1.5 text-xs font-semibold bg-white border rounded-lg disabled:opacity-40 hover:bg-gray-50"
+          className="px-3 py-1.5 min-h-[44px] text-xs font-semibold bg-app-surface text-app-fg border border-app-line rounded-btn disabled:opacity-40 hover:bg-app-elevated"
         >
           Siguiente
         </button>
