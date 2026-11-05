@@ -1,5 +1,10 @@
 import { useState, FormEvent } from 'react';
-import { authService, mapearErrorAuth } from '../../services/authService';
+import {
+  authService,
+  CampanaLoginOpcion,
+  esElegirCampana,
+  mapearErrorAuth,
+} from '../../services/authService';
 import { IconoAlerta } from '../ui/Iconos';
 import { ControlTema } from '../ui/ControlTema';
 
@@ -10,6 +15,7 @@ interface LoginPageProps {
 export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [cedula, setCedula] = useState('');
   const [pin, setPin] = useState('');
+  const [campanasElegibles, setCampanasElegibles] = useState<CampanaLoginOpcion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [cedulaError, setCedulaError] = useState('');
@@ -49,10 +55,40 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setLoading(true);
 
     try {
-      await authService.login(cleanCedula, pin);
+      const resultado = await authService.login(cleanCedula, pin);
+      if (esElegirCampana(resultado)) {
+        setCampanasElegibles(resultado.campanas);
+        return;
+      }
+      setPin('');
       onLoginSuccess();
     } catch (err) {
       setError(mapearErrorAuth(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleElegirCampana = async (campanaId: string) => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const resultado = await authService.login(cedula.trim(), pin, campanaId);
+      if (esElegirCampana(resultado)) {
+        setCampanasElegibles(resultado.campanas);
+        return;
+      }
+      setCampanasElegibles([]);
+      setPin('');
+      onLoginSuccess();
+    } catch (err) {
+      const mensaje = mapearErrorAuth(err);
+      setError(mensaje);
+      if (mensaje === 'Cédula o PIN incorrectos') {
+        setCampanasElegibles([]);
+        setPin('');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,6 +116,59 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
         {/* Card de Login */}
         <div className="bg-app-surface rounded-card border border-app-line p-6 sm:p-8">
+          {campanasElegibles.length > 0 ? (
+            <div className="space-y-5" data-testid="selector-campana-login">
+              <div>
+                <h2 className="text-xl font-bold text-app-fg mb-1.5">Elige tu campaña</h2>
+                <p className="text-sm text-app-muted">
+                  Tu cédula está registrada en varias campañas. Elige con cuál vas a reportar.
+                </p>
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="bg-err-50 dark:bg-[#450A0A] border border-red-200 dark:border-[#7F1D1D] rounded-btn p-4 flex items-start gap-3"
+                >
+                  <IconoAlerta className="w-5 h-5 text-err-700 dark:text-[#FCA5A5] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-err-700 dark:text-[#FCA5A5] font-medium">{error}</p>
+                </div>
+              )}
+
+              <div className="space-y-3" data-testid="lista-campanas-login">
+                {campanasElegibles.map((campana) => (
+                  <button
+                    key={campana.id}
+                    type="button"
+                    data-testid={`elegir-campana-${campana.id}`}
+                    disabled={loading}
+                    onClick={() => handleElegirCampana(campana.id)}
+                    className="w-full min-h-[48px] px-4 py-3.5 bg-app-surface hover:bg-app-elevated text-app-fg border border-app-line hover:border-editorial-red rounded-btn font-bold text-left flex items-center justify-between gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+                  >
+                    <span>{campana.nombre}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-app-accent-fg">
+                      Elegir
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setCampanasElegibles([]);
+                  setPin('');
+                  setError('');
+                }}
+                className="w-full min-h-[48px] px-4 py-3 bg-app-elevated hover:bg-app-surface text-app-fg border border-app-line rounded-btn font-semibold text-xs uppercase tracking-wider transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+              >
+                Volver a ingresar PIN
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="mb-6">
             <h2 className="text-xl font-bold text-app-fg mb-1.5">Iniciar Sesión</h2>
             <p className="text-sm text-app-muted">
@@ -214,6 +303,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               )}
             </button>
           </form>
+          </>
+          )}
 
           {/* Footer Info */}
           <div className="mt-6 pt-5 border-t border-app-line">

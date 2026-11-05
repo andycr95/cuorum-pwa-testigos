@@ -73,6 +73,28 @@ export interface LoginResponse {
   };
 }
 
+export interface CampanaLoginOpcion {
+  id: string;
+  nombre: string;
+}
+
+export interface ElegirCampanaResponse {
+  codigo: 'ELEGIR_CAMPANA';
+  error?: string;
+  campanas: CampanaLoginOpcion[];
+}
+
+export type LoginResult = LoginResponse | ElegirCampanaResponse;
+
+export function esElegirCampana(res: unknown): res is ElegirCampanaResponse {
+  return (
+    typeof res === 'object' &&
+    res !== null &&
+    (res as { codigo?: unknown }).codigo === 'ELEGIR_CAMPANA' &&
+    Array.isArray((res as { campanas?: unknown }).campanas)
+  );
+}
+
 import { mapearErrorAuth } from './authErrors';
 
 export { mapearErrorAuth };
@@ -85,16 +107,24 @@ class AuthService {
   private readonly ELECCION_DATA_KEY = 'cuorum_testigo_eleccion_data';
 
   /**
-   * Inicia sesión con cédula y PIN
+   * Inicia sesión con cédula y PIN (y campanaId cuando el testigo elige entre varias campañas)
    */
-  async login(cedula: string, pin: string): Promise<LoginResponse> {
+  async login(cedula: string, pin: string, campanaId?: string): Promise<LoginResult> {
     try {
-      const response = await api.post<LoginResponse>(
+      const payload = campanaId ? { cedula, pin, campanaId } : { cedula, pin };
+      const response = await api.post<LoginResult>(
         `/auth/testigos/login`,
-        { cedula, pin },
+        payload,
       );
 
       const data = response.data;
+      if (esElegirCampana(data)) {
+        return {
+          codigo: 'ELEGIR_CAMPANA',
+          ...(data.error ? { error: data.error } : {}),
+          campanas: data.campanas,
+        };
+      }
 
       // Guardar token y datos en localStorage
       localStorage.setItem(this.TOKEN_KEY, data.token);
@@ -112,6 +142,14 @@ class AuthService {
 
       return data;
     } catch (error) {
+      const resp = (error as { response?: { status?: number; data?: unknown } })?.response;
+      if (resp?.status === 409 && esElegirCampana(resp.data)) {
+        return {
+          codigo: 'ELEGIR_CAMPANA',
+          ...(resp.data.error ? { error: resp.data.error } : {}),
+          campanas: resp.data.campanas,
+        };
+      }
       const mensaje = mapearErrorAuth(error);
       throw new Error(mensaje);
     }
