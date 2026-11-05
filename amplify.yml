@@ -3,8 +3,10 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm install -g pnpm
-        - pnpm install
+        # Versión de pnpm: la de packageManager del package.json (CUO-1866).
+        - corepack enable
+        - COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack install
+        - pnpm install --frozen-lockfile
     build:
       commands:
         - pnpm build
