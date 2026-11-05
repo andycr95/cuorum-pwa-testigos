@@ -113,10 +113,10 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-app-surface text-app-fg rounded-card p-1">
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full" />
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <p className="text-xs font-bold text-app-muted uppercase tracking-wider">
           {title ?? 'Fotos del E-14 (evidencia)'} ({fotos.length} foto{fotos.length !== 1 ? 's' : ''})
         </p>
       </div>
@@ -125,7 +125,7 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
       {fotos.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
           {fotos.map((foto, idx) => (
-            <div key={idx} className="relative rounded-xl overflow-hidden border-2 border-gray-200 bg-gray-50">
+            <div key={idx} className="relative rounded-card overflow-hidden border border-app-line bg-app-elevated">
               <img
                 src={foto.preview}
                 alt={`Pagina ${foto.orden}`}
@@ -154,17 +154,17 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
           type="button"
           onClick={() => cameraInputRef.current?.click()}
           disabled={disabled || procesando}
-          className="py-4 border-2 border-dashed border-gray-300 rounded-2xl hover:border-editorial-red/50 bg-gray-50 hover:bg-editorial-red/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+          className="py-4 min-h-[48px] border-2 border-dashed border-app-line rounded-card hover:border-editorial-red/50 bg-app-elevated hover:bg-editorial-red/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"
         >
           {procesando ? (
             <div className="w-5 h-5 border-2 border-editorial-red border-t-transparent rounded-full animate-spin" />
           ) : (
-            <svg className="w-7 h-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-7 h-7 text-app-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
             </svg>
           )}
-          <span className="font-bold text-gray-600 text-xs">
+          <span className="font-bold text-app-fg text-xs">
             {procesando ? 'Procesando...' : 'Tomar foto'}
           </span>
         </button>
@@ -174,12 +174,12 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
           type="button"
           onClick={() => galleryInputRef.current?.click()}
           disabled={disabled || procesando}
-          className="py-4 border-2 border-dashed border-gray-300 rounded-2xl hover:border-editorial-red/50 bg-gray-50 hover:bg-editorial-red/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+          className="py-4 min-h-[48px] border-2 border-dashed border-app-line rounded-card hover:border-editorial-red/50 bg-app-elevated hover:bg-editorial-red/5 transition-all flex flex-col items-center justify-center gap-2 disabled:opacity-50"
         >
-          <svg className="w-7 h-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg className="w-7 h-7 text-app-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
           </svg>
-          <span className="font-bold text-gray-600 text-xs">
+          <span className="font-bold text-app-fg text-xs">
             Seleccionar fotos
           </span>
         </button>
@@ -211,14 +211,14 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
           type="button"
           onClick={handleEnviar}
           disabled={disabled || procesando}
-          className="w-full py-4 bg-editorial-red hover:bg-red-700 text-white rounded-2xl font-black text-sm uppercase tracking-wide shadow-xl hover:shadow-2xl active:scale-95 transition-all disabled:opacity-50"
+          className="w-full py-4 min-h-[48px] bg-editorial-red hover:bg-red-700 text-white rounded-btn font-black text-sm uppercase tracking-wide active:scale-95 transition-all disabled:opacity-50"
         >
           {submitLabel ?? `Confirmar ${fotos.length} foto${fotos.length !== 1 ? 's' : ''} como evidencia`}
         </button>
       )}
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <p className="text-xs text-blue-700 leading-relaxed">
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-card p-3">
+        <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
           <span className="font-bold">Consejo:</span> Toma una foto por seccion del acta o selecciona varias fotos de tu galeria.
           Puedes reordenarlas antes de enviar.
         </p>

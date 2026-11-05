@@ -131,15 +131,15 @@ export function CapturaE14({
 
   if (fotoPreview) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 bg-app-surface text-app-fg">
         <div className="flex items-center gap-2">
           <div className="w-1 h-5 bg-editorial-red rounded-full" />
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <p className="text-xs font-bold text-app-muted uppercase tracking-wider">
             Foto del E-14
           </p>
         </div>
 
-        <div className="relative rounded-2xl overflow-hidden border-2 border-green-400/60 shadow-xl">
+        <div className="relative rounded-card overflow-hidden border border-green-500/40">
           <img
             src={fotoPreview}
             alt="Formulario E-14"
@@ -148,15 +148,15 @@ export function CapturaE14({
           />
 
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            <div className="px-3 py-1.5 bg-green-500 rounded-full shadow-lg">
+            <div className="px-3 py-1.5 bg-green-700 rounded-full">
               <p className="text-xs font-black text-white flex items-center gap-1.5">
                 <span>✓</span>
                 <span>Foto capturada</span>
               </p>
             </div>
             {infoCompresion && (
-              <div className="px-2 py-1 bg-black/70 backdrop-blur-sm rounded-full">
-                <p className="text-[10px] font-bold text-white">
+              <div className="px-2 py-1 bg-black/75 backdrop-blur-sm rounded-full">
+                <p className="text-xs font-bold text-white">
                   {formatKB(infoCompresion.original)} → {formatKB(infoCompresion.final)}
                   {infoCompresion.final <= MAX_SIZE_BYTES ? ' 2G' : ''}
                 </p>
@@ -169,9 +169,9 @@ export function CapturaE14({
           <button
             type="button"
             onClick={onEliminar}
-            className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 border-2 border-red-300 text-red-700 rounded-xl font-bold text-sm uppercase tracking-wide hover:shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 px-4 min-h-[44px] bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-800 dark:text-red-300 rounded-btn font-bold text-sm uppercase tracking-wide active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <IconoPapelera className="w-5 h-5 text-red-700" />
+            <IconoPapelera className="w-5 h-5 text-red-800 dark:text-red-300" />
             <span>Volver a tomar foto</span>
           </button>
         )}
@@ -182,10 +182,10 @@ export function CapturaE14({
   // ─── Botón de captura ────────────────────────────────────────
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 bg-app-surface text-app-fg">
       <div className="flex items-center gap-2">
         <div className="w-1 h-5 bg-editorial-red rounded-full" />
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <p className="text-xs font-bold text-app-muted uppercase tracking-wider">
           Foto del E-14 (Evidencia)
         </p>
       </div>
@@ -194,10 +194,10 @@ export function CapturaE14({
         type="button"
         onClick={() => fileInputRef.current?.click()}
         disabled={disabled || procesando}
-        className="relative w-full overflow-hidden rounded-2xl py-6 border-2 border-dashed border-gray-300 hover:border-editorial-red/50 bg-gray-50 hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+        className="relative w-full overflow-hidden rounded-card py-6 border-2 border-dashed border-app-line hover:border-editorial-red/50 bg-app-elevated hover:bg-editorial-red/5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
       >
         <div className="relative flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-editorial-red shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+          <div className="w-16 h-16 rounded-card bg-editorial-red flex items-center justify-center group-hover:scale-110 transition-transform">
             {procesando ? (
               <div className="w-7 h-7 border-3 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
@@ -206,10 +206,10 @@ export function CapturaE14({
           </div>
 
           <div className="text-center">
-            <p className="text-base font-black text-gray-800 group-hover:text-editorial-red transition-colors">
+            <p className="text-base font-black text-app-fg group-hover:text-app-accent-fg transition-colors">
               {procesando ? 'Comprimiendo imagen...' : 'Tomar foto del E-14'}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-app-muted mt-1">
               {procesando
                 ? 'Optimizando para transmisión 2G'
                 : 'Compresión automática < 200 KB · Escala de grises'}
@@ -228,8 +228,8 @@ export function CapturaE14({
         />
       </button>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <p className="text-xs text-blue-700 leading-relaxed">
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-card p-3">
+        <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
           <span className="font-bold">Consejo:</span> Asegúrate de que toda el acta sea
           legible. La foto se comprime automáticamente para funcionar en zonas con señal 2G/EDGE.
         </p>

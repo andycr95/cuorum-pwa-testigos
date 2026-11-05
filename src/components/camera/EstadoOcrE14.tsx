@@ -26,37 +26,37 @@ interface EstadoOcrE14Props {
 const ESTADO_CONFIG: Record<string, { label: string; color: string; spinning: boolean; pulse: boolean }> = {
   PENDIENTE: {
     label: 'En cola (sin conexión)',
-    color: 'bg-orange-50 text-orange-700 border-orange-200',
+    color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40',
     spinning: false,
     pulse: false,
   },
   SUBIENDO: {
     label: 'Subiendo fotos al servidor...',
-    color: 'bg-blue-50 text-blue-700 border-blue-200',
+    color: 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/40',
     spinning: true,
     pulse: true,
   },
   PROCESANDO: {
     label: 'Leyendo el acta…',
-    color: 'bg-violet-50 text-violet-700 border-violet-200',
+    color: 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/40',
     spinning: true,
     pulse: true,
   },
   COMPLETADO: {
     label: 'Acta procesada correctamente',
-    color: 'bg-green-50 text-green-700 border-green-200',
+    color: 'bg-green-500/15 text-green-800 dark:text-green-300 border-green-500/40',
     spinning: false,
     pulse: false,
   },
   CONFIRMADO: {
     label: 'Resultados confirmados',
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-300',
+    color: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/40',
     spinning: false,
     pulse: false,
   },
   ERROR: {
     label: 'Error al procesar',
-    color: 'bg-red-50 text-red-700 border-red-200',
+    color: 'bg-red-500/15 text-red-800 dark:text-red-300 border-red-500/40',
     spinning: false,
     pulse: false,
   },
@@ -81,7 +81,7 @@ export function EstadoOcrE14({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-1 h-5 bg-editorial-red rounded-full" />
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <p className="text-xs font-bold text-app-muted uppercase tracking-wider">
               Envíos de actas ({jobs.length})
             </p>
           </div>
@@ -90,7 +90,7 @@ export function EstadoOcrE14({
               type="button"
               onClick={onSync}
               disabled={syncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-editorial-red text-white text-xs font-bold rounded-lg disabled:opacity-50 active:scale-95 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] bg-editorial-red text-white text-xs font-bold rounded-btn disabled:opacity-50 active:scale-95 transition-all"
             >
               {syncing ? (
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -120,14 +120,14 @@ export function EstadoOcrE14({
           return (
             <div
               key={job.id}
-              className="bg-white border-2 border-gray-200 rounded-2xl p-6 text-center space-y-4 shadow-sm"
+              className="bg-app-surface text-app-fg border border-app-line rounded-card p-6 text-center space-y-4"
             >
-              <div className="w-12 h-12 mx-auto rounded-full bg-red-50 flex items-center justify-center text-editorial-red">
+              <div className="w-12 h-12 mx-auto rounded-full bg-editorial-red/10 flex items-center justify-center text-app-accent-fg">
                 <div className="w-6 h-6 border-2 border-editorial-red border-t-transparent rounded-full animate-spin" />
               </div>
               <div>
-                <h3 className="text-base font-black text-gray-900">Leyendo el acta…</h3>
-                <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                <h3 className="text-base font-black text-app-fg">Leyendo el acta…</h3>
+                <p className="text-xs text-app-muted mt-1 max-w-sm mx-auto">
                   Estamos preparando el borrador de votos a partir de las fotos del E-14.
                 </p>
               </div>
@@ -136,7 +136,7 @@ export function EstadoOcrE14({
                   <button
                     type="button"
                     onClick={onConteoManual}
-                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-all min-h-[44px]"
+                    className="px-4 py-2.5 bg-app-elevated hover:bg-app-canvas border border-app-line text-app-fg font-bold text-xs rounded-btn transition-all min-h-[44px]"
                   >
                     Contar a mano
                   </button>
@@ -151,25 +151,25 @@ export function EstadoOcrE14({
             <div
               key={job.id}
               role="alert"
-              className="bg-white border-2 border-red-200 rounded-2xl p-4 shadow-sm space-y-3"
+              className="bg-app-surface text-app-fg border border-red-500/40 rounded-card p-4 space-y-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-editorial-red flex-shrink-0 mt-0.5">
+                  <div className="w-10 h-10 rounded-btn bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-800 dark:text-red-300 flex-shrink-0 mt-0.5">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                     </svg>
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-black text-gray-900 leading-tight">
+                      <p className="text-sm font-black text-app-fg leading-tight">
                         No fue posible leer el acta automáticamente
                       </p>
-                      <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-bold rounded-full">
+                      <span className="px-2 py-0.5 bg-red-500/20 border border-red-500/30 text-red-800 dark:text-red-300 text-xs font-bold rounded-full">
                         Sin borrador
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-app-muted mt-0.5">
                       {job.fotos.length} foto{job.fotos.length !== 1 ? 's' : ''} · {new Date(job.capturedAt).toLocaleTimeString()}
                     </p>
                   </div>
@@ -179,7 +179,7 @@ export function EstadoOcrE14({
                   <button
                     type="button"
                     onClick={onRetry}
-                    className="min-h-[44px] px-3.5 py-2 bg-editorial-red text-white text-xs font-bold rounded-xl hover:bg-red-700 active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
+                    className="min-h-[44px] px-3.5 py-2 bg-editorial-red text-white text-xs font-bold rounded-btn hover:bg-red-700 active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
                   >
                     <span>Reintentar</span>
                   </button>
@@ -187,15 +187,15 @@ export function EstadoOcrE14({
               </div>
 
               {/* Estado de la foto */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs font-semibold text-emerald-900 flex items-center gap-2">
-                <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <div className="bg-green-500/10 border border-green-500/30 rounded-card px-3 py-2 text-xs font-semibold text-green-800 dark:text-green-300 flex items-center gap-2">
+                <svg className="w-4 h-4 text-green-800 dark:text-green-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
                 <span>{MENSAJES_OCR.FOTO_GUARDADA}</span>
               </div>
 
               {job.lastSyncError && (
-                <p className="text-xs text-gray-600 pl-1 leading-relaxed">
+                <p className="text-xs text-red-800 dark:text-red-300 pl-1 leading-relaxed">
                   {formatearErrorAmigable(job.lastSyncError)}
                 </p>
               )}
@@ -205,7 +205,7 @@ export function EstadoOcrE14({
                   <button
                     type="button"
                     onClick={onConteoManual}
-                    className="w-full py-3 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-xl transition-all min-h-[44px]"
+                    className="w-full py-3 bg-app-elevated hover:bg-app-canvas border border-app-line text-app-fg text-xs font-bold rounded-btn transition-all min-h-[44px]"
                   >
                     Continuar con conteo manual
                   </button>
@@ -350,12 +350,12 @@ export function RevisionOcrInline({
 
   if (confirmado) {
     return (
-      <div className="border-2 border-emerald-400 bg-emerald-50 rounded-2xl p-4 shadow-sm">
+      <div className="border border-green-500/40 bg-green-500/10 rounded-card p-4">
         <div className="flex items-center gap-3">
-          <span className="text-xl text-emerald-600">✓</span>
+          <span className="text-xl text-green-800 dark:text-green-300">✓</span>
           <div>
-            <p className="text-sm font-black text-emerald-800">Resultados del borrador confirmados</p>
-            <p className="text-xs text-emerald-700 mt-0.5">
+            <p className="text-sm font-black text-green-800 dark:text-green-300">Resultados del borrador confirmados</p>
+            <p className="text-xs text-green-800 dark:text-green-300 mt-0.5">
               {Object.keys(votos).length} candidatos registrados para esta mesa.
             </p>
           </div>
@@ -365,21 +365,21 @@ export function RevisionOcrInline({
   }
 
   return (
-    <div className="border-2 border-green-400 bg-white rounded-2xl overflow-hidden shadow-sm">
+    <div className="border border-green-500/40 bg-app-surface text-app-fg rounded-card overflow-hidden">
       {/* Cabecera */}
-      <div className="bg-green-50 px-4 py-3 border-b border-green-200">
+      <div className="bg-green-500/10 px-4 py-3 border-b border-green-500/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-base text-green-700">✓</span>
+            <span className="text-base text-green-800 dark:text-green-300">✓</span>
             <div>
-              <p className="text-xs font-black text-green-800">Borrador de votos del E-14</p>
-              <p className="text-xs text-green-700 mt-0.5">
+              <p className="text-xs font-black text-green-800 dark:text-green-300">Borrador de votos del E-14</p>
+              <p className="text-xs text-green-800 dark:text-green-300 mt-0.5">
                 Votos precargados. Revisa, corrige si es necesario y confirma.
               </p>
             </div>
           </div>
           {bajaConfianzaIds.size > 0 && (
-            <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold rounded-full">
+            <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-300 text-xs font-bold rounded-full">
               {bajaConfianzaIds.size} por revisar
             </span>
           )}
@@ -389,8 +389,8 @@ export function RevisionOcrInline({
       <div className="px-4 py-3 space-y-4">
         {/* Advertencia de resultados previos */}
         {eleccionReportada && !showWarning && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-            <p className="text-xs text-amber-800 font-medium">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-card px-3 py-2">
+            <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
               Ya hay resultados registrados para esta elección. Al confirmar se reemplazarán.
             </p>
           </div>
@@ -398,13 +398,13 @@ export function RevisionOcrInline({
 
         {/* Advertencia del backend para forzar reemplazo */}
         {showWarning && (
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3">
-            <p className="text-xs text-amber-900 font-bold mb-2">{warningMsg}</p>
+          <div className="bg-amber-500/10 border border-amber-500/40 rounded-card p-3">
+            <p className="text-xs text-amber-800 dark:text-amber-300 font-bold mb-2">{warningMsg}</p>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowWarning(false)}
-                className="flex-1 py-2 text-xs font-bold text-gray-700 border border-gray-300 rounded-xl"
+                className="flex-1 py-2 min-h-[44px] text-xs font-bold text-app-fg border border-app-line bg-app-elevated rounded-btn"
               >
                 Cancelar
               </button>
@@ -414,7 +414,7 @@ export function RevisionOcrInline({
                   setShowWarning(false);
                   handleConfirmar(true);
                 }}
-                className="flex-1 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl"
+                className="flex-1 py-2 min-h-[44px] text-xs font-bold text-white bg-amber-700 hover:bg-amber-800 rounded-btn"
               >
                 Reemplazar
               </button>
@@ -424,7 +424,7 @@ export function RevisionOcrInline({
 
         {/* Votos por candidato agrupados por partido */}
         <div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+          <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2">
             Votos por candidato (precargados)
           </p>
           <div className="space-y-1.5 max-h-80 overflow-y-auto">
@@ -442,40 +442,40 @@ export function RevisionOcrInline({
                 return (
                   <div key={id}>
                     {showPartidoHeader && partido && (
-                      <div className="bg-gray-100 px-2.5 py-1 rounded-lg mt-2 mb-1 flex items-center justify-between">
-                        <p className="text-xs font-black text-gray-600 uppercase tracking-wider">
-                          {info?.listaNombre || partido} <span className="text-gray-400 font-normal">({partido})</span>
+                      <div className="bg-app-elevated px-2.5 py-1 rounded-btn mt-2 mb-1 flex items-center justify-between">
+                        <p className="text-xs font-black text-app-muted uppercase tracking-wider">
+                          {info?.listaNombre || partido} <span className="text-app-muted font-normal">({partido})</span>
                         </p>
-                        <span className="text-xs font-black text-gray-700 tabular-nums">
+                        <span className="text-xs font-black text-app-fg tabular-nums">
                           {totalesPorPartido[partido] ?? 0}
                         </span>
                       </div>
                     )}
                     <div
-                      className={`flex items-center justify-between gap-2 p-2 rounded-xl border transition-all ${
+                      className={`flex items-center justify-between gap-2 p-2 rounded-card border transition-all ${
                         isBajaConfianza
-                          ? 'border-amber-400 bg-amber-50/80'
+                          ? 'border-amber-400 bg-amber-500/10'
                           : isLista
-                            ? 'border-blue-200 bg-blue-50/60'
-                            : 'border-gray-200 bg-white'
+                            ? 'border-blue-500/30 bg-blue-500/10'
+                            : 'border-app-line bg-app-elevated'
                       }`}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         {!isLista && info?.posicion != null && (
-                          <span className="text-xs font-bold text-gray-500 w-6 text-right flex-shrink-0">
+                          <span className="text-xs font-bold text-app-muted w-6 text-right flex-shrink-0">
                             {info.posicion}
                           </span>
                         )}
                         <div className="min-w-0">
                           <p
-                            className={`text-xs truncate ${isLista ? 'text-blue-800 font-bold' : 'text-gray-800 font-medium'}`}
+                            className={`text-xs truncate ${isLista ? 'text-blue-800 dark:text-blue-300 font-bold' : 'text-app-fg font-medium'}`}
                             title={info?.nombre || id}
                           >
                             {isLista ? (info?.nombre || 'Votos agrupación') : (info?.nombre || id.slice(0, 8) + '...')}
                           </p>
                           {isBajaConfianza && (
-                            <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-amber-200 text-amber-900">
-                              <span>⚠️</span>
+                            <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-300">
+                              <span>!</span>
                               <span>Baja confianza · Verificar en acta</span>
                             </span>
                           )}
@@ -492,12 +492,12 @@ export function RevisionOcrInline({
                             [id]: Math.max(0, parseInt(e.target.value) || 0),
                           }))
                         }
-                        className={`w-16 px-2 py-1.5 text-xs text-right font-bold border-2 rounded-lg focus:outline-none ${
+                        className={`w-16 px-2 py-1.5 text-xs text-right font-bold border-2 rounded-btn focus:outline-none ${
                           isBajaConfianza
-                            ? 'border-amber-400 focus:border-amber-600 bg-amber-50'
+                            ? 'border-amber-400 focus:border-amber-600 bg-amber-500/15 text-amber-800 dark:text-amber-300'
                             : isLista
-                              ? 'border-blue-200 focus:border-editorial-red'
-                              : 'border-gray-200 focus:border-editorial-red'
+                              ? 'border-blue-500/40 bg-app-surface text-app-fg focus:border-editorial-red'
+                              : 'border-app-line bg-app-surface text-app-fg focus:border-editorial-red'
                         }`}
                       />
                     </div>
@@ -509,18 +509,18 @@ export function RevisionOcrInline({
         </div>
 
         {/* Nivelación de la mesa */}
-        <div className="border-t border-gray-200 pt-3">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Nivelación de la mesa</p>
+        <div className="border-t border-app-line pt-3">
+          <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2">Nivelación de la mesa</p>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-700">Total sufragantes (E-11)</p>
+              <p className="text-xs text-app-fg">Total sufragantes (E-11)</p>
               <input
                 type="number"
                 inputMode="numeric"
                 min={0}
                 value={totalVotosMesa}
                 onChange={(e) => setTotalVotosMesa(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-16 px-2 py-1.5 text-xs text-right font-bold border-2 border-gray-200 rounded-lg focus:border-editorial-red focus:outline-none"
+                className="w-16 px-2 py-1.5 text-xs text-right font-bold border border-app-line bg-app-elevated text-app-fg rounded-btn focus:border-editorial-red focus:outline-none"
               />
             </div>
             {[
@@ -530,22 +530,22 @@ export function RevisionOcrInline({
               .filter(item => item.value != null)
               .map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-gray-700">{label}</p>
-                  <span className="text-xs font-bold text-gray-600 tabular-nums px-2">{value}</span>
+                  <p className="text-xs text-app-fg">{label}</p>
+                  <span className="text-xs font-bold text-app-muted tabular-nums px-2">{value}</span>
                 </div>
               ))}
           </div>
         </div>
 
         {/* Votos especiales */}
-        <div className="border-t border-gray-200 pt-3">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Votos especiales</p>
+        <div className="border-t border-app-line pt-3">
+          <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2">Votos especiales</p>
           <div className="space-y-1.5">
             {Object.keys(circValues).length > 0 && (
-              <div className="bg-gray-50 rounded-xl px-2.5 py-1.5 space-y-1">
+              <div className="bg-app-elevated rounded-card px-2.5 py-1.5 space-y-1">
                 {Object.entries(circValues).map(([key, val]) => (
                   <div key={key} className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-gray-600">{key.replace('_circ:', '')}</p>
+                    <p className="text-xs text-app-muted">{key.replace('_circ:', '')}</p>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -557,7 +557,7 @@ export function RevisionOcrInline({
                           [key]: Math.max(0, parseInt(e.target.value) || 0),
                         }))
                       }
-                      className="w-16 px-2 py-1 text-xs text-right font-bold border-2 border-gray-200 rounded-lg focus:border-editorial-red focus:outline-none"
+                      className="w-16 px-2 py-1 text-xs text-right font-bold border border-app-line bg-app-surface text-app-fg rounded-btn focus:border-editorial-red focus:outline-none"
                     />
                   </div>
                 ))}
@@ -573,21 +573,21 @@ export function RevisionOcrInline({
               return (
                 <div
                   key={label}
-                  className={`flex items-center justify-between gap-2 p-1.5 rounded-lg ${
-                    isBajaConfianza ? 'bg-amber-50 border border-amber-300' : ''
+                  className={`flex items-center justify-between gap-2 p-1.5 rounded-btn ${
+                    isBajaConfianza ? 'bg-amber-500/10 border border-amber-400' : ''
                   }`}
                 >
-                  <p className={`text-xs ${isBajaConfianza ? 'text-amber-900 font-semibold' : 'text-gray-700'}`}>{label}</p>
+                  <p className={`text-xs ${isBajaConfianza ? 'text-amber-800 dark:text-amber-300 font-semibold' : 'text-app-fg'}`}>{label}</p>
                   <input
                     type="number"
                     inputMode="numeric"
                     min={0}
                     value={value}
                     onChange={(e) => setter(Math.max(0, parseInt(e.target.value) || 0))}
-                    className={`w-16 px-2 py-1.5 text-xs text-right font-bold border-2 rounded-lg focus:outline-none ${
+                    className={`w-16 px-2 py-1.5 text-xs text-right font-bold border-2 rounded-btn focus:outline-none ${
                       isBajaConfianza
-                        ? 'border-amber-400 focus:border-amber-600 bg-amber-50 text-amber-900'
-                        : 'border-gray-200 focus:border-editorial-red'
+                        ? 'border-amber-400 focus:border-amber-600 bg-amber-500/15 text-amber-800 dark:text-amber-300'
+                        : 'border-app-line bg-app-elevated text-app-fg focus:border-editorial-red'
                     }`}
                   />
                 </div>
@@ -597,8 +597,8 @@ export function RevisionOcrInline({
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-            <p className="text-xs text-red-600 font-medium">{error}</p>
+          <div role="alert" className="bg-red-500/10 border border-red-500/30 rounded-card px-3 py-2">
+            <p className="text-xs text-red-800 dark:text-red-300 font-medium">{error}</p>
           </div>
         )}
 
@@ -609,7 +609,7 @@ export function RevisionOcrInline({
               type="button"
               onClick={() => handleConfirmar(false)}
               disabled={loading}
-              className="w-full py-3.5 rounded-xl font-black text-white text-xs uppercase tracking-wider bg-green-600 hover:bg-green-700 active:scale-[0.98] transition-all disabled:opacity-50 shadow-md min-h-[44px]"
+              className="w-full py-3.5 rounded-btn font-black text-white text-xs uppercase tracking-wider bg-green-700 hover:bg-green-800 active:scale-[0.98] transition-all disabled:opacity-50 min-h-[44px]"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -625,7 +625,7 @@ export function RevisionOcrInline({
               <button
                 type="button"
                 onClick={onConteoManual}
-                className="w-full py-2.5 text-xs font-bold text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50 rounded-xl transition-all min-h-[44px]"
+                className="w-full py-2.5 text-xs font-bold text-app-fg border border-app-line bg-app-elevated hover:bg-app-canvas rounded-btn transition-all min-h-[44px]"
               >
                 Descartar borrador y contar a mano
               </button>

@@ -151,12 +151,12 @@ export function PanelHistorialResultados({ mesaId, testigoId, elecciones, mesaNu
   const totalEntradas = resultados.length;
 
   return (
-    <div className="rounded-2xl border-2 border-blue-300 overflow-hidden bg-blue-50/50 my-4">
+    <div className="rounded-card border border-blue-500/40 overflow-hidden bg-app-surface text-app-fg my-4">
       {/* Header toggle */}
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 bg-blue-600 active:opacity-90 transition-opacity"
+        className="w-full flex items-center justify-between px-5 py-4 min-h-[48px] bg-blue-600 hover:bg-blue-700 active:opacity-90 transition-colors"
       >
         <div className="flex items-center gap-3">
           <IconoDocumento className="w-6 h-6 text-white shrink-0" />
@@ -164,15 +164,15 @@ export function PanelHistorialResultados({ mesaId, testigoId, elecciones, mesaNu
             <p className="text-sm font-black text-white uppercase tracking-wide">
               Historial de Resultados
             </p>
-            <p className="text-[11px] text-blue-100 font-semibold">
+            <p className="text-xs text-white font-semibold">
               Mesa #{mesaNumero}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           {totalEntradas > 0 && (
-            <div className="px-2.5 py-1 bg-white rounded-full">
-              <span className="text-xs font-black text-blue-600">
+            <div className="px-2.5 py-1 bg-app-surface border border-app-line rounded-full">
+              <span className="text-xs font-black text-blue-800 dark:text-blue-300">
                 {totalEntradas} entrada{totalEntradas > 1 ? 's' : ''}
               </span>
             </div>
@@ -193,19 +193,19 @@ export function PanelHistorialResultados({ mesaId, testigoId, elecciones, mesaNu
         <div className="p-5 space-y-4">
           {cargando ? (
             <div className="py-8 text-center">
-              <span className="inline-block w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-xs text-gray-500 font-semibold">Cargando historial...</p>
+              <span className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2" />
+              <p className="text-xs text-app-muted font-semibold">Cargando historial...</p>
             </div>
           ) : totalEntradas === 0 ? (
             <div className="py-8 text-center">
-              <IconoDocumento className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-gray-700">Sin resultados enviados aun</p>
-              <p className="text-xs text-gray-600 mt-1">Los resultados que captures apareceran aqui</p>
+              <IconoDocumento className="w-8 h-8 text-blue-800 dark:text-blue-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-app-fg">Sin resultados enviados aun</p>
+              <p className="text-xs text-app-muted mt-1">Los resultados que captures apareceran aqui</p>
             </div>
           ) : (
             Array.from(gruposPorEleccion.entries()).map(([eleccionId, { sesiones, nombre }]) => (
               <div key={eleccionId} className="space-y-3">
-                <p className="text-xs font-black text-blue-700 uppercase tracking-wider">
+                <p className="text-xs font-black text-blue-800 dark:text-blue-300 uppercase tracking-wider">
                   {nombre}
                 </p>
                 {Array.from(sesiones.entries()).map(([sesion, filas]) => {
@@ -223,28 +223,28 @@ export function PanelHistorialResultados({ mesaId, testigoId, elecciones, mesaNu
                   return (
                     <div
                       key={sesion}
-                      className={`rounded-xl border-2 overflow-hidden ${
-                        isSynced ? 'border-blue-200 bg-white' : 'border-yellow-300 bg-yellow-50'
+                      className={`rounded-card border overflow-hidden ${
+                        isSynced ? 'border-app-line bg-app-elevated' : 'border-amber-500/40 bg-amber-500/10'
                       }`}
                     >
                       {/* Cabecera sesion */}
-                      <div className={`flex items-center justify-between px-4 py-2 ${isSynced ? 'bg-blue-50' : 'bg-yellow-100'}`}>
-                        <p className="text-xs font-bold text-gray-700">
+                      <div className={`flex items-center justify-between px-4 py-2 ${isSynced ? 'bg-blue-500/10 border-b border-app-line' : 'bg-amber-500/15 border-b border-amber-500/30'}`}>
+                        <p className="text-xs font-bold text-app-fg">
                           Mesa #{mesaNumero} · Total votos: {totalVotos} / {totalVotosMesa} sufragantes
                         </p>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold text-gray-500">{hora}</span>
+                          <span className="text-xs font-semibold text-app-muted">{hora}</span>
                           {isSynced ? (
-                            <span className="text-green-600 font-black text-sm" title="Sincronizado">✓</span>
+                            <span className="text-green-800 dark:text-green-300 font-black text-sm" title="Sincronizado">✓</span>
                           ) : (
-                            <span className="text-yellow-600 font-black text-sm" title="Pendiente de sincronizacion">⏳</span>
+                            <span className="text-amber-800 dark:text-amber-300 font-black text-xs" title="Pendiente de sincronizacion">Pendiente</span>
                           )}
                         </div>
                       </div>
 
                       {/* Filas de candidatos */}
                       {isSynced ? (
-                        <div className="divide-y divide-gray-50">
+                        <div className="divide-y divide-app-line">
                           {filas
                             .filter((r) => r.tipoVoto === 'CANDIDATO' || r.tipoVoto === 'LISTA')
                             .map((r) => {
@@ -254,38 +254,38 @@ export function PanelHistorialResultados({ mesaId, testigoId, elecciones, mesaNu
                               return (
                                 <div key={r.id} className="flex items-center px-4 py-2 gap-3">
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-gray-800 truncate">{r.candidato}</p>
+                                    <p className="text-xs font-semibold text-app-fg truncate">{r.candidato}</p>
                                     <div className="flex items-center gap-2 mt-0.5">
-                                      <div className="flex-1 max-w-[80px] bg-gray-200 rounded-full h-1.5">
+                                      <div className="flex-1 max-w-[80px] bg-app-surface border border-app-line rounded-full h-1.5">
                                         <div
-                                          className="bg-blue-500 h-1.5 rounded-full"
+                                          className="bg-blue-600 h-1.5 rounded-full"
                                           style={{ width: `${barWidth}%` }}
                                         />
                                       </div>
-                                      <span className="text-[10px] text-gray-500">{pct}%</span>
+                                      <span className="text-xs text-app-muted">{pct}%</span>
                                     </div>
                                   </div>
-                                  <span className="text-sm font-bold text-gray-900 flex-shrink-0">{r.votos.toLocaleString('es-CO')}</span>
+                                  <span className="text-sm font-bold text-app-fg flex-shrink-0">{r.votos.toLocaleString('es-CO')}</span>
                                 </div>
                               );
                             })}
                           {filas[0]?.votosBlanco > 0 && (
                             <div className="flex items-center justify-between px-4 py-2">
-                              <p className="text-xs text-gray-500">Blancos</p>
-                              <span className="text-xs font-semibold text-gray-600">{filas[0].votosBlanco}</span>
+                              <p className="text-xs text-app-muted">Blancos</p>
+                              <span className="text-xs font-semibold text-app-fg">{filas[0].votosBlanco}</span>
                             </div>
                           )}
                           {filas[0]?.votosNulos > 0 && (
                             <div className="flex items-center justify-between px-4 py-2">
-                              <p className="text-xs text-gray-500">Nulos</p>
-                              <span className="text-xs font-semibold text-gray-600">{filas[0].votosNulos}</span>
+                              <p className="text-xs text-app-muted">Nulos</p>
+                              <span className="text-xs font-semibold text-app-fg">{filas[0].votosNulos}</span>
                             </div>
                           )}
                         </div>
                       ) : (
                         <div className="px-4 py-3">
-                          <p className="text-xs text-yellow-700 font-semibold">Pendiente de sincronizacion...</p>
-                          <p className="text-[10px] text-yellow-600 mt-0.5">{filas.length} registro(s) esperando envio</p>
+                          <p className="text-xs text-amber-800 dark:text-amber-300 font-semibold">Pendiente de sincronizacion...</p>
+                          <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">{filas.length} registro(s) esperando envio</p>
                         </div>
                       )}
                     </div>
@@ -299,7 +299,7 @@ export function PanelHistorialResultados({ mesaId, testigoId, elecciones, mesaNu
             <button
               type="button"
               onClick={recargar}
-              className="w-full py-2 border border-dashed border-blue-300 rounded-xl text-blue-600 text-xs font-semibold hover:bg-blue-50 active:scale-95 transition-all"
+              className="w-full py-2 min-h-[44px] border border-dashed border-blue-500/40 rounded-card text-blue-800 dark:text-blue-300 text-xs font-semibold hover:bg-blue-500/10 active:scale-95 transition-all"
             >
               Actualizar historial
             </button>
