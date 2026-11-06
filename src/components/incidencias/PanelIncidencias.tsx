@@ -130,7 +130,7 @@ export function PanelIncidencias({
     } finally {
       setCargandoHistorial(false);
     }
-  }, [mesaId]);
+  }, [mesaId, testigoId]);
 
   useEffect(() => {
     recargarIncidencias();

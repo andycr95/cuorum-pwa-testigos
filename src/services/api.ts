@@ -1,6 +1,9 @@
 import axios from 'axios';
 import * as idbModule from '../db/indexeddb';
 import * as syncModule from './syncService';
+import { AUTH_NOTICE_KEY, MENSAJE_SESION_VENCIDA, extraerMensajeSesion401 } from './authErrors';
+
+export { AUTH_NOTICE_KEY, MENSAJE_SESION_VENCIDA, extraerMensajeSesion401 };
 
 export const api = axios.create({
     // baseURL: '/api-v1',
@@ -13,27 +16,6 @@ const DATA_KEY = 'cuorum_testigo_data';
 const CAMPANA_KEY = 'cuorum_testigo_campana';
 const ELECCION_KEY = 'cuorum_testigo_eleccion';
 const ELECCION_DATA_KEY = 'cuorum_testigo_eleccion_data';
-export const AUTH_NOTICE_KEY = 'cuorum_testigo_auth_notice';
-export const MENSAJE_SESION_VENCIDA = 'Sesión de testigo vencida. Inicia sesión de nuevo.';
-
-export function extraerMensajeSesion401(error: unknown): string {
-    const data = (error as { response?: { data?: unknown } })?.response?.data;
-    let raw = '';
-    if (typeof data === 'string') {
-        raw = data.trim();
-    } else if (typeof data === 'object' && data !== null) {
-        const d = data as Record<string, unknown>;
-        const cand = d.error ?? d.mensaje ?? d.message;
-        if (typeof cand === 'string') raw = cand.trim();
-    }
-    if (!raw || /^(unauthorized|token expirado|token inv[aá]lido|credenciales inv[aá]lidas)$/i.test(raw)) {
-        return MENSAJE_SESION_VENCIDA;
-    }
-    if (/sesi[oó]n de testigo vencida/i.test(raw) && !/inicia sesi[oó]n/i.test(raw)) {
-        return `${raw.replace(/\.$/, '')}. Inicia sesión de nuevo.`;
-    }
-    return raw;
-}
 
 // Interceptor: inyectar JWT y campanaId
 api.interceptors.request.use((config) => {

@@ -172,7 +172,7 @@ class AuthService {
       const status =
         (error as { response?: { status?: number }; status?: number })?.response?.status ??
         (error as { status?: number })?.status;
-      if (status === 401 || status === 403 || status !== undefined) {
+      if (status === 401 || status === 403) {
         if (status === 401) {
           try {
             localStorage.setItem(AUTH_NOTICE_KEY, extraerMensajeSesion401(error));

@@ -12,6 +12,7 @@ import {
   getJornadasPendientes,
   saveJornada,
   type CuorumDB,
+  type FiltroTenencia,
 } from '../db/indexeddb';
 
 /**
@@ -163,8 +164,8 @@ export interface SyncResultado {
   error?: string;
 }
 
-export async function sincronizarJornadas(): Promise<number> {
-  const pendientes = await getJornadasPendientes();
+export async function sincronizarJornadas(filtro?: FiltroTenencia): Promise<number> {
+  const pendientes = await getJornadasPendientes(filtro);
   let sincronizadas = 0;
 
   for (const j of pendientes) {
@@ -340,9 +341,14 @@ export async function sincronizar(): Promise<SyncResultado> {
     : undefined;
 
   try {
-    const jornadasPendientes = await getJornadasPendientes();
+    const jornadasPendientes = await getJornadasPendientes(filtroTenencia);
     const { resultados, fotos } = await getPendientes(filtroTenencia);
-    const incidencias = await getIncidenciasPendientes();
+    const incidenciasRaw = await getIncidenciasPendientes(filtroTenencia);
+    const incidencias = incidenciasRaw.filter((inc) => {
+      if (sesionSync.testigoId && inc.testigoId && inc.testigoId !== sesionSync.testigoId) return false;
+      if (sesionSync.campanaId && inc.campanaId && inc.campanaId !== sesionSync.campanaId) return false;
+      return true;
+    });
 
     if (
       resultados.length === 0 &&
@@ -369,7 +375,7 @@ export async function sincronizar(): Promise<SyncResultado> {
 
     // ─── Sync jornadas (checkin / apertura) ───────────────────────
     if (jornadasPendientes.length > 0) {
-      jornadasSinc = await sincronizarJornadas();
+      jornadasSinc = await sincronizarJornadas(filtroTenencia);
     }
 
     let tieneRechazosTotal = false;
@@ -469,7 +475,7 @@ export async function sincronizar(): Promise<SyncResultado> {
         try {
           const incFormData = new FormData();
           const incMetadata = lote.map(
-            ({ synced: _s, syncAttempts: _a, lastSyncError: _e, fotoBlob: _f, ...data }) => data,
+            ({ synced: _s, syncAttempts: _a, lastSyncError: _e, fotoBlob: _f, campanaId: _c, ...data }) => data,
           );
           incFormData.append('incidencias', JSON.stringify(incMetadata));
 

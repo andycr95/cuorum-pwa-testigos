@@ -148,6 +148,7 @@ export interface CuorumDB extends DBSchema {
       id: string;
       mesaId: string;
       testigoId: string;
+      campanaId?: string;
       tipo: TipoIncidencia;
       descripcion: string;
       fotoBlob?: Blob;
@@ -356,6 +357,17 @@ export function obtenerSesionActivaLocal(): { campanaId?: string; testigoId?: st
   }
 }
 
+function coincideTenencia(
+  item: { testigoId?: string | null; campanaId?: string | null },
+  filtro?: FiltroTenencia,
+): boolean {
+  const f = filtro !== undefined ? filtro : (obtenerSesionActivaLocal() || undefined);
+  if (!f) return true;
+  if (f.testigoId && item.testigoId && item.testigoId !== f.testigoId) return false;
+  if (f.campanaId && item.campanaId && item.campanaId !== f.campanaId) return false;
+  return true;
+}
+
 export async function guardarFotoE14(
   data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>,
 ) {
@@ -438,22 +450,30 @@ export async function guardarResultadosYFoto(
 // ─── Incidencias ──────────────────────────────────────────────
 
 export async function guardarIncidencia(
-  data: Omit<CuorumDB['incidencias']['value'], 'synced' | 'syncAttempts'>,
+  data: Omit<CuorumDB['incidencias']['value'], 'synced' | 'syncAttempts' | 'testigoId'> & {
+    testigoId?: string;
+  },
 ) {
   const db = await getDB();
-  await db.put('incidencias', { ...data, synced: 0, syncAttempts: 0 });
+  const sesion = obtenerSesionActivaLocal();
+  const testigoId = data.testigoId || sesion?.testigoId || '';
+  const campanaId = data.campanaId || sesion?.campanaId || undefined;
+  await db.put('incidencias', { ...data, testigoId, campanaId, synced: 0, syncAttempts: 0 });
 }
 
-export async function getIncidenciasPendientes() {
+export async function getIncidenciasPendientes(filtro?: FiltroTenencia) {
   const db = await getDB();
-  return db.getAllFromIndex('incidencias', 'by-synced', 0);
+  const all = await db.getAllFromIndex('incidencias', 'by-synced', 0);
+  return all.filter((inc) => coincideTenencia(inc, filtro));
 }
 
-export async function getIncidenciasByMesa(mesaId: string) {
+export async function getIncidenciasByMesa(mesaId: string, filtro?: FiltroTenencia) {
   const db = await getDB();
   const all = await db.getAllFromIndex('incidencias', 'by-mesa', mesaId);
   // Ordenar por capturedAt desc (más reciente primero)
-  return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+  return all
+    .filter((inc) => coincideTenencia(inc, filtro))
+    .sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
 }
 
 export async function marcarIncidenciasSincronizadas(ids: string[]) {
@@ -749,22 +769,31 @@ export async function clearEscrutinioCache() {
 // ─── E-14 OCR Jobs ────────────────────────────────────────────
 
 export async function guardarOcrJob(
-  data: Omit<CuorumDB['e14OcrJobs']['value'], 'synced' | 'syncAttempts'>,
+  data: Omit<CuorumDB['e14OcrJobs']['value'], 'synced' | 'syncAttempts' | 'testigoId' | 'campanaId'> & {
+    testigoId?: string;
+    campanaId?: string;
+  },
   opts?: { synced?: 0 | 1 },
 ) {
   const db = await getDB();
-  await db.put('e14OcrJobs', { ...data, synced: opts?.synced ?? 0, syncAttempts: 0 });
+  const sesion = obtenerSesionActivaLocal();
+  const testigoId = data.testigoId || sesion?.testigoId || '';
+  const campanaId = data.campanaId || sesion?.campanaId || '';
+  await db.put('e14OcrJobs', { ...data, testigoId, campanaId, synced: opts?.synced ?? 0, syncAttempts: 0 });
 }
 
-export async function getOcrJobsPendientes() {
+export async function getOcrJobsPendientes(filtro?: FiltroTenencia) {
   const db = await getDB();
-  return db.getAllFromIndex('e14OcrJobs', 'by-synced', 0);
+  const all = await db.getAllFromIndex('e14OcrJobs', 'by-synced', 0);
+  return all.filter((job) => coincideTenencia(job, filtro));
 }
 
-export async function getOcrJobsByMesa(mesaId: string) {
+export async function getOcrJobsByMesa(mesaId: string, filtro?: FiltroTenencia) {
   const db = await getDB();
   const all = await db.getAllFromIndex('e14OcrJobs', 'by-mesa', mesaId);
-  return all.sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
+  return all
+    .filter((job) => coincideTenencia(job, filtro))
+    .sort((a, b) => (a.capturedAt > b.capturedAt ? -1 : 1));
 }
 
 export async function marcarOcrJobSyncado(
@@ -804,24 +833,31 @@ export async function updateOcrJobEstado(
 // ─── Jornada Electoral ─────────────────────────────────────────
 
 export async function guardarJornada(
-  data: CuorumDB['jornada']['value'],
+  data: Omit<CuorumDB['jornada']['value'], 'testigoId' | 'campanaId'> & {
+    testigoId?: string;
+    campanaId?: string;
+  },
 ) {
   const db = await getDB();
-  await db.put('jornada', data);
+  const sesion = obtenerSesionActivaLocal();
+  const testigoId = data.testigoId || sesion?.testigoId || '';
+  const campanaId = data.campanaId || sesion?.campanaId || '';
+  await db.put('jornada', { ...data, testigoId, campanaId });
 }
 
 export const saveJornada = guardarJornada;
 
-export async function getJornadasPendientes(): Promise<CuorumDB['jornada']['value'][]> {
+export async function getJornadasPendientes(filtro?: FiltroTenencia): Promise<CuorumDB['jornada']['value'][]> {
   const db = await getDB();
   const all = await db.getAll('jornada');
-  return all.filter((j) => j.synced === 0);
+  return all.filter((j) => j.synced === 0 && coincideTenencia(j, filtro));
 }
 
-export async function getJornadaByMesa(mesaId: string): Promise<CuorumDB['jornada']['value'] | undefined> {
+export async function getJornadaByMesa(mesaId: string, filtro?: FiltroTenencia): Promise<CuorumDB['jornada']['value'] | undefined> {
   const db = await getDB();
   const all = await db.getAllFromIndex('jornada', 'by-mesa', mesaId);
+  const filtered = all.filter((j) => coincideTenencia(j, filtro));
   // Retorna la más reciente si hay varias
-  if (all.length === 0) return undefined;
-  return all.sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))[0];
+  if (filtered.length === 0) return undefined;
+  return filtered.sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))[0];
 }

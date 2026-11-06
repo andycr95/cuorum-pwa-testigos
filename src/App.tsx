@@ -155,7 +155,7 @@ export function App() {
 
     fetchJornada();
     return () => { cancelled = true; };
-  }, [selectedMesaId, isAuthenticated]);
+  }, [selectedMesaId, isAuthenticated, testigoData?.testigo.id]);
 
   // Handlers for jornada flow
   const handleCheckinComplete = async (jornada: JornadaMesa) => {

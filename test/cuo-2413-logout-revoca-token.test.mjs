@@ -386,4 +386,47 @@ describe('CUO-2413: logout revoca el token en el servidor antes de borrarlo y ma
       window.removeEventListener('cuorum:unauthorized', listener);
     }
   });
+
+  it('4. Con un 503 en verifyToken(), devuelve true, conserva el token y no llama a /auth/logout', async () => {
+    sembrarSesionActiva('t-5');
+
+    api.defaults.adapter = async (config) => {
+      llamadasHttp.push({
+        method: (config.method || 'get').toUpperCase(),
+        url: config.url,
+        authorization: config.headers?.Authorization ?? config.headers?.get?.('Authorization'),
+      });
+      const err503 = new Error('Request failed with status code 503');
+      err503.config = config;
+      err503.response = {
+        status: 503,
+        statusText: 'Service Unavailable',
+        data: { error: 'Servicio saturado temporalmente' },
+        headers: {},
+        config,
+      };
+      throw err503;
+    };
+
+    const resultado = await authService.verifyToken();
+
+    assert.equal(resultado, true, 'Con 503 verifyToken() debe devolver true (modo offline / transitorio)');
+    assert.equal(
+      localStorage.getItem('cuorum_testigo_token'),
+      't-5',
+      'Debe conservar el token intacto en localStorage',
+    );
+    assert.equal(
+      authService.isAuthenticated(),
+      true,
+      'La sesión del testigo debe seguir activa tras un 503',
+    );
+    assert.equal(
+      llamadasHttp.some((c) => c.url === '/auth/logout'),
+      false,
+      'No debe llamar a /auth/logout ante un 503',
+    );
+    assert.equal(llamadasHttp.length, 1);
+    assert.equal(llamadasHttp[0].url, '/auth/testigos/verify');
+  });
 });
