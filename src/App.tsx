@@ -44,7 +44,7 @@ export function App() {
 
       if (!isValid) {
         // Token expirado, limpiar sesión
-        authService.logout();
+        await authService.logout();
         setLoading(false);
         setIsAuthenticated(false);
         return;
@@ -62,7 +62,7 @@ export function App() {
           setSelectedMesaId(listaMesas[0].id);
         }
       } else {
-        authService.logout();
+        await authService.logout();
         setIsAuthenticated(false);
       }
 
@@ -88,7 +88,8 @@ export function App() {
 
   // Manejar logout
   const handleLogout = () => {
-    authService.logout();
+    authService.clearAuthNotice();
+    void authService.logout();
     clearEscrutinioCache().catch(() => {});
     setTestigoData(null);
     setIsAuthenticated(false);
@@ -96,6 +97,19 @@ export function App() {
     setJornadaEstado(null);
     setCodigoVerificacion(null);
   };
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      clearEscrutinioCache().catch(() => {});
+      setTestigoData(null);
+      setIsAuthenticated(false);
+      setSelectedMesaId(null);
+      setJornadaEstado(null);
+      setCodigoVerificacion(null);
+    };
+    window.addEventListener('cuorum:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('cuorum:unauthorized', onUnauthorized);
+  }, []);
 
   // Volver al selector de mesa
   const handleBackToSelector = () => {

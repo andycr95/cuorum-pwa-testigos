@@ -6,6 +6,28 @@
  * Garantiza que nunca se muestren textos en inglés ni 'status code' o 'Request failed'.
  */
 
+export const AUTH_NOTICE_KEY = 'cuorum_testigo_auth_notice';
+export const MENSAJE_SESION_VENCIDA = 'Sesión de testigo vencida. Inicia sesión de nuevo.';
+
+export function extraerMensajeSesion401(error: unknown): string {
+  const data = (error as { response?: { data?: unknown } })?.response?.data;
+  let raw = '';
+  if (typeof data === 'string') {
+    raw = data.trim();
+  } else if (typeof data === 'object' && data !== null) {
+    const d = data as Record<string, unknown>;
+    const cand = d.error ?? d.mensaje ?? d.message;
+    if (typeof cand === 'string') raw = cand.trim();
+  }
+  if (!raw || /^(unauthorized|token expirado|token inv[aá]lido|credenciales inv[aá]lidas)$/i.test(raw)) {
+    return MENSAJE_SESION_VENCIDA;
+  }
+  if (/sesi[oó]n de testigo vencida/i.test(raw) && !/inicia sesi[oó]n/i.test(raw)) {
+    return `${raw.replace(/\.$/, '')}. Inicia sesión de nuevo.`;
+  }
+  return raw;
+}
+
 export function mapearErrorAuth(error: unknown): string {
   if (typeof error === 'string') {
     if (/status code|request failed/i.test(error)) {
@@ -30,6 +52,12 @@ export function mapearErrorAuth(error: unknown): string {
     return 'Revisa tu cédula y tu PIN de 6 dígitos';
   }
   if (status === 401) {
+    const serverError = axiosError?.response?.data?.error;
+    if (typeof serverError === 'string' && /sesi[oó]n|vencid|revocad/i.test(serverError)) {
+      return /sesi[oó]n de testigo vencida/i.test(serverError) && !/inicia sesi[oó]n/i.test(serverError)
+        ? `${serverError.trim().replace(/\.$/, '')}. Inicia sesión de nuevo.`
+        : serverError.trim();
+    }
     return 'Cédula o PIN incorrectos';
   }
   if (status === 429) {
