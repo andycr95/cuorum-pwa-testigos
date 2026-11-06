@@ -171,7 +171,7 @@ class AuthService {
       const status =
         (error as { response?: { status?: number }; status?: number })?.response?.status ??
         (error as { status?: number })?.status;
-      if (status === 401 || status === 403 || status !== undefined) {
+      if (status === 401 || status === 403) {
         this.logout();
         return false;
       }

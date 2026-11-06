@@ -486,6 +486,29 @@ test('CUO-2411 (6): un 403 en /auth/testigos/verify cierra la sesión y limpia c
   assert.equal(validoOffline, true, 'Ante error de red sin respuesta HTTP debe asumir modo sin conexión');
   assert.equal(authService.isAuthenticated(), true);
 
+  // Caso A.2: 503 Service Unavailable (backend saturado en Día D) -> conserva sesión para modo offline
+  globalThis.__cuo2411.handler = async (config) => {
+    const err = new Error('Request failed with status code 503');
+    err.config = config;
+    err.response = {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: {},
+      config,
+      data: { error: 'Servicio saturado temporalmente' },
+    };
+    throw err;
+  };
+
+  const valido503 = await authService.verifyToken();
+  assert.equal(valido503, true, 'Ante 503 en /verify debe conservar la sesión activa y el modo sin conexión');
+  assert.equal(authService.isAuthenticated(), true);
+  assert.notEqual(
+    await db.getCachedEscrutinioData('escrutinio-consolidado', filtrosCache),
+    null,
+    'Un 503 no debe vaciar la caché de escrutinio ni cerrar la sesión',
+  );
+
   // Caso B: 403 Forbidden (campaña suspendida o token de otra campaña) -> cierra sesión
   globalThis.__cuo2411.handler = async (config) => {
     const err = new Error('Request failed with status code 403');
