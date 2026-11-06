@@ -1,5 +1,6 @@
 import { api } from './api';
 import { jornadaService } from './jornadaService';
+import * as idbModule from '../db/indexeddb';
 import {
   getPendientes,
   marcarSincronizados,
@@ -497,18 +498,33 @@ export async function sincronizar(): Promise<SyncResultado> {
           incidenciasSinc += incProc.acceptedIds.length;
         } catch (incError: any) {
           const status = incError?.response?.status ?? incError?.status;
+          const esErrorRed =
+            status === undefined &&
+            !incError?.response &&
+            (typeof navigator === 'undefined' || navigator.onLine !== false);
+          const tieneFotos = lote.some((inc) => Boolean(inc.fotoBlob));
 
-          if (status === 413) {
+          // Cuando el backend rechaza una subida grande (413) con Connection: close,
+          // el navegador puede cortar el envío y reportar un error de red sin response (ERR_NETWORK).
+          // Se trata igual que 413: partir el lote y reintentar antes de desistir.
+          if (status === 413 || (esErrorRed && (lote.length > 1 || tieneFotos))) {
             const partes = dividirLoteAnte413(lote);
             if (partes) {
               colaLotes.unshift(partes[0], partes[1]);
               continue;
             }
-            if (lote.length === 1 && lote[0].fotoBlob && !reintentados413.has(lote[0].id)) {
+            if (
+              lote.length === 1 &&
+              lote[0].fotoBlob &&
+              !reintentados413.has(lote[0].id) &&
+              (status === 413 || lote[0].fotoBlob.size > MAX_FOTO_INCIDENCIA_BYTES)
+            ) {
               reintentados413.add(lote[0].id);
               try {
                 const fotoComprimida = await comprimirFotoIncidencia(lote[0].fotoBlob);
-                colaLotes.unshift([{ ...lote[0], fotoBlob: fotoComprimida }]);
+                const incComprimida = { ...lote[0], fotoBlob: fotoComprimida };
+                await (idbModule as { guardarIncidencia?: (inc: unknown) => Promise<void> }).guardarIncidencia?.(incComprimida);
+                colaLotes.unshift([incComprimida]);
                 continue;
               } catch {}
             }
@@ -528,7 +544,6 @@ export async function sincronizar(): Promise<SyncResultado> {
           const retryAfterMs = status === 429 || status === 503 ? extraerRetryAfterMs(incError) : null;
           backoffMs = calcularBackoffSyncMs(backoffMs, retryAfterMs, MAX_BACKOFF_MS);
           nextRetryAt = Date.now() + backoffMs;
-          rechazadosCountTotal += colaLotes.reduce((acc, b) => acc + b.length, 0);
           break;
         }
       }

@@ -237,41 +237,23 @@ export interface OpcionesCompresionFoto {
   createCanvasFn?: (width: number, height: number) => CanvasLike;
 }
 
-function crearCanvasSintetico(width: number, height: number, bytesBase: number): CanvasLike {
-  const pixelBuf = new Uint8ClampedArray(16);
-  for (let i = 0; i < 16; i += 4) { pixelBuf[i] = 180; pixelBuf[i + 1] = 120; pixelBuf[i + 2] = 60; pixelBuf[i + 3] = 255; }
-  const canvas: CanvasLike = {
-    width,
-    height,
-    getContext: () => ({ drawImage: () => {}, getImageData: () => ({ data: pixelBuf }), putImageData: () => {} }),
-    toBlob: (cb, type = 'image/jpeg', quality = 0.75) => {
-      const areaFactor = Math.min(1, (canvas.width * canvas.height) / (1200 * 900));
-      const baseTarget = Math.min(Math.max(bytesBase, 32 * 1024), 260 * 1024);
-      const outLen = Math.max(2048, Math.round(baseTarget * areaFactor * Math.max(0.1, quality)));
-      const buf = new Uint8Array(outLen);
-      buf[0] = 0xff; buf[1] = 0xd8; buf[2] = 0xff; buf[3] = 0xe0; buf[outLen - 2] = 0xff; buf[outLen - 1] = 0xd9;
-      cb(new Blob([buf], { type }));
-    },
-  };
-  return canvas;
-}
-
-function obtenerFabricaCanvas(customFn: OpcionesCompresionFoto['createCanvasFn'], bytesBase: number) {
+function obtenerFabricaCanvas(
+  customFn?: OpcionesCompresionFoto['createCanvasFn'],
+): (width: number, height: number) => CanvasLike {
   if (customFn) return customFn;
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
-    const probe = document.createElement('canvas') as unknown as CanvasLike;
-    try {
-      const ctx = probe?.getContext?.('2d');
-      if (ctx && typeof ctx.drawImage === 'function' && typeof probe.toBlob === 'function') {
-        return (w: number, h: number) => {
-          const c = document.createElement('canvas') as unknown as CanvasLike;
-          c.width = w; c.height = h;
-          return c;
-        };
+    return (w: number, h: number) => {
+      const c = document.createElement('canvas') as unknown as CanvasLike;
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext?.('2d');
+      if (!ctx || typeof ctx.drawImage !== 'function' || typeof c.toBlob !== 'function') {
+        throw new Error('Canvas 2D no disponible para comprimir la foto');
       }
-    } catch {}
+      return c;
+    };
   }
-  return (w: number, h: number) => crearCanvasSintetico(w, h, bytesBase);
+  throw new Error('Canvas 2D no disponible para comprimir la foto');
 }
 
 export async function comprimirFotoIncidencia(
@@ -281,43 +263,40 @@ export async function comprimirFotoIncidencia(
   const maxDimension = opciones.maxDimension ?? MAX_FOTO_INCIDENCIA_PX;
   const maxBytes = opciones.maxBytes ?? MAX_FOTO_INCIDENCIA_BYTES;
   const esBlob = input instanceof Blob;
-  const originalSize = esBlob ? input.size : maxBytes * 2;
-  let bitmap: ImagenFuente = { width: 2400, height: 1800 };
+  let bitmap: ImagenFuente;
   let debeCerrarBitmap = false;
 
-  if (!esBlob && typeof (input as ImagenFuente).width === 'number') {
+  if (!esBlob && input && typeof (input as ImagenFuente).width === 'number' && typeof (input as ImagenFuente).height === 'number') {
     bitmap = input as ImagenFuente;
   } else {
-    const bitmapFn = opciones.createImageBitmapFn ?? (typeof globalThis.createImageBitmap === 'function' ? globalThis.createImageBitmap.bind(globalThis) : undefined);
-    if (bitmapFn) {
-      try { bitmap = await bitmapFn(input as Blob); debeCerrarBitmap = true; } catch {}
+    const bitmapFn =
+      opciones.createImageBitmapFn ??
+      (typeof globalThis.createImageBitmap === 'function' ? globalThis.createImageBitmap.bind(globalThis) : undefined);
+    if (!bitmapFn) {
+      throw new Error('createImageBitmap no disponible para decodificar la foto');
     }
+    bitmap = await bitmapFn(input as Blob);
+    debeCerrarBitmap = true;
+  }
+
+  if (!bitmap || !(bitmap.width > 0) || !(bitmap.height > 0)) {
+    if (debeCerrarBitmap) bitmap?.close?.();
+    throw new Error('Dimensiones de imagen inválidas');
   }
 
   try {
-    const maxSide = Math.max(bitmap.width || 1, bitmap.height || 1);
+    const maxSide = Math.max(bitmap.width, bitmap.height);
     const scale = Math.min(1, maxDimension / maxSide);
     const targetW = Math.max(1, Math.round(bitmap.width * scale));
     const targetH = Math.max(1, Math.round(bitmap.height * scale));
-    const crearCanvas = obtenerFabricaCanvas(opciones.createCanvasFn, originalSize);
+    const crearCanvas = obtenerFabricaCanvas(opciones.createCanvasFn);
     const canvas = crearCanvas(targetW, targetH);
-    canvas.width = targetW; canvas.height = targetH;
+    canvas.width = targetW;
+    canvas.height = targetH;
 
     const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      if (typeof ctx.getImageData === 'function' && typeof ctx.putImageData === 'function') {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        if (imageData?.data) {
-          const d = imageData.data;
-          for (let i = 0; i < d.length; i += 4) {
-            const gray = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-            d[i] = d[i + 1] = d[i + 2] = gray;
-          }
-          ctx.putImageData(imageData, 0, 0);
-        }
-      }
-    }
+    if (!ctx) throw new Error('Contexto 2D no disponible');
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
     let quality = 0.75;
     let blob: Blob | null = null;
@@ -332,7 +311,8 @@ export async function comprimirFotoIncidencia(
       const smallW = Math.max(1, Math.round(canvas.width * 0.6));
       const smallH = Math.max(1, Math.round(canvas.height * 0.6));
       const small = crearCanvas(smallW, smallH);
-      small.width = smallW; small.height = smallH;
+      small.width = smallW;
+      small.height = smallH;
       small.getContext('2d')?.drawImage(canvas, 0, 0, smallW, smallH);
       blob = await new Promise<Blob | null>((res) => small.toBlob(res, 'image/jpeg', 0.3));
     }

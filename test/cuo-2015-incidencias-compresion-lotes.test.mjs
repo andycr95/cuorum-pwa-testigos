@@ -55,7 +55,10 @@ const mockSources = {
     export const getIncidenciasPendientes = async () => st().incidencias.filter(x => x.synced === 0);
     export const getIncidenciasByMesa = async (mesaId) => st().incidencias.filter(x => x.mesaId === mesaId);
     export const guardarIncidencia = async (inc) => {
-      st().incidencias.push({ ...inc, synced: 0, syncAttempts: 0 });
+      const idx = st().incidencias.findIndex(x => x.id === inc.id);
+      const record = { ...inc, synced: 0, syncAttempts: inc.syncAttempts || 0 };
+      if (idx >= 0) st().incidencias[idx] = record;
+      else st().incidencias.push(record);
     };
     export const getJornadasPendientes = async () => [];
     export const saveJornada = async () => {};
@@ -197,11 +200,10 @@ describe('CUO-2015: Compresión de fotos de incidencias y partido en lotes de si
   });
 
   describe('1. Compresión de foto de incidencia (< 200 KB, máx. 1200 px, JPEG progresivo)', () => {
-    it('Redimensiona imagen de cámara (4000x3000, 5 MB) a máx. 1200 px, escala de grises y JPEG progresivo < 200 KB', async () => {
+    it('Redimensiona imagen de cámara (4000x3000, 5 MB) a máx. 1200 px en color y JPEG progresivo < 200 KB', async () => {
       const calidadesProbadas = [];
       const canvasesCreados = [];
-      const pixelData = new Uint8ClampedArray([100, 150, 200, 255, 50, 100, 150, 255]);
-      let putImageDataCount = 0;
+      let drawImageCount = 0;
 
       const blobCrudo5MB = new Blob([new Uint8Array(5 * 1024 * 1024)], { type: 'image/jpeg' });
       const blobComprimido = await comprimirFotoIncidencia(blobComprimidoInput(blobCrudo5MB), {
@@ -211,10 +213,8 @@ describe('CUO-2015: Compresión de fotos de incidencias y partido en lotes de si
             width: w,
             height: h,
             getContext: () => ({
-              drawImage: () => {},
-              getImageData: () => ({ data: pixelData }),
-              putImageData: () => {
-                putImageDataCount++;
+              drawImage: () => {
+                drawImageCount++;
               },
             }),
             toBlob: (cb, type, quality) => {
@@ -232,9 +232,7 @@ describe('CUO-2015: Compresión de fotos de incidencias y partido en lotes de si
       assert.equal(canvasesCreados.length, 1);
       assert.equal(canvasesCreados[0].width, 1200, 'El ancho máximo debe ser 1200 px');
       assert.equal(canvasesCreados[0].height, 900, 'El alto debe mantener proporción (900 px)');
-      assert.equal(putImageDataCount, 1, 'Debe convertir a escala de grises en canvas');
-      assert.equal(pixelData[0], pixelData[1], 'R y G deben quedar iguales en escala de grises');
-      assert.equal(pixelData[1], pixelData[2], 'G y B deben quedar iguales en escala de grises');
+      assert.equal(drawImageCount, 1, 'Debe dibujar la imagen en el canvas');
       assert.deepEqual(
         calidadesProbadas.map((x) => x.quality),
         [0.75, 0.7, 0.65, 0.6],
@@ -245,6 +243,32 @@ describe('CUO-2015: Compresión de fotos de incidencias y partido en lotes de si
         `La foto comprimida (${blobComprimido.size} B) debe pesar < 200 KB`,
       );
       assert.equal(blobComprimido.type, 'image/jpeg');
+    });
+
+    it('Lanza error si no hay createImageBitmap o si falla el canvas 2D (sin inventar bytes falsos)', async () => {
+      const prevBitmap = globalThis.createImageBitmap;
+      try {
+        delete globalThis.createImageBitmap;
+        await assert.rejects(
+          () => comprimirFotoIncidencia(new Blob([new Uint8Array(1024)], { type: 'image/jpeg' })),
+          /createImageBitmap no disponible/,
+        );
+        await assert.rejects(
+          () =>
+            comprimirFotoIncidencia(new Blob([new Uint8Array(1024)], { type: 'image/jpeg' }), {
+              createImageBitmapFn: async () => {
+                throw new Error('Imagen corrupta');
+              },
+            }),
+          /Imagen corrupta/,
+        );
+        await assert.rejects(
+          () => comprimirFotoIncidencia({ width: 1200, height: 900 }),
+          /Canvas 2D no disponible/,
+        );
+      } finally {
+        if (prevBitmap) globalThis.createImageBitmap = prevBitmap;
+      }
     });
 
     it('Aplica fallback al 60% de resolución si a calidad 0.15 aún supera 200 KB', async () => {
@@ -279,6 +303,25 @@ describe('CUO-2015: Compresión de fotos de incidencias y partido en lotes de si
     it('PanelIncidencias (handleFoto) comprime una foto cruda de 6 MB a < 200 KB antes de guardarla en IndexedDB', async () => {
       document.body.innerHTML = '<div id="root"></div>';
       const root = createRoot(document.getElementById('root'));
+      const origCreateElement = document.createElement.bind(document);
+      const origCreateImageBitmap = globalThis.createImageBitmap;
+
+      globalThis.createImageBitmap = async () => ({ width: 3200, height: 2400, close() {} });
+      document.createElement = (tagName, options) => {
+        if (String(tagName).toLowerCase() === 'canvas') {
+          const canvasSimulado = {
+            width: 0,
+            height: 0,
+            getContext: () => ({ drawImage: () => {} }),
+            toBlob: (cb, type = 'image/jpeg', quality = 0.75) => {
+              const outSize = quality <= 0.65 ? 130 * 1024 : 230 * 1024;
+              cb(new Blob([new Uint8Array(outSize)], { type }));
+            },
+          };
+          return canvasSimulado;
+        }
+        return origCreateElement(tagName, options);
+      };
 
       try {
         await act(async () => {
@@ -350,12 +393,16 @@ describe('CUO-2015: Compresión de fotos de incidencias y partido en lotes de si
         assert.equal(globalThis.__cuo2015.incidencias.length, 1, 'Debe haber guardado 1 incidencia');
         const guardada = globalThis.__cuo2015.incidencias[0];
         assert.ok(guardada.fotoBlob instanceof Blob, 'Debe tener fotoBlob');
+        assert.equal(guardada.fotoBlob.size, 130 * 1024);
         assert.ok(
           guardada.fotoBlob.size < MAX_FOTO_INCIDENCIA_BYTES,
           `La foto guardada debe pesar < 200 KB, pero pesó ${guardada.fotoBlob.size} B`,
         );
         assert.ok(guardada.fotoBlob.size > 0);
       } finally {
+        document.createElement = origCreateElement;
+        if (origCreateImageBitmap) globalThis.createImageBitmap = origCreateImageBitmap;
+        else delete globalThis.createImageBitmap;
         await act(async () => root.unmount());
       }
     });
@@ -469,6 +516,51 @@ describe('CUO-2015: Compresión de fotos de incidencias y partido en lotes de si
       assert.equal(res.incidenciasSincronizadas, 8);
       assert.equal(globalThis.__cuo2015.postCalls.length, 4, '4 sub-lotes de 2 elementos deben completarse');
       assert.ok(globalThis.__cuo2015.incidencias.every((inc) => inc.synced === 1));
+    });
+
+    it('Ante error de red sin response (Connection: close / ERR_NETWORK) en lotes de más de 2, parte el lote y sincroniza las 8', async () => {
+      globalThis.__cuo2015.incidencias = Array.from({ length: 8 }, (_, i) =>
+        crearIncidenciaSintetica(i + 1, 150 * 1024),
+      );
+
+      let cortesDeRed = 0;
+      globalThis.__cuo2015.post = async (_url, formData) => {
+        const incRaw = JSON.parse(formData.get('incidencias') || '[]');
+        // Cuando la API rechaza la subida antes de leer el cuerpo con Connection: close,
+        // el navegador ve ERR_NETWORK sin objeto response.
+        if (incRaw.length > 2) {
+          cortesDeRed++;
+          throw Object.assign(new Error('Network Error'), { code: 'ERR_NETWORK' });
+        }
+        globalThis.__cuo2015.postCalls.push({ count: incRaw.length, ids: incRaw.map((x) => x.id) });
+        return { data: { aceptados: incRaw.map((x) => x.id), rechazados: [] } };
+      };
+
+      const res = await sincronizar();
+
+      assert.ok(cortesDeRed >= 3, 'Debe haber recibido cortes de red en los lotes de 8 y de 4');
+      assert.equal(res.success, true, 'El partido ante ERR_NETWORK debe lograr sincronizar las 8');
+      assert.equal(res.incidenciasSincronizadas, 8);
+      assert.equal(getBackoffState().backoffMs, 0, 'Al lograr sincronizar tras partir, backoff queda en 0');
+      assert.equal(globalThis.__cuo2015.postCalls.length, 4, '4 sub-lotes de 2 elementos deben completarse');
+      assert.ok(globalThis.__cuo2015.incidencias.every((inc) => inc.synced === 1));
+    });
+
+    it('Si el lote ya es de 1 elemento y sigue fallando por red, marca el error y aplica backoff de 30s', async () => {
+      globalThis.__cuo2015.incidencias = Array.from({ length: 2 }, (_, i) =>
+        crearIncidenciaSintetica(i + 1, 150 * 1024),
+      );
+
+      globalThis.__cuo2015.post = async () => {
+        throw Object.assign(new Error('Network Error'), { code: 'ERR_NETWORK' });
+      };
+
+      const res = await sincronizar();
+
+      assert.equal(res.success, false);
+      assert.equal(res.incidenciasSincronizadas, 0);
+      assert.equal(getBackoffState().backoffMs, 30_000, 'Debe aplicar el backoff inicial de 30s');
+      assert.equal(globalThis.__cuo2015.incidencias[0].syncAttempts, 1, 'El ítem de lote=1 queda marcado con intento fallido');
     });
 
     it('Ante 429 o 503, respeta Retry-After combinándolo con el backoff exponencial e interrumpe lotes restantes', async () => {
