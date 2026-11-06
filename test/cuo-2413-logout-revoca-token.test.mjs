@@ -127,8 +127,8 @@ const { setLastSyncTime, setLastSyncError, getLastSyncTime, getLastSyncError } =
 );
 const { LoginPage } = await import('../src/components/auth/LoginPage.tsx');
 
-function sembrarSesionActiva(token = 'jwt-testigo-sintetico-2413') {
-  localStorage.setItem('cuorum_testigo_token', token);
+function sembrarSesionActiva(valorSesion = 't-1') {
+  localStorage.setItem('cuorum_testigo_token', valorSesion);
   localStorage.setItem(
     'cuorum_testigo_data',
     JSON.stringify({
@@ -168,7 +168,7 @@ describe('CUO-2413: logout revoca el token en el servidor antes de borrarlo y ma
   });
 
   it('1. logout() hace POST /auth/logout con Authorization del token vigente ANTES de borrar el almacenamiento local', async () => {
-    sembrarSesionActiva('jwt-vigente-2413');
+    sembrarSesionActiva('t-1');
 
     api.defaults.adapter = async (config) => {
       const authHeader = config.headers?.Authorization ?? config.headers?.get?.('Authorization');
@@ -191,12 +191,12 @@ describe('CUO-2413: logout revoca el token en el servidor antes de borrarlo y ma
     assert.equal(llamadasHttp[0].url, '/auth/logout');
     assert.equal(
       llamadasHttp[0].authorization,
-      'Bearer jwt-vigente-2413',
+      'Bearer t-1',
       'Debe enviar el encabezado Authorization con el token vigente',
     );
     assert.equal(
       llamadasHttp[0].tokenEnStorageDurantePeticion,
-      'jwt-vigente-2413',
+      't-1',
       'El token debe seguir en localStorage mientras se envía POST /auth/logout (antes de borrarlo)',
     );
     assert.ok(
@@ -221,7 +221,7 @@ describe('CUO-2413: logout revoca el token en el servidor antes de borrarlo y ma
 
   it('2. logout() borra el almacenamiento local sin lanzar error cuando POST /auth/logout falla por red o 401', async () => {
     // Caso A: fallo de red (offline)
-    sembrarSesionActiva('jwt-offline-2413');
+    sembrarSesionActiva('t-2');
     api.defaults.adapter = async (config) => {
       llamadasHttp.push({
         url: config.url,
@@ -243,14 +243,14 @@ describe('CUO-2413: logout revoca el token en el servidor antes de borrarlo y ma
 
     assert.equal(llamadasHttp.length, 1);
     assert.equal(llamadasHttp[0].url, '/auth/logout');
-    assert.equal(llamadasHttp[0].authorization, 'Bearer jwt-offline-2413');
-    assert.equal(llamadasHttp[0].tokenAntesDeFallo, 'jwt-offline-2413');
+    assert.equal(llamadasHttp[0].authorization, 'Bearer t-2');
+    assert.equal(llamadasHttp[0].tokenAntesDeFallo, 't-2');
     assert.equal(localStorage.getItem('cuorum_testigo_token'), null);
     assert.equal(localStorage.getItem('cuorum_testigo_data'), null);
     assert.equal(localStorage.getItem('cuorum_testigo_campana'), null);
 
     // Caso B: fallo con HTTP 401 en /auth/logout (token ya revocado/vencido)
-    sembrarSesionActiva('jwt-ya-vencido-2413');
+    sembrarSesionActiva('t-3');
     let unauthorizedDisparadoEnLogout = false;
     const onUnauth = () => {
       unauthorizedDisparadoEnLogout = true;
@@ -282,7 +282,7 @@ describe('CUO-2413: logout revoca el token en el servidor antes de borrarlo y ma
       );
 
       assert.equal(llamadasHttp.length, 2);
-      assert.equal(llamadasHttp[1].authorization, 'Bearer jwt-ya-vencido-2413');
+      assert.equal(llamadasHttp[1].authorization, 'Bearer t-3');
       assert.equal(localStorage.getItem('cuorum_testigo_token'), null);
       assert.equal(localStorage.getItem('cuorum_testigo_data'), null);
       assert.equal(localStorage.getItem('cuorum_testigo_campana'), null);
@@ -298,7 +298,7 @@ describe('CUO-2413: logout revoca el token en el servidor antes de borrarlo y ma
   });
 
   it('3. Ante un 401 «Sesión de testigo vencida» en cualquier llamada (CUO-2410), limpia la sesión y LoginPage muestra el mensaje claro', async () => {
-    sembrarSesionActiva('jwt-testigo-desactivado');
+    sembrarSesionActiva('t-4');
 
     let eventoRecibido = null;
     const listener = (ev) => {

@@ -1,0 +1,2 @@
+# Token sintético de testigo en la prueba de cierre de sesión, reemplazado por un literal corto en el commit siguiente (CUO-2413)
+69b6b595fe4e40ff88d567f220bdf7c3a6bc5915:test/cuo-2413-logout-revoca-token.test.mjs:generic-api-key:130
