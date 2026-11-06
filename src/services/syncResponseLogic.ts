@@ -200,3 +200,208 @@ export function evaluarRequisitoFotoCierre(locales: number, cap: boolean, ocr: b
   const motivoValido = mot.trim().length >= 10;
   return { puedeCerrar: tieneFotos || motivoValido, tieneFotos, motivoValido };
 }
+
+// ─── Compresión de fotos de incidencias y partido en lotes (CUO-2015) ──────
+
+export const MAX_FOTO_INCIDENCIA_BYTES = 200 * 1024; // 200 KB
+export const MAX_FOTO_INCIDENCIA_PX = 1200; // máx. 1200 px
+export const MAX_FOTOS_LOTE_INCIDENCIAS = 10;
+export const MAX_BYTES_LOTE_INCIDENCIAS = 20 * 1024 * 1024; // 20 MB
+export const MAX_ITEMS_LOTE_INCIDENCIAS = 50;
+export const DEFAULT_INITIAL_BACKOFF_MS = 30_000;
+export const MAX_SYNC_BACKOFF_MS = 8 * 60 * 1000;
+
+export interface ImagenFuente {
+  width: number;
+  height: number;
+  close?: () => void;
+}
+
+export interface Canvas2DContextLike {
+  drawImage: (img: unknown, x: number, y: number, w: number, h: number) => void;
+  getImageData?: (x: number, y: number, w: number, h: number) => { data: Uint8ClampedArray | number[] };
+  putImageData?: (imageData: { data: Uint8ClampedArray | number[] }, x: number, y: number) => void;
+}
+
+export interface CanvasLike {
+  width: number;
+  height: number;
+  getContext: (contextId: '2d') => Canvas2DContextLike | null;
+  toBlob: (callback: (blob: Blob | null) => void, type?: string, quality?: number) => void;
+}
+
+export interface OpcionesCompresionFoto {
+  maxDimension?: number;
+  maxBytes?: number;
+  createImageBitmapFn?: (blob: Blob) => Promise<ImagenFuente>;
+  createCanvasFn?: (width: number, height: number) => CanvasLike;
+}
+
+function obtenerFabricaCanvas(
+  customFn?: OpcionesCompresionFoto['createCanvasFn'],
+): (width: number, height: number) => CanvasLike {
+  if (customFn) return customFn;
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    return (w: number, h: number) => {
+      const c = document.createElement('canvas') as unknown as CanvasLike;
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext?.('2d');
+      if (!ctx || typeof ctx.drawImage !== 'function' || typeof c.toBlob !== 'function') {
+        throw new Error('Canvas 2D no disponible para comprimir la foto');
+      }
+      return c;
+    };
+  }
+  throw new Error('Canvas 2D no disponible para comprimir la foto');
+}
+
+export async function comprimirFotoIncidencia(
+  input: Blob | ImagenFuente,
+  opciones: OpcionesCompresionFoto = {},
+): Promise<Blob> {
+  const maxDimension = opciones.maxDimension ?? MAX_FOTO_INCIDENCIA_PX;
+  const maxBytes = opciones.maxBytes ?? MAX_FOTO_INCIDENCIA_BYTES;
+  const esBlob = input instanceof Blob;
+  let bitmap: ImagenFuente;
+  let debeCerrarBitmap = false;
+
+  if (!esBlob && input && typeof (input as ImagenFuente).width === 'number' && typeof (input as ImagenFuente).height === 'number') {
+    bitmap = input as ImagenFuente;
+  } else {
+    const bitmapFn =
+      opciones.createImageBitmapFn ??
+      (typeof globalThis.createImageBitmap === 'function' ? globalThis.createImageBitmap.bind(globalThis) : undefined);
+    if (!bitmapFn) {
+      throw new Error('createImageBitmap no disponible para decodificar la foto');
+    }
+    bitmap = await bitmapFn(input as Blob);
+    debeCerrarBitmap = true;
+  }
+
+  if (!bitmap || !(bitmap.width > 0) || !(bitmap.height > 0)) {
+    if (debeCerrarBitmap) bitmap?.close?.();
+    throw new Error('Dimensiones de imagen inválidas');
+  }
+
+  try {
+    const maxSide = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.min(1, maxDimension / maxSide);
+    const targetW = Math.max(1, Math.round(bitmap.width * scale));
+    const targetH = Math.max(1, Math.round(bitmap.height * scale));
+    const crearCanvas = obtenerFabricaCanvas(opciones.createCanvasFn);
+    const canvas = crearCanvas(targetW, targetH);
+    canvas.width = targetW;
+    canvas.height = targetH;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Contexto 2D no disponible');
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.75;
+    let blob: Blob | null = null;
+    while (quality >= 0.15) {
+      const q = Math.round(quality * 100) / 100;
+      blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', q));
+      if (blob && blob.size < maxBytes) break;
+      quality = Math.round((quality - 0.05) * 100) / 100;
+    }
+
+    if (!blob || blob.size >= maxBytes) {
+      const smallW = Math.max(1, Math.round(canvas.width * 0.6));
+      const smallH = Math.max(1, Math.round(canvas.height * 0.6));
+      const small = crearCanvas(smallW, smallH);
+      small.width = smallW;
+      small.height = smallH;
+      small.getContext('2d')?.drawImage(canvas, 0, 0, smallW, smallH);
+      blob = await new Promise<Blob | null>((res) => small.toBlob(res, 'image/jpeg', 0.3));
+    }
+    if (!blob) throw new Error('No se pudo comprimir la imagen');
+    return blob;
+  } finally {
+    if (debeCerrarBitmap) bitmap.close?.();
+  }
+}
+
+export interface OpcionesPartidoLotesIncidencias {
+  maxFotos?: number;
+  maxBytes?: number;
+  maxItems?: number;
+}
+
+export function partirLotesIncidencias<T extends { fotoBlob?: { size: number } | null }>(
+  incidencias: T[],
+  opciones: OpcionesPartidoLotesIncidencias = {},
+): T[][] {
+  if (!incidencias || incidencias.length === 0) return [];
+  const maxFotos = opciones.maxFotos ?? MAX_FOTOS_LOTE_INCIDENCIAS;
+  const maxBytes = opciones.maxBytes ?? MAX_BYTES_LOTE_INCIDENCIAS;
+  const maxItems = opciones.maxItems ?? MAX_ITEMS_LOTE_INCIDENCIAS;
+  const lotes: T[][] = [];
+  let loteActual: T[] = [];
+  let fotosEnLote = 0;
+  let bytesEnLote = 0;
+
+  for (const inc of incidencias) {
+    const bytesFoto = inc.fotoBlob?.size ?? 0;
+    const tieneFoto = Boolean(inc.fotoBlob);
+    if (
+      loteActual.length > 0 &&
+      (loteActual.length >= maxItems ||
+        (tieneFoto && fotosEnLote + 1 > maxFotos) ||
+        (bytesFoto > 0 && bytesEnLote + bytesFoto > maxBytes))
+    ) {
+      lotes.push(loteActual);
+      loteActual = [];
+      fotosEnLote = 0;
+      bytesEnLote = 0;
+    }
+    loteActual.push(inc);
+    if (tieneFoto) fotosEnLote++;
+    bytesEnLote += bytesFoto;
+  }
+  if (loteActual.length > 0) lotes.push(loteActual);
+  return lotes;
+}
+
+export function dividirLoteAnte413<T>(lote: T[]): [T[], T[]] | null {
+  if (!lote || lote.length <= 1) return null;
+  const mitad = Math.ceil(lote.length / 2);
+  return [lote.slice(0, mitad), lote.slice(mitad)];
+}
+
+export function extraerRetryAfterMs(errorOrHeaders: unknown, nowMs = Date.now()): number | null {
+  if (!errorOrHeaders || typeof errorOrHeaders !== 'object') return null;
+  const obj = errorOrHeaders as Record<string, any>;
+  const headers = obj.response?.headers ?? obj.headers ?? obj;
+  if (!headers || typeof headers !== 'object') return null;
+  let raw: unknown;
+  if (typeof headers.get === 'function') {
+    raw = headers.get('retry-after') ?? headers.get('Retry-After');
+  } else {
+    const key = Object.keys(headers).find((k) => k.toLowerCase() === 'retry-after');
+    if (key) raw = headers[key];
+  }
+  if (raw === undefined || raw === null || raw === '') return null;
+  if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) return Math.ceil(raw * 1000);
+  const str = String(raw).trim();
+  if (/^\d+(\.\d+)?$/.test(str)) {
+    const secs = Number(str);
+    return secs > 0 ? Math.ceil(secs * 1000) : null;
+  }
+  const parsedDate = Date.parse(str);
+  return !Number.isNaN(parsedDate) && parsedDate - nowMs > 0 ? parsedDate - nowMs : null;
+}
+
+export function calcularBackoffSyncMs(
+  prevBackoffMs: number,
+  retryAfterMs?: number | null,
+  maxBackoffMs = MAX_SYNC_BACKOFF_MS,
+): number {
+  const expBackoff = prevBackoffMs <= 0 ? DEFAULT_INITIAL_BACKOFF_MS : prevBackoffMs * 2;
+  if (typeof retryAfterMs === 'number' && Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
+    return Math.min(prevBackoffMs <= 0 ? retryAfterMs : Math.max(expBackoff, retryAfterMs), maxBackoffMs);
+  }
+  return Math.min(expBackoff, maxBackoffMs);
+}
+

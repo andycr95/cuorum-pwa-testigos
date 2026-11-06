@@ -1,5 +1,6 @@
 import { api } from './api';
 import { jornadaService } from './jornadaService';
+import * as idbModule from '../db/indexeddb';
 import {
   getPendientes,
   marcarSincronizados,
@@ -34,6 +35,14 @@ import {
   clearLastSyncError,
   calcularSha256,
   subirDirectoS3,
+  comprimirFotoIncidencia,
+  partirLotesIncidencias,
+  dividirLoteAnte413,
+  extraerRetryAfterMs,
+  calcularBackoffSyncMs,
+  MAX_FOTO_INCIDENCIA_BYTES,
+  MAX_FOTOS_LOTE_INCIDENCIAS,
+  MAX_BYTES_LOTE_INCIDENCIAS,
   type FirmaFotoItem,
   type RespuestaFirma,
   type ItemConId,
@@ -50,6 +59,14 @@ export {
   clearLastSyncError,
   calcularSha256,
   subirDirectoS3,
+  comprimirFotoIncidencia,
+  partirLotesIncidencias,
+  dividirLoteAnte413,
+  extraerRetryAfterMs,
+  calcularBackoffSyncMs,
+  MAX_FOTO_INCIDENCIA_BYTES,
+  MAX_FOTOS_LOTE_INCIDENCIAS,
+  MAX_BYTES_LOTE_INCIDENCIAS,
   type FirmaFotoItem,
   type RespuestaFirma,
   type ItemConId,
@@ -60,6 +77,15 @@ let syncInProgress = false;
 let backoffMs = 0;
 let nextRetryAt = 0;
 const MAX_BACKOFF_MS = 8 * 60 * 1000; // 8 minutos
+
+export function getBackoffState() {
+  return { backoffMs, nextRetryAt };
+}
+
+export function resetBackoffState() {
+  backoffMs = 0;
+  nextRetryAt = 0;
+}
 
 type SyncListener = (syncing: boolean) => void;
 const syncListeners: Set<SyncListener> = new Set();
@@ -428,52 +454,101 @@ export async function sincronizar(): Promise<SyncResultado> {
       }
     }
 
-    // ─── Sync incidencias ──────────────────────────────────────────
+    // ─── Sync incidencias (lotes de máx. 10 fotos o 20 MB) ─────────
     // Endpoint separado: POST /testigos/incidencias
     let incidenciasError: string | null = null;
 
     if (incidencias.length > 0) {
-      try {
-        const incFormData = new FormData();
+      const colaLotes = partirLotesIncidencias(incidencias);
+      const reintentados413 = new Set<string>();
 
-        const incMetadata = incidencias.map(
-          ({ synced: _s, syncAttempts: _a, lastSyncError: _e, fotoBlob: _f, ...data }) => data,
-        );
-        incFormData.append('incidencias', JSON.stringify(incMetadata));
+      while (colaLotes.length > 0) {
+        if (currentSessionId !== syncSessionId) break;
+        const lote = colaLotes.shift()!;
 
-        // Mapeo foto↔incidencia: el backend necesita saber qué ID corresponde
-        // a cada archivo subido (por orden de inserción en el FormData)
-        const fotosIds: string[] = [];
-        incidencias.forEach((inc) => {
-          if (inc.fotoBlob) {
-            incFormData.append('fotosIncidencias', inc.fotoBlob, `inc_${inc.id}.jpg`);
-            fotosIds.push(inc.id);
+        try {
+          const incFormData = new FormData();
+          const incMetadata = lote.map(
+            ({ synced: _s, syncAttempts: _a, lastSyncError: _e, fotoBlob: _f, ...data }) => data,
+          );
+          incFormData.append('incidencias', JSON.stringify(incMetadata));
+
+          const fotosIds: string[] = [];
+          lote.forEach((inc) => {
+            if (inc.fotoBlob) {
+              incFormData.append('fotosIncidencias', inc.fotoBlob, `inc_${inc.id}.jpg`);
+              fotosIds.push(inc.id);
+            }
+          });
+          incFormData.append('fotosIncidenciasIds', JSON.stringify(fotosIds));
+
+          const incResponse = await api.post(`/testigos/incidencias`, incFormData, {
+            headers: { 'Content-Type': undefined },
+          });
+
+          const incProc = procesarRespuestaSync(lote, incResponse.data, 'incidencia');
+          if (incProc.acceptedIds.length > 0) {
+            await marcarIncidenciasSincronizadas(incProc.acceptedIds);
           }
-        });
-        incFormData.append('fotosIncidenciasIds', JSON.stringify(fotosIds));
+          if (incProc.rejectedItems.length > 0) {
+            await marcarIncidenciasError(incProc.rejectedItems);
+            tieneRechazosTotal = true;
+            rechazadosCountTotal += incProc.rejectedItems.length;
+          }
+          incidenciasSinc += incProc.acceptedIds.length;
+        } catch (incError: any) {
+          const status = incError?.response?.status ?? incError?.status;
+          const esErrorRed =
+            status === undefined &&
+            !incError?.response &&
+            (typeof navigator === 'undefined' || navigator.onLine !== false);
+          const tieneFotos = lote.some((inc) => Boolean(inc.fotoBlob));
 
-        const incResponse = await api.post(`/testigos/incidencias`, incFormData, {
-          headers: { 'Content-Type': undefined },
-        });
+          // Cuando el backend rechaza una subida grande (413) con Connection: close,
+          // el navegador puede cortar el envío y reportar un error de red sin response (ERR_NETWORK).
+          // Se trata igual que 413: partir el lote y reintentar antes de desistir.
+          if (status === 413 || (esErrorRed && (lote.length > 1 || tieneFotos))) {
+            const partes = dividirLoteAnte413(lote);
+            if (partes) {
+              colaLotes.unshift(partes[0], partes[1]);
+              continue;
+            }
+            if (
+              lote.length === 1 &&
+              lote[0].fotoBlob &&
+              !reintentados413.has(lote[0].id) &&
+              (status === 413 || lote[0].fotoBlob.size > MAX_FOTO_INCIDENCIA_BYTES)
+            ) {
+              reintentados413.add(lote[0].id);
+              try {
+                const fotoComprimida = await comprimirFotoIncidencia(lote[0].fotoBlob);
+                const incComprimida = { ...lote[0], fotoBlob: fotoComprimida };
+                await (idbModule as { guardarIncidencia?: (inc: unknown) => Promise<void> }).guardarIncidencia?.(incComprimida);
+                colaLotes.unshift([incComprimida]);
+                continue;
+              } catch {}
+            }
+          }
 
-        const incProc = procesarRespuestaSync(incidencias, incResponse.data, 'incidencia');
-        if (incProc.acceptedIds.length > 0) {
-          await marcarIncidenciasSincronizadas(incProc.acceptedIds);
-        }
-        if (incProc.rejectedItems.length > 0) {
-          await marcarIncidenciasError(incProc.rejectedItems);
+          console.warn('[Sync] Error sincronizando lote de incidencias:', incError);
+          const msg = incError instanceof Error ? incError.message : 'Error al sincronizar incidencias';
+          incidenciasError = msg;
+          await marcarIncidenciasError(lote.map((i) => ({ id: i.id, error: msg })));
           tieneRechazosTotal = true;
-          rechazadosCountTotal += incProc.rejectedItems.length;
+          rechazadosCountTotal += lote.length;
+
+          if (status === 413) {
+            continue;
+          }
+
+          const retryAfterMs = status === 429 || status === 503 ? extraerRetryAfterMs(incError) : null;
+          backoffMs = calcularBackoffSyncMs(backoffMs, retryAfterMs, MAX_BACKOFF_MS);
+          nextRetryAt = Date.now() + backoffMs;
+          break;
         }
-        incidenciasSinc = incProc.acceptedIds.length;
+      }
+      if (incidenciasSinc > 0) {
         console.log(`[Sync] Incidencias: ${incidenciasSinc} enviadas`);
-      } catch (incError: any) {
-        console.warn('[Sync] Error sincronizando incidencias:', incError);
-        const msg = incError instanceof Error ? incError.message : 'Error al sincronizar incidencias';
-        incidenciasError = msg;
-        await marcarIncidenciasError(incidencias.map((i) => ({ id: i.id, error: msg })));
-        tieneRechazosTotal = true;
-        rechazadosCountTotal += incidencias.length;
       }
     }
 
@@ -518,14 +593,16 @@ export async function sincronizar(): Promise<SyncResultado> {
       validacionServidor,
       ...(huboFallos ? { error: getLastSyncError() || 'Error en sincronización' } : {}),
     };
-  } catch (error) {
+  } catch (error: any) {
     const msg = error instanceof Error ? error.message : 'Error desconocido';
     console.error('[Sync] Error:', msg);
     setLastSyncError(msg);
     await logSync('batch_sync', 0, false, msg);
 
-    // Backoff exponencial: 30s → 1min → 2min → 4min → 8min
-    backoffMs = Math.min(backoffMs === 0 ? 30_000 : backoffMs * 2, MAX_BACKOFF_MS);
+    // Backoff exponencial respetando Retry-After en 429/503: 30s → 1min → 2min → 4min → 8min
+    const status = error?.response?.status ?? error?.status;
+    const retryAfterMs = status === 429 || status === 503 ? extraerRetryAfterMs(error) : null;
+    backoffMs = calcularBackoffSyncMs(backoffMs, retryAfterMs, MAX_BACKOFF_MS);
     nextRetryAt = Date.now() + backoffMs;
     console.log(`[Sync] Próximo reintento en ${backoffMs / 1000}s`);
 
