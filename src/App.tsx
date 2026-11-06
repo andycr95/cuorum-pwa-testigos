@@ -97,6 +97,12 @@ export function App() {
     setCodigoVerificacion(null);
   };
 
+  useEffect(() => {
+    const onUnauthorized = () => handleLogout();
+    window.addEventListener('cuorum:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('cuorum:unauthorized', onUnauthorized);
+  }, []);
+
   // Volver al selector de mesa
   const handleBackToSelector = () => {
     setSelectedMesaId(null);
@@ -141,7 +147,7 @@ export function App() {
 
     fetchJornada();
     return () => { cancelled = true; };
-  }, [selectedMesaId, isAuthenticated]);
+  }, [selectedMesaId, isAuthenticated, testigoData?.testigo.id]);
 
   // Handlers for jornada flow
   const handleCheckinComplete = async (jornada: JornadaMesa) => {

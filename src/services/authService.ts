@@ -5,6 +5,7 @@
  */
 
 import { api } from './api';
+import * as idbModule from '../db/indexeddb';
 import { clearLastSyncTime, clearLastSyncError, cancelarSincronizacion } from './syncService';
 
 export interface MesaData {
@@ -167,6 +168,13 @@ class AuthService {
 
       return true;
     } catch (error) {
+      const status =
+        (error as { response?: { status?: number }; status?: number })?.response?.status ??
+        (error as { status?: number })?.status;
+      if (status === 401 || status === 403 || status !== undefined) {
+        this.logout();
+        return false;
+      }
       // Si no hay internet, asumir que el token es válido (modo offline)
       console.warn('[Auth] Error al verificar token, asumiendo válido para modo offline:', error);
       return true;
@@ -185,6 +193,7 @@ class AuthService {
     localStorage.removeItem(this.ELECCION_DATA_KEY);
     clearLastSyncTime();
     clearLastSyncError();
+    idbModule.clearEscrutinioCache?.().catch(() => {});
   }
 
   /**
