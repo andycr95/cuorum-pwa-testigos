@@ -128,7 +128,8 @@ registerHooks({
         shortCircuit: true,
       };
     }
-    if (context.parentURL?.includes('/src/') || context.parentURL?.includes('/test/')) {
+    // Solo módulos propios: dentro de node_modules (p. ej. debug/src) los imports relativos son .js.
+    if (!context.parentURL?.includes('/node_modules/') && (context.parentURL?.includes('/src/') || context.parentURL?.includes('/test/'))) {
       if (specifier.startsWith('./') || specifier.startsWith('../')) {
         if (!specifier.endsWith('.ts') && !specifier.endsWith('.js') && !specifier.endsWith('.mjs')) {
           return { url: new URL(specifier + '.ts', context.parentURL).href, shortCircuit: true };
