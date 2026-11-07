@@ -255,13 +255,13 @@ export function App() {
   // Jornada loading state
   if (jornadaLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-app-canvas text-app-fg flex items-center justify-center">
         <div className="text-center">
           <div className="relative w-16 h-16 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-editorial-red border-t-transparent animate-spin"></div>
           </div>
-          <p className="text-sm font-semibold text-gray-700 tracking-wide">CARGANDO JORNADA</p>
+          <p className="text-sm font-semibold text-app-muted tracking-wide">CARGANDO JORNADA</p>
         </div>
       </div>
     );
@@ -270,28 +270,28 @@ export function App() {
   // CERRADA/FIRMADA — Mesa cerrada screen
   if (jornadaEstado === 'CERRADA' || jornadaEstado === 'FIRMADA') {
     return (
-      <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border-2 border-gray-200 p-8 text-center">
-          <div className="w-24 h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
+      <main className="min-h-screen bg-app-canvas text-app-fg flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-app-surface rounded-card border border-app-line p-8 text-center">
+          <div className="w-24 h-24 mx-auto mb-6 bg-green-500/10 border border-green-500/30 rounded-full flex items-center justify-center">
+            <svg className="w-12 h-12 text-green-800 dark:text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
 
-          <h1 className="text-2xl font-black text-gray-900 mb-2">Acta firmada exitosamente</h1>
-          <p className="text-sm text-gray-500 mb-6">
+          <h1 className="text-2xl font-black text-app-fg mb-2">Acta firmada exitosamente</h1>
+          <p className="text-sm text-app-muted mb-6">
             Mesa #{mesaSeleccionada.numero} cerrada correctamente
           </p>
 
           {codigoVerificacion && (
-            <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-5 mb-6">
-              <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
+            <div className="bg-app-elevated border border-app-line rounded-card p-5 mb-6">
+              <p className="text-xs font-black text-app-muted uppercase tracking-widest mb-2" style={{ letterSpacing: '0.15em' }}>
                 Codigo de verificacion
               </p>
-              <p className="text-3xl font-black text-gray-900 tracking-[0.3em] font-mono">
+              <p className="text-3xl font-black text-app-fg tracking-[0.3em] font-mono">
                 {codigoVerificacion}
               </p>
-              <p className="text-[10px] text-gray-600 mt-2">
+              <p className="text-xs text-app-muted mt-2">
                 Guarda este codigo como comprobante
               </p>
             </div>
@@ -299,7 +299,7 @@ export function App() {
 
           <button
             onClick={handleLogout}
-            className="w-full py-4 rounded-2xl font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:shadow-lg active:scale-[0.97] transition-all"
+            className="w-full py-4 rounded-btn font-black text-white uppercase tracking-wide text-sm bg-editorial-red hover:bg-red-700 active:scale-[0.97] transition-all min-h-[48px]"
           >
             Cerrar sesion
           </button>
@@ -311,7 +311,7 @@ export function App() {
   // PENDIENTE — Show CheckinTestigo
   if (jornadaEstado === 'PENDIENTE') {
     return (
-      <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light]">
+      <main className="min-h-screen bg-app-canvas text-app-fg">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -351,7 +351,7 @@ export function App() {
   // CHECKIN — Show AperturaMesa
   if (jornadaEstado === 'CHECKIN') {
     return (
-      <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light]">
+      <main className="min-h-screen bg-app-canvas text-app-fg">
         <header className="sticky top-0 z-50 bg-editorial-red text-white shadow-lg" data-testid="cabecera-testigo">
           <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -389,7 +389,7 @@ export function App() {
 
   // ABIERTA / EN_CONTEO — Show FormularioMesaMultiple (existing main flow)
   return (
-    <main className="min-h-screen bg-gray-50 text-ink-900 [color-scheme:light]">
+    <main className="min-h-screen bg-app-canvas text-ink-900">
       {/* Contenedor sticky con cabecera y barra de estado fija bajo ella */}
       <div className="sticky top-0 z-50 shadow-md">
         <header data-testid="cabecera-roja" className="bg-editorial-red text-white">
