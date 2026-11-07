@@ -322,7 +322,7 @@ describe('CUO-559 / QA-CUO556: Aislamiento estricto de evidencia E-14 entre camp
     globalThis.__qaTenenciaDb.fotos.push(fotoA);
 
     // Paso 2: Testigo A cierra sesión con authService.logout()
-    authService.logout();
+    await authService.logout();
     assert.equal(authService.getToken(), null);
     assert.equal(authService.getCampanaId(), null);
     // Verificar que logout conserva IndexedDB (foto de A sigue con synced: 0)
@@ -359,7 +359,7 @@ describe('CUO-559 / QA-CUO556: Aislamiento estricto de evidencia E-14 entre camp
     assert.equal(fotoLocal.synced, 0, 'La foto de A debe permanecer con synced = 0');
 
     // Paso 5: Cerrar sesión de B y volver a iniciar sesión de A
-    authService.logout();
+    await authService.logout();
     await authService.login('1000000001', '123456');
     assert.equal(authService.getCampanaId(), 'campana-sintetica-A');
 
@@ -457,7 +457,7 @@ describe('CUO-559 / QA-CUO556: Aislamiento estricto de evidencia E-14 entre camp
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (url, options) => {
       // Simular cambio concurrente de sesión mientras el blob se sube a S3
-      authService.logout();
+      await authService.logout();
       await authService.login('1000000002', '654321');
       return { ok: true, status: 204, text: async () => '' };
     };
@@ -499,7 +499,7 @@ describe('CUO-559 / QA-CUO556: Aislamiento estricto de evidencia E-14 entre camp
     assert.equal(fotosA.length, 1);
 
     // Cambiar a Testigo B en la misma mesa física
-    authService.logout();
+    await authService.logout();
     await authService.login('1000000002', '654321');
 
     // Testigo B NO debe ver la evidencia de A ni considerarse que tiene foto en la mesa

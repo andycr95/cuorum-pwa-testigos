@@ -96,9 +96,9 @@ export function esElegirCampana(res: unknown): res is ElegirCampanaResponse {
   );
 }
 
-import { mapearErrorAuth } from './authErrors';
+import { mapearErrorAuth, AUTH_NOTICE_KEY, extraerMensajeSesion401 } from './authErrors';
 
-export { mapearErrorAuth };
+export { mapearErrorAuth, AUTH_NOTICE_KEY, extraerMensajeSesion401 };
 
 class AuthService {
   private readonly TOKEN_KEY = 'cuorum_testigo_token';
@@ -128,6 +128,7 @@ class AuthService {
       }
 
       // Guardar token y datos en localStorage
+      localStorage.removeItem(AUTH_NOTICE_KEY);
       localStorage.setItem(this.TOKEN_KEY, data.token);
       localStorage.setItem(this.DATA_KEY, JSON.stringify({
         testigo: data.testigo,
@@ -172,7 +173,14 @@ class AuthService {
         (error as { response?: { status?: number }; status?: number })?.response?.status ??
         (error as { status?: number })?.status;
       if (status === 401 || status === 403) {
-        this.logout();
+        if (status === 401) {
+          try {
+            localStorage.setItem(AUTH_NOTICE_KEY, extraerMensajeSesion401(error));
+          } catch {
+            // Entorno sin almacenamiento
+          }
+        }
+        await this.logout();
         return false;
       }
       // Si no hay internet, asumir que el token es válido (modo offline)
@@ -182,18 +190,51 @@ class AuthService {
   }
 
   /**
-   * Cierra sesión y limpia datos
+   * Cierra sesión: revoca el token vigente en el servidor antes de borrar el almacenamiento local.
+   * Si la llamada falla (sin red, timeout o 401), la salida local sigue igual sin bloquear al testigo.
    */
-  logout(): void {
+  async logout(): Promise<void> {
     cancelarSincronizacion();
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.DATA_KEY);
-    localStorage.removeItem(this.CAMPANA_KEY);
-    localStorage.removeItem(this.ELECCION_KEY);
-    localStorage.removeItem(this.ELECCION_DATA_KEY);
+    const token = this.getToken();
+    if (token) {
+      try {
+        await api.post(
+          '/auth/logout',
+          {},
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 3000,
+          },
+        );
+      } catch {
+        // Si la llamada falla (sin red, timeout o 401), la salida local sigue igual
+      }
+    }
+    const tokenActual = localStorage.getItem(this.TOKEN_KEY);
+    if (!token || tokenActual === null || tokenActual === token) {
+      localStorage.removeItem(this.TOKEN_KEY);
+      localStorage.removeItem(this.DATA_KEY);
+      localStorage.removeItem(this.CAMPANA_KEY);
+      localStorage.removeItem(this.ELECCION_KEY);
+      localStorage.removeItem(this.ELECCION_DATA_KEY);
+    }
     clearLastSyncTime();
     clearLastSyncError();
     idbModule.clearEscrutinioCache?.().catch(() => {});
+  }
+
+  /**
+   * Obtiene el aviso de sesión vencida/revocada pendiente de mostrar en el login
+   */
+  getAuthNotice(): string | null {
+    return localStorage.getItem(AUTH_NOTICE_KEY);
+  }
+
+  /**
+   * Limpia el aviso de sesión vencida/revocada
+   */
+  clearAuthNotice(): void {
+    localStorage.removeItem(AUTH_NOTICE_KEY);
   }
 
   /**

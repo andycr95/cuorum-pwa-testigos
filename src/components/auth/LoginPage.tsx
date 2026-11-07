@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import {
   authService,
   CampanaLoginOpcion,
@@ -17,12 +17,23 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [pin, setPin] = useState('');
   const [campanasElegibles, setCampanasElegibles] = useState<CampanaLoginOpcion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => authService.getAuthNotice() || '');
   const [cedulaError, setCedulaError] = useState('');
   const [pinError, setPinError] = useState('');
 
+  useEffect(() => {
+    const onUnauthorized = (ev: Event) => {
+      const detalle = (ev as CustomEvent<{ mensaje?: string }>)?.detail?.mensaje;
+      const aviso = detalle || authService.getAuthNotice();
+      if (aviso) setError(aviso);
+    };
+    window.addEventListener('cuorum:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('cuorum:unauthorized', onUnauthorized);
+  }, []);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    authService.clearAuthNotice();
     setError('');
     setCedulaError('');
     setPinError('');
@@ -192,7 +203,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 onChange={(e) => {
                   setCedula(e.target.value.slice(0, 15));
                   if (cedulaError) setCedulaError('');
-                  if (error) setError('');
+                  if (error) {
+                    setError('');
+                    authService.clearAuthNotice();
+                  }
                 }}
                 onBlur={() => {
                   const clean = cedula.trim();
@@ -239,7 +253,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   const value = e.target.value.replace(/\D/g, '').slice(0, 6);
                   setPin(value);
                   if (pinError) setPinError('');
-                  if (error) setError('');
+                  if (error) {
+                    setError('');
+                    authService.clearAuthNotice();
+                  }
                 }}
                 onBlur={() => {
                   if (pin.length > 0 && pin.length !== 6) {
