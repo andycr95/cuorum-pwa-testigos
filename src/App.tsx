@@ -62,7 +62,7 @@ export function App() {
           setSelectedMesaId(listaMesas[0].id);
         }
       } else {
-        await authService.logout();
+        await authService.logout({ voluntario: false });
         setIsAuthenticated(false);
       }
 

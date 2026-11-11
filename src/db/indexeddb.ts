@@ -1,31 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { MSG_CUOTA_ALMACENAMIENTO, esErrorCuotaAlmacenamiento } from '../utils/formatoError';
 
-export const MSG_CUOTA_ALMACENAMIENTO =
-  'El almacenamiento del teléfono está lleno y no se pudo guardar la foto. Conéctate a internet para sincronizar los datos pendientes o libera espacio en el dispositivo.';
-
-export function esErrorCuotaAlmacenamiento(error: unknown): boolean {
-  if (!error) return false;
-  if (typeof error === 'object') {
-    const err = error as { name?: string; code?: number | string; message?: string };
-    const name = String(err.name || '');
-    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
-    if (err.code === 22 || err.code === 1014 || err.code === 'QUOTA_EXCEEDED_ERR') return true;
-    const msg = String(err.message || '').toLowerCase();
-    return (
-      msg.includes('quotaexceedederror') ||
-      msg.includes('quota exceeded') ||
-      msg.includes('cuota de almacenamiento') ||
-      msg.includes('almacenamiento del teléfono está lleno')
-    );
-  }
-  const low = String(error).toLowerCase();
-  return (
-    low.includes('quotaexceedederror') ||
-    low.includes('quota exceeded') ||
-    low.includes('cuota de almacenamiento') ||
-    low.includes('almacenamiento del teléfono está lleno')
-  );
-}
+export { MSG_CUOTA_ALMACENAMIENTO, esErrorCuotaAlmacenamiento };
 
 /**
  * Base de datos local IndexedDB para modo offline.
@@ -984,6 +960,7 @@ export async function limpiarDatosSincronizadosTestigo(filtro?: FiltroTenencia):
 /**
  * Purga al arrancar la aplicación todos los registros ya sincronizados (synced: 1)
  * cuya antigüedad supere maxEdadMs (por defecto 24 horas).
+ * Conserva la jornada de cualquier testigo que aún tenga registros pendientes (synced: 0).
  */
 export async function purgarSincronizadosAntiguos(
   maxEdadMs: number = TTL_SINCRONIZADOS_MS,
@@ -996,16 +973,37 @@ export async function purgarSincronizadosAntiguos(
 
   const tx = db.transaction(activos, 'readwrite');
   let eliminados = 0;
+  const testigosConPendientes = new Set<string>();
 
-  for (const storeName of activos) {
+  const colaStores = ['resultados', 'fotosE14', 'incidencias', 'e14OcrJobs'] as const;
+  for (const storeName of colaStores) {
+    if (!activos.includes(storeName)) continue;
     const store = tx.objectStore(storeName);
     const items = await store.getAll();
     for (const item of items) {
-      if (item.synced !== 1) continue;
-      const fechaStr = 'capturedAt' in item ? item.capturedAt : item.updatedAt;
-      const fechaMs = fechaStr ? Date.parse(fechaStr) : NaN;
+      if (item.synced !== 1) {
+        if (item.testigoId) {
+          testigosConPendientes.add(item.testigoId);
+        }
+        continue;
+      }
+      const fechaMs = item.capturedAt ? Date.parse(item.capturedAt) : NaN;
       if (!Number.isNaN(fechaMs) && ahoraMs - fechaMs > maxEdadMs) {
         await store.delete(item.id);
+        eliminados++;
+      }
+    }
+  }
+
+  if (activos.includes('jornada')) {
+    const jornadaStore = tx.objectStore('jornada');
+    const jornadas = await jornadaStore.getAll();
+    for (const j of jornadas) {
+      if (j.synced !== 1) continue;
+      if (j.testigoId && testigosConPendientes.has(j.testigoId)) continue;
+      const fechaMs = j.updatedAt ? Date.parse(j.updatedAt) : NaN;
+      if (!Number.isNaN(fechaMs) && ahoraMs - fechaMs > maxEdadMs) {
+        await jornadaStore.delete(j.id);
         eliminados++;
       }
     }

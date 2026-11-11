@@ -91,6 +91,52 @@ async function generarCodigoActa(mesaId: string, eleccionId: string, totalVotos:
   return bytes.slice(0, 4).map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
+/** Cuenta las fotos E-14 presentes en la respuesta remota de actas/fotos de la mesa */
+export function contarFotosRemotasDeRespuesta(data: unknown): number {
+  if (!data) return 0;
+  if (Array.isArray(data)) {
+    const vistos = new Set<string>();
+    let conteoSinClave = 0;
+    for (const item of data) {
+      if (!item || typeof item !== 'object') continue;
+      if ('fotos' in item) {
+        const fotos = (item as { fotos?: unknown }).fotos;
+        if (Array.isArray(fotos)) {
+          for (const f of fotos) {
+            if (f && typeof f === 'object') {
+              const clave = String((f as { id?: unknown; url?: unknown }).id || (f as { url?: unknown }).url || '');
+              if (clave) vistos.add(clave);
+              else conteoSinClave++;
+            } else if (f) {
+              conteoSinClave++;
+            }
+          }
+        }
+      } else {
+        const clave = String((item as { id?: unknown; url?: unknown }).id || (item as { url?: unknown }).url || '');
+        if (clave) vistos.add(clave);
+        else conteoSinClave++;
+      }
+    }
+    return vistos.size + conteoSinClave;
+  }
+  if (typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    if (Array.isArray(obj.fotos)) return contarFotosRemotasDeRespuesta([{ fotos: obj.fotos }]);
+    if (Array.isArray(obj.data)) return contarFotosRemotasDeRespuesta(obj.data);
+  }
+  return 0;
+}
+
+async function obtenerFotosRemotasMesaCount(mesaId: string): Promise<number> {
+  try {
+    const resp = await api.get<unknown>(`/testigos/actas/by-mesa/${mesaId}`);
+    return contarFotosRemotasDeRespuesta(resp?.data);
+  } catch {
+    return 0;
+  }
+}
+
 export function FormularioMesaMultiple({
   mesaId,
   testigoId,
@@ -113,6 +159,7 @@ export function FormularioMesaMultiple({
   const [fotosManual, setFotosManual] = useState<{ orden: number; blob: Blob }[]>([]);
   const [sinFotoMotivo, setSinFotoMotivo] = useState('');
   const [fotosMesaCount, setFotosMesaCount] = useState(0);
+  const [fotosRemotasCount, setFotosRemotasCount] = useState(0);
   const [guardandoFotos, setGuardandoFotos] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -212,12 +259,17 @@ export function FormularioMesaMultiple({
     }
   }, [elecciones, eleccionActual]);
 
-  // Cargar fotos existentes en IndexedDB para esta mesa
+  // Cargar fotos existentes en IndexedDB y en el servidor para esta mesa
   useEffect(() => {
     let mounted = true;
     getFotosByMesa(mesaId, { campanaId, testigoId })
       .then((fotos) => {
         if (mounted) setFotosMesaCount(fotos.length);
+      })
+      .catch(() => {});
+    obtenerFotosRemotasMesaCount(mesaId)
+      .then((remotas) => {
+        if (mounted) setFotosRemotasCount(remotas);
       })
       .catch(() => {});
     return () => {
@@ -263,10 +315,12 @@ export function FormularioMesaMultiple({
   const totalVotos = calcularTotal();
   const hayAlertaFraude = totalVotos > totalSufragantes;
 
+  const fotosRemotasOcrCount = ocrJobs.jobs.reduce((sum, j) => sum + (j.fotos?.length ?? 0), 0);
+  const totalFotosRemotas = Math.max(fotosRemotasCount, fotosRemotasOcrCount);
+  const totalFotosMesa = fotosMesaCount + totalFotosRemotas;
   const tieneFotos =
     fotosManual.length > 0 ||
-    fotosMesaCount > 0 ||
-    ocrJobs.jobs.some((j) => (j.fotos?.length ?? 0) > 0);
+    totalFotosMesa > 0;
   const motivoSinFotoValido = sinFotoMotivo.trim().length >= 10;
   const puedeCerrar = tieneFotos || motivoSinFotoValido;
 
@@ -510,8 +564,8 @@ export function FormularioMesaMultiple({
         }
       }
 
-      // Fotos E-14 de evidencia: verificar si ya fueron guardadas en IDB en el paso 1
-      const fotosExistentes = (await getFotosByMesa(mesaId)).length > 0;
+      // Fotos E-14 de evidencia: verificar si ya fueron guardadas en IDB o en el servidor
+      const fotosExistentes = (await getFotosByMesa(mesaId)).length > 0 || totalFotosRemotas > 0 || (await obtenerFotosRemotasMesaCount(mesaId)) > 0;
       let fotosData: Array<{
         id: string;
         mesaId: string;
@@ -730,7 +784,7 @@ export function FormularioMesaMultiple({
           <div className="flex rounded-card bg-app-elevated p-1 mb-5 border border-app-line" role="tablist" aria-label="Pasos de la jornada de conteo">
             <button type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-btn font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-app-muted hover:text-app-fg hover:bg-app-surface'}`}>
               <span>1. Foto E-14</span>
-              {(fotosManual.length > 0 || fotosMesaCount > 0) && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length || fotosMesaCount}</span>}
+              {(fotosManual.length > 0 || totalFotosMesa > 0) && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length || totalFotosMesa}</span>}
             </button>
             <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-btn font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-app-muted hover:text-app-fg hover:bg-app-surface'}`}>
               <span>2. Revisar votos</span>
