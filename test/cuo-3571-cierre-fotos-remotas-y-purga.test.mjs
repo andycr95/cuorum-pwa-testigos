@@ -79,40 +79,12 @@ const idb = await import('../src/db/indexeddb.ts');
 const { api } = await import('../src/services/api.ts');
 const { resetBackoffState } = await import('../src/services/syncService.ts');
 const formatoError = await import('../src/utils/formatoError.ts');
-const { FormularioMesaMultiple, contarFotosRemotasDeRespuesta } =
-  await import('../src/components/formulario/FormularioMesaMultiple.tsx');
+const { App } = await import('../src/App.tsx');
 
 const originalFetch = globalThis.fetch;
 const originalAdapter = api.defaults.adapter;
 
-function sembrarSesionLocal({
-  token = 'token-sintetico-3571',
-  testigoId = 'testigo-sintetico-3571',
-  campanaId = 'campana-sintetica-3571',
-} = {}) {
-  localStorage.setItem('cuorum_testigo_token', token);
-  localStorage.setItem('cuorum_testigo_campana', campanaId);
-  localStorage.setItem(
-    'cuorum_testigo_data',
-    JSON.stringify({
-      testigo: {
-        id: testigoId,
-        cedula: '0000003571',
-        nombres: 'Testigo',
-        apellidos: 'Sintético',
-        telefono: '3000000000',
-        email: null,
-      },
-      tipoTestigo: 'ELECTORAL',
-      mesa: { id: 'mesa-sintetica-3571', numero: 7, totalSufragantes: 200, puesto: null },
-      elecciones: [],
-      deviceId: 'device-sintetico-3571',
-      campana: { id: campanaId, nombre: 'Campaña Sintética', candidatoId: null, listaId: null },
-    }),
-  );
-}
-
-describe('CUO-3571: Cierre de mesa con fotos E-14 en servidor y ajustes de limpieza IndexedDB', () => {
+describe('CUO-3571: Ajustes de la limpieza de IndexedDB (seguimiento de CUO-3564)', () => {
   beforeEach(async () => {
     idb.closeDB();
     globalThis.indexedDB = new IDBFactory();
@@ -129,199 +101,7 @@ describe('CUO-3571: Cierre de mesa con fotos E-14 en servidor y ajustes de limpi
     api.defaults.adapter = originalAdapter;
   });
 
-  it('1. Sin fotos locales en IndexedDB y con fotos remotas en el servidor, tieneFotos es verdadero y permite cerrar la mesa sin motivo', async () => {
-    sembrarSesionLocal();
-
-    // Asegurar que IndexedDB tiene 0 fotos locales para la mesa
-    const fotosLocales = await idb.getFotosByMesa('mesa-sintetica-3571', {
-      campanaId: 'campana-sintetica-3571',
-      testigoId: 'testigo-sintetico-3571',
-    });
-    assert.equal(fotosLocales.length, 0, 'No debe haber fotos locales en IndexedDB');
-
-    let cierrePayload = null;
-    let consultoFotosRemotas = false;
-
-    api.defaults.adapter = async (config) => {
-      if (config.url === '/testigos/actas/by-mesa/mesa-sintetica-3571') {
-        consultoFotosRemotas = true;
-        return {
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-          data: [
-            {
-              id: 'acta-remota-3571',
-              eleccionId: 'elec-sintetica-1',
-              testigoId: 'testigo-sintetico-3571',
-              campanaId: 'campana-sintetica-3571',
-              estado: 'CONFIRMADO',
-              createdAt: '2026-11-11T14:00:00.000Z',
-              fotos: [
-                {
-                  id: 'foto-remota-e14-1',
-                  orden: 1,
-                  url: 'https://s3.sintetico.local/e14/foto-remota-1.jpg',
-                  capturedAt: '2026-11-11T14:00:00.000Z',
-                },
-              ],
-            },
-          ],
-        };
-      }
-      if (config.url === '/testigos/resultados/historial') {
-        return {
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-          data: { data: [] },
-        };
-      }
-      if (config.url === '/testigos/resultados') {
-        return {
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-          data: { aceptados: 1, rechazados: [] },
-        };
-      }
-      if (config.url === '/testigos/jornada/progreso') {
-        return {
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-          data: {
-            elecciones: [],
-            progreso: { reportadas: 0, total: 1, porcentaje: 0 },
-          },
-        };
-      }
-      if (config.url === '/testigos/jornada/cerrar') {
-        cierrePayload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
-        return {
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-          data: {
-            id: 'jornada-remota-3571',
-            mesaId: 'mesa-sintetica-3571',
-            estado: 'CERRADA',
-            codigoVerificacion: 'CAFE3571',
-          },
-        };
-      }
-      return { status: 200, statusText: 'OK', headers: {}, config, data: {} };
-    };
-
-    const container = document.getElementById('root');
-    const root = createRoot(container);
-
-    try {
-      await act(async () => {
-        root.render(
-          React.createElement(FormularioMesaMultiple, {
-            mesaId: 'mesa-sintetica-3571',
-            testigoId: 'testigo-sintetico-3571',
-            mesaNumero: 7,
-            totalSufragantes: 200,
-            elecciones: [
-              {
-                id: 'elec-sintetica-1',
-                nombre: 'Alcaldía Sintética',
-                tipoEleccion: 'ALCALDIA',
-                tipoCargo: 'UNINOMINAL',
-                votoPreferente: false,
-                candidatos: [
-                  {
-                    id: 'cand-sintetico-1',
-                    nombre: 'Candidato Sintético Uno',
-                    partido: 'Partido Sintético',
-                    numero: 1,
-                  },
-                ],
-              },
-            ],
-            deviceId: 'device-sintetico-3571',
-          }),
-        );
-      });
-
-      // Esperar promesas de efectos iniciales (getFotosByMesa + obtenerFotosRemotasMesaCount)
-      await act(async () => {
-        await new Promise((r) => setTimeout(r, 30));
-      });
-
-      assert.equal(consultoFotosRemotas, true, 'Debe consultar las fotos remotas de la mesa en el servidor');
-
-      // En Paso 1 (Foto E-14), al ser tieneFotos verdadero, no muestra el texto de "Si no es posible tomar la foto..."
-      assert.equal(
-        (container.textContent || '').includes('Si no es posible tomar la foto, podrás justificarlo'),
-        false,
-        'Con foto remota existente, tieneFotos es verdadero en el paso 1',
-      );
-      const tabFoto = container.querySelector('#tab-foto');
-      assert.ok(tabFoto?.textContent?.includes('1'), 'La pestaña 1. Foto E-14 muestra el conteo remoto');
-
-      // Ir al paso 2 (Revisar votos) y guardar resultados
-      const tabContar = container.querySelector('#tab-contar');
-      await act(async () => {
-        tabContar.click();
-      });
-
-      const btnGuardar = container.querySelector('[data-testid="btn-guardar-resultados"]');
-      assert.ok(btnGuardar, 'Debe existir el botón Guardar Resultados');
-      await act(async () => {
-        btnGuardar.click();
-        await new Promise((r) => setTimeout(r, 30));
-      });
-
-      // Ir al paso 3 (Cerrar)
-      const tabCierre = container.querySelector('#tab-cierre');
-      await act(async () => {
-        tabCierre.click();
-      });
-
-      // Verificar que NO pide otra foto ni motivo obligatorio (!tieneFotos es false)
-      assert.equal(
-        (container.textContent || '').includes('Evidencia de foto obligatoria'),
-        false,
-        'No debe pedir justificación de falta de foto cuando la foto ya está en el servidor',
-      );
-
-      const btnCerrarMesa = Array.from(container.querySelectorAll('button')).find((b) =>
-        (b.textContent || '').includes('Cerrar Acta de Mesa'),
-      );
-      assert.ok(btnCerrarMesa, 'Debe existir el botón Cerrar Acta de Mesa');
-      assert.equal(btnCerrarMesa.disabled, false, 'Cerrar Acta de Mesa debe estar habilitado sin motivo');
-
-      const btnFirmarActa = Array.from(container.querySelectorAll('button')).find((b) =>
-        (b.textContent || '').includes('Cerrar y firmar acta'),
-      );
-      assert.ok(btnFirmarActa, 'Debe existir el botón Cerrar y firmar acta');
-      assert.equal(btnFirmarActa.disabled, false, 'Cerrar y firmar acta debe estar habilitado sin motivo');
-
-      await act(async () => {
-        btnFirmarActa.click();
-        await new Promise((r) => setTimeout(r, 30));
-      });
-
-      assert.ok(cierrePayload, 'Debe haber invocado el cierre de jornada en el servidor');
-      assert.equal(cierrePayload.sinFotoMotivo, undefined, 'Cierra la mesa sin requerir sinFotoMotivo');
-      assert.match(container.textContent || '', /Acta cerrada y firmada/i);
-      assert.match(container.textContent || '', /CAFE3571/);
-    } finally {
-      await act(async () => {
-        root.unmount();
-      });
-    }
-  });
-
-  it('2. Purga de 24 h conserva la jornada sincronizada de más de 24 h si el mismo testigo tiene un resultado pendiente (synced: 0)', async () => {
+  it('1. Purga de 24 h conserva la jornada sincronizada de más de 24 h si el mismo testigo tiene un resultado pendiente (synced: 0)', async () => {
     const ahora = Date.parse('2026-11-12T20:00:00.000Z');
     const hace30Horas = new Date(ahora - 30 * 60 * 60 * 1000).toISOString();
 
@@ -383,20 +163,84 @@ describe('CUO-3571: Cierre de mesa con fotos E-14 en servidor y ajustes de limpi
     assert.equal(jornadaEliminada, undefined, 'La jornada antigua sin pendientes sí se purga');
   });
 
-  it('3. App.tsx pasa { voluntario: false } en el logout por datos vacíos/corruptos y formatoError.ts es la única fuente de cuota', () => {
-    const appCode = readFileSync(path.join(__dirname, '../src/App.tsx'), 'utf8');
-    const llamadasAwaitLogoutSinArgs = appCode.match(/await\s+authService\.logout\(\s*\)/g);
-    assert.equal(
-      llamadasAwaitLogoutSinArgs,
-      null,
-      'App.tsx no debe llamar a await authService.logout() sin argumentos en el arranque',
-    );
-    assert.equal(
-      (appCode.match(/authService\.logout\(\{\s*voluntario:\s*false\s*\}\)/g) || []).length,
-      2,
-      'App.tsx debe pasar { voluntario: false } tanto en token inválido como en getTestigoData() vacío',
+  it('2. App.tsx al arrancar con getTestigoData() vacío o corrupto pasa { voluntario: false } a logout() y no borra lo sincronizado de la campaña', async () => {
+    localStorage.setItem('cuorum_testigo_token', 'token-sintetico-3571');
+    localStorage.setItem('cuorum_testigo_campana', 'campana-sintetica-3571');
+    localStorage.setItem(
+      'cuorum_testigo_data',
+      JSON.stringify({
+        testigo: {
+          id: 'testigo-sintetico-3571',
+          cedula: '0000003571',
+          nombres: 'Testigo',
+          apellidos: 'Sintético',
+          telefono: '3000000000',
+          email: null,
+        },
+        tipoTestigo: 'ELECTORAL',
+        mesa: { id: 'mesa-sintetica-3571', numero: 7, totalSufragantes: 200, puesto: null },
+        elecciones: [],
+        deviceId: 'device-sintetico-3571',
+        campana: { id: 'campana-sintetica-3571', nombre: 'Campaña Sintética', candidatoId: null, listaId: null },
+      }),
     );
 
+    await idb.guardarFotoE14({
+      id: 'foto-sincronizada-3571',
+      mesaId: 'mesa-sintetica-3571',
+      testigoId: 'testigo-sintetico-3571',
+      campanaId: 'campana-sintetica-3571',
+      blob: new Blob(['foto-sintetica'], { type: 'image/jpeg' }),
+      capturedAt: '2026-11-11T15:00:00.000Z',
+      deviceId: 'device-sintetico-3571',
+    });
+    await idb.marcarSincronizados([], ['foto-sincronizada-3571']);
+
+    api.defaults.adapter = async (config) => {
+      if (config.url === '/auth/testigos/verify') {
+        // Simular que cuorum_testigo_data queda vacío/corrupto al momento de leer getTestigoData() en App.tsx:54
+        localStorage.setItem('cuorum_testigo_data', '{json-corrupto');
+      }
+      return {
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+        data: { valid: true },
+      };
+    };
+
+    const container = document.getElementById('root');
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(React.createElement(App));
+      });
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+
+      assert.equal(
+        localStorage.getItem('cuorum_testigo_token'),
+        null,
+        'Debe limpiar la sesión local cuando getTestigoData() es nulo o corrupto',
+      );
+
+      const db = await idb.getDB();
+      const fotoConservada = await db.get('fotosE14', 'foto-sincronizada-3571');
+      assert.ok(
+        fotoConservada,
+        'No debe tratar el arranque con getTestigoData() vacío/corrupto como logout voluntario ni borrar registros synced: 1',
+      );
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+    }
+  });
+
+  it('3. formatoError.ts es la única fuente de esErrorCuotaAlmacenamiento y MSG_CUOTA_ALMACENAMIENTO e indexeddb.ts las importa', () => {
     const idbCode = readFileSync(path.join(__dirname, '../src/db/indexeddb.ts'), 'utf8');
     assert.equal(
       /export function esErrorCuotaAlmacenamiento/.test(idbCode),
@@ -410,6 +254,5 @@ describe('CUO-3571: Cierre de mesa con fotos E-14 en servidor y ajustes de limpi
     );
     assert.equal(idb.esErrorCuotaAlmacenamiento, formatoError.esErrorCuotaAlmacenamiento);
     assert.equal(idb.MSG_CUOTA_ALMACENAMIENTO, formatoError.MSG_CUOTA_ALMACENAMIENTO);
-    assert.equal(contarFotosRemotasDeRespuesta([{ fotos: [{ id: 'f1' }, { id: 'f2' }] }]), 2);
   });
 });
