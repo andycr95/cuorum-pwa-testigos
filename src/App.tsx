@@ -43,8 +43,8 @@ export function App() {
       const isValid = await authService.verifyToken();
 
       if (!isValid) {
-        // Token expirado, limpiar sesión
-        await authService.logout();
+        // Token expirado, limpiar sesión sin borrar datos sincronizados como si fuera logout voluntario
+        await authService.logout({ voluntario: false });
         setLoading(false);
         setIsAuthenticated(false);
         return;

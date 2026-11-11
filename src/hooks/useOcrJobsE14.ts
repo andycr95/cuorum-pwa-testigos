@@ -61,7 +61,6 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
               deviceId,
               fotos: (serverJob.fotos || []).map((f) => ({
                 orden: f.orden,
-                blob: new Blob(),
                 capturedAt: f.capturedAt || new Date().toISOString(),
               })),
               estado: serverJob.estado,
@@ -192,7 +191,9 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
           formData.append('testigoId', job.testigoId);
 
           for (const foto of [...job.fotos].sort((a, b) => a.orden - b.orden)) {
-            formData.append('fotos', foto.blob, `foto-${foto.orden}.jpg`);
+            if (foto.blob) {
+              formData.append('fotos', foto.blob, `foto-${foto.orden}.jpg`);
+            }
           }
 
           const resp = await api.post<{ id: string; estado: string }>(

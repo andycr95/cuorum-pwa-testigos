@@ -1,5 +1,32 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
+export const MSG_CUOTA_ALMACENAMIENTO =
+  'El almacenamiento del teléfono está lleno y no se pudo guardar la foto. Conéctate a internet para sincronizar los datos pendientes o libera espacio en el dispositivo.';
+
+export function esErrorCuotaAlmacenamiento(error: unknown): boolean {
+  if (!error) return false;
+  if (typeof error === 'object') {
+    const err = error as { name?: string; code?: number | string; message?: string };
+    const name = String(err.name || '');
+    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
+    if (err.code === 22 || err.code === 1014 || err.code === 'QUOTA_EXCEEDED_ERR') return true;
+    const msg = String(err.message || '').toLowerCase();
+    return (
+      msg.includes('quotaexceedederror') ||
+      msg.includes('quota exceeded') ||
+      msg.includes('cuota de almacenamiento') ||
+      msg.includes('almacenamiento del teléfono está lleno')
+    );
+  }
+  const low = String(error).toLowerCase();
+  return (
+    low.includes('quotaexceedederror') ||
+    low.includes('quota exceeded') ||
+    low.includes('cuota de almacenamiento') ||
+    low.includes('almacenamiento del teléfono está lleno')
+  );
+}
+
 /**
  * Base de datos local IndexedDB para modo offline.
  * Cola de sincronización: los datos se guardan localmente y se suben
@@ -73,7 +100,7 @@ export interface CuorumDB extends DBSchema {
       mesaId: string;
       testigoId: string;
       campanaId?: string;
-      blob: Blob;
+      blob?: Blob;
       capturedAt: string;
       deviceId: string;
       synced: 0 | 1;
@@ -102,7 +129,7 @@ export interface CuorumDB extends DBSchema {
       testigoId: string;
       eleccionId: string;
       campanaId: string;
-      fotos: { orden: number; blob: Blob; capturedAt: string }[];
+      fotos: { orden: number; blob?: Blob; capturedAt: string }[];
       estado: 'PENDIENTE' | 'SUBIENDO' | 'PROCESANDO' | 'COMPLETADO' | 'CONFIRMADO' | 'ERROR';
       serverJobId?: string;
       resultadoOcr?: Record<string, number | null>;
@@ -326,11 +353,24 @@ async function migrateV4(db: IDBPDatabase<CuorumDB>) {
 
 // ─── Resultados ───────────────────────────────────────────────
 
+function propagarErrorGuardado(err: unknown): never {
+  if (esErrorCuotaAlmacenamiento(err)) {
+    const quotaErr = new Error(MSG_CUOTA_ALMACENAMIENTO);
+    quotaErr.name = 'QuotaExceededError';
+    throw quotaErr;
+  }
+  throw err;
+}
+
 export async function guardarResultado(
   data: Omit<CuorumDB['resultados']['value'], 'synced' | 'syncAttempts'>,
 ) {
-  const db = await getDB();
-  await db.put('resultados', { ...data, synced: 0, syncAttempts: 0 });
+  try {
+    const db = await getDB();
+    await db.put('resultados', { ...data, synced: 0, syncAttempts: 0 });
+  } catch (err) {
+    propagarErrorGuardado(err);
+  }
 }
 
 // ─── Fotos E-14 ───────────────────────────────────────────────
@@ -348,7 +388,7 @@ export function obtenerSesionActivaLocal(): { campanaId?: string; testigoId?: st
     let testigoId: string | undefined = undefined;
     if (rawData) {
       const parsed = JSON.parse(rawData);
-      testigoId = parsed?.testigo?.id || undefined;
+      testigoId = parsed?.testigo?.id || parsed?.id || undefined;
     }
     if (!campanaId && !testigoId) return null;
     return { campanaId, testigoId };
@@ -371,10 +411,14 @@ function coincideTenencia(
 export async function guardarFotoE14(
   data: Omit<CuorumDB['fotosE14']['value'], 'synced' | 'syncAttempts'>,
 ) {
-  const db = await getDB();
-  const sesion = obtenerSesionActivaLocal();
-  const campanaId = data.campanaId || sesion?.campanaId || undefined;
-  await db.put('fotosE14', { ...data, campanaId, synced: 0, syncAttempts: 0 });
+  try {
+    const db = await getDB();
+    const sesion = obtenerSesionActivaLocal();
+    const campanaId = data.campanaId || sesion?.campanaId || undefined;
+    await db.put('fotosE14', { ...data, campanaId, synced: 0, syncAttempts: 0 });
+  } catch (err) {
+    propagarErrorGuardado(err);
+  }
 }
 
 /**
@@ -432,7 +476,7 @@ export async function guardarResultadosYFoto(
   for (const data of resultados) {
     const synced = (data as any).synced ?? 0;
     const syncAttempts = (data as any).syncAttempts ?? 0;
-    await storeResultados.put({ ...data, synced, syncAttempts });
+    await storeResultados.put({ ...data, synced, syncAttempts }).catch(propagarErrorGuardado);
   }
 
   if (hayFotos) {
@@ -440,11 +484,13 @@ export async function guardarResultadosYFoto(
       const campanaId = foto.campanaId || sesion?.campanaId || undefined;
       const synced = (foto as any).synced ?? 0;
       const syncAttempts = (foto as any).syncAttempts ?? 0;
-      await tx.objectStore('fotosE14').put({ ...foto, campanaId, synced, syncAttempts });
+      const registroFoto = { ...foto, campanaId, synced, syncAttempts };
+      if (synced === 1) delete registroFoto.blob;
+      await tx.objectStore('fotosE14').put(registroFoto).catch(propagarErrorGuardado);
     }
   }
 
-  await tx.done;
+  await tx.done.catch(propagarErrorGuardado);
 }
 
 // ─── Incidencias ──────────────────────────────────────────────
@@ -454,11 +500,15 @@ export async function guardarIncidencia(
     testigoId?: string;
   },
 ) {
-  const db = await getDB();
-  const sesion = obtenerSesionActivaLocal();
-  const testigoId = data.testigoId || sesion?.testigoId || '';
-  const campanaId = data.campanaId || sesion?.campanaId || undefined;
-  await db.put('incidencias', { ...data, testigoId, campanaId, synced: 0, syncAttempts: 0 });
+  try {
+    const db = await getDB();
+    const sesion = obtenerSesionActivaLocal();
+    const testigoId = data.testigoId || sesion?.testigoId || '';
+    const campanaId = data.campanaId || sesion?.campanaId || undefined;
+    await db.put('incidencias', { ...data, testigoId, campanaId, synced: 0, syncAttempts: 0 });
+  } catch (err) {
+    propagarErrorGuardado(err);
+  }
 }
 
 export async function getIncidenciasPendientes(filtro?: FiltroTenencia) {
@@ -483,6 +533,7 @@ export async function marcarIncidenciasSincronizadas(ids: string[]) {
     const item = await tx.objectStore('incidencias').get(id);
     if (item) {
       item.synced = 1;
+      delete item.fotoBlob;
       await tx.objectStore('incidencias').put(item);
     }
   }
@@ -570,6 +621,7 @@ export async function marcarSincronizados(resultadoIds: string[], fotoIds: strin
     const item = await tx.objectStore('fotosE14').get(id);
     if (item) {
       item.synced = 1;
+      delete item.blob;
       await tx.objectStore('fotosE14').put(item);
     }
   }
@@ -775,11 +827,20 @@ export async function guardarOcrJob(
   },
   opts?: { synced?: 0 | 1 },
 ) {
-  const db = await getDB();
-  const sesion = obtenerSesionActivaLocal();
-  const testigoId = data.testigoId || sesion?.testigoId || '';
-  const campanaId = data.campanaId || sesion?.campanaId || '';
-  await db.put('e14OcrJobs', { ...data, testigoId, campanaId, synced: opts?.synced ?? 0, syncAttempts: 0 });
+  try {
+    const db = await getDB();
+    const sesion = obtenerSesionActivaLocal();
+    const testigoId = data.testigoId || sesion?.testigoId || '';
+    const campanaId = data.campanaId || sesion?.campanaId || '';
+    const synced = opts?.synced ?? 0;
+    const fotos =
+      synced === 1 && Array.isArray(data.fotos)
+        ? data.fotos.map(({ blob: _b, ...rest }) => rest)
+        : data.fotos;
+    await db.put('e14OcrJobs', { ...data, fotos, testigoId, campanaId, synced, syncAttempts: 0 });
+  } catch (err) {
+    propagarErrorGuardado(err);
+  }
 }
 
 export async function getOcrJobsPendientes(filtro?: FiltroTenencia) {
@@ -807,6 +868,9 @@ export async function marcarOcrJobSyncado(
     item.synced = 1;
     item.estado = estado;
     if (serverJobId) item.serverJobId = serverJobId;
+    if (Array.isArray(item.fotos)) {
+      item.fotos = item.fotos.map(({ blob: _b, ...rest }) => rest);
+    }
     await db.put('e14OcrJobs', item);
   }
 }
@@ -838,11 +902,15 @@ export async function guardarJornada(
     campanaId?: string;
   },
 ) {
-  const db = await getDB();
-  const sesion = obtenerSesionActivaLocal();
-  const testigoId = data.testigoId || sesion?.testigoId || '';
-  const campanaId = data.campanaId || sesion?.campanaId || '';
-  await db.put('jornada', { ...data, testigoId, campanaId });
+  try {
+    const db = await getDB();
+    const sesion = obtenerSesionActivaLocal();
+    const testigoId = data.testigoId || sesion?.testigoId || '';
+    const campanaId = data.campanaId || sesion?.campanaId || '';
+    await db.put('jornada', { ...data, testigoId, campanaId });
+  } catch (err) {
+    propagarErrorGuardado(err);
+  }
 }
 
 export const saveJornada = guardarJornada;
@@ -860,4 +928,89 @@ export async function getJornadaByMesa(mesaId: string, filtro?: FiltroTenencia):
   // Retorna la más reciente si hay varias
   if (filtered.length === 0) return undefined;
   return filtered.sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1))[0];
+}
+
+// ─── Limpieza de datos sincronizados (logout voluntario y purga 24h) ─────
+
+export const TTL_SINCRONIZADOS_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * En logout voluntario, elimina todos los registros ya sincronizados (synced: 1)
+ * del testigo que cierra sesión y, si no le queda nada pendiente (synced: 0),
+ * también borra su jornada (con coordenadas de check-in).
+ */
+export async function limpiarDatosSincronizadosTestigo(filtro?: FiltroTenencia): Promise<void> {
+  const db = await getDB();
+  const sesion = obtenerSesionActivaLocal();
+  const rawFiltro = filtro !== undefined ? filtro : (sesion || undefined);
+  const f = rawFiltro?.testigoId || rawFiltro?.campanaId ? rawFiltro : undefined;
+
+  const storeNames = ['resultados', 'fotosE14', 'incidencias', 'e14OcrJobs', 'jornada'] as const;
+  const activos = storeNames.filter((s) => db.objectStoreNames.contains(s));
+  if (activos.length === 0) return;
+
+  const tx = db.transaction(activos, 'readwrite');
+  let quedanPendientes = false;
+
+  const colaStores = ['resultados', 'fotosE14', 'incidencias', 'e14OcrJobs'] as const;
+  for (const storeName of colaStores) {
+    if (!activos.includes(storeName)) continue;
+    const store = tx.objectStore(storeName);
+    const items = await store.getAll();
+    for (const item of items) {
+      if (!coincideTenencia(item, f)) continue;
+      if (item.synced === 1) {
+        await store.delete(item.id);
+      } else {
+        quedanPendientes = true;
+      }
+    }
+  }
+
+  if (activos.includes('jornada')) {
+    const jornadaStore = tx.objectStore('jornada');
+    const jornadas = await jornadaStore.getAll();
+    for (const j of jornadas) {
+      if (!coincideTenencia(j, f)) continue;
+      if (j.synced === 1 && !quedanPendientes) {
+        await jornadaStore.delete(j.id);
+      }
+    }
+  }
+
+  await tx.done;
+}
+
+/**
+ * Purga al arrancar la aplicación todos los registros ya sincronizados (synced: 1)
+ * cuya antigüedad supere maxEdadMs (por defecto 24 horas).
+ */
+export async function purgarSincronizadosAntiguos(
+  maxEdadMs: number = TTL_SINCRONIZADOS_MS,
+  ahoraMs: number = Date.now(),
+): Promise<number> {
+  const db = await getDB();
+  const storeNames = ['resultados', 'fotosE14', 'incidencias', 'e14OcrJobs', 'jornada'] as const;
+  const activos = storeNames.filter((s) => db.objectStoreNames.contains(s));
+  if (activos.length === 0) return 0;
+
+  const tx = db.transaction(activos, 'readwrite');
+  let eliminados = 0;
+
+  for (const storeName of activos) {
+    const store = tx.objectStore(storeName);
+    const items = await store.getAll();
+    for (const item of items) {
+      if (item.synced !== 1) continue;
+      const fechaStr = 'capturedAt' in item ? item.capturedAt : item.updatedAt;
+      const fechaMs = fechaStr ? Date.parse(fechaStr) : NaN;
+      if (!Number.isNaN(fechaMs) && ahoraMs - fechaMs > maxEdadMs) {
+        await store.delete(item.id);
+        eliminados++;
+      }
+    }
+  }
+
+  await tx.done;
+  return eliminados;
 }

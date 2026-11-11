@@ -19,7 +19,7 @@ import { ProgresoElecciones } from '../jornada/ProgresoElecciones';
 import { WizardCierre } from '../jornada/WizardCierre';
 import { IconoAlerta, IconoCandado, IconoDocumento, IconoCheck } from '../ui/Iconos';
 import { EstadoVacio } from '../ui/EstadoVacio';
-import { formatearErrorAmigable } from '../../utils/formatoError';
+import { formatearErrorAmigable, esErrorCuotaAlmacenamiento } from '../../utils/formatoError';
 import { determinarModoRevision } from '../../services/borradorVotosLogic';
 
 /**
@@ -568,8 +568,12 @@ export function FormularioMesaMultiple({
 
       // Refrescar progreso de elecciones
       setRefreshProgreso((prev) => prev + 1);
-    } catch {
-      setError('Error al guardar. Los datos se reintentarán automáticamente.');
+    } catch (err) {
+      setError(
+        esErrorCuotaAlmacenamiento(err)
+          ? formatearErrorAmigable(err)
+          : 'Error al guardar. Los datos se reintentarán automáticamente.',
+      );
     } finally {
       setGuardando(false);
       resumeAutoSync();
@@ -741,7 +745,7 @@ export function FormularioMesaMultiple({
             <div id="panel-foto" role="tabpanel" aria-labelledby="tab-foto" className="space-y-4 mb-6">
               <CapturaMultipleE14
                 onFotosListas={async (fotos) => {
-                  setFotosManual(fotos);
+                  setError(null);
                   setGuardado(false);
                   setSyncStatus(null);
                   setGuardandoFotos(true);
@@ -758,12 +762,20 @@ export function FormularioMesaMultiple({
                     }));
 
                     await guardarResultadosYFoto([], fotosData);
+                    setFotosManual(fotos);
                     setFotosMesaCount((prev) => prev + fotosData.length);
 
                     // Subida directa a S3 en segundo plano si hay red
                     if (typeof navigator !== 'undefined' && navigator.onLine) {
                       sincronizar().catch(() => {});
                     }
+                  } catch (err) {
+                    setError(
+                      formatearErrorAmigable(
+                        err,
+                        'No se pudo guardar la foto en el dispositivo. Intenta nuevamente.',
+                      ),
+                    );
                   } finally {
                     setGuardandoFotos(false);
                   }
