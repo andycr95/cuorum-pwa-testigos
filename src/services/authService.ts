@@ -220,7 +220,10 @@ class AuthService {
     }
     clearLastSyncTime();
     clearLastSyncError();
-    idbModule.clearEscrutinioCache?.().catch(() => {});
+    await idbModule.clearEscrutinioCache?.().catch(() => {});
+    if (typeof caches !== 'undefined' && typeof caches.delete === 'function') {
+      await Promise.resolve(caches.delete('api-cache')).catch(() => {});
+    }
   }
 
   /**
