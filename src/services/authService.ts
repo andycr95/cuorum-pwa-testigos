@@ -180,7 +180,7 @@ class AuthService {
             // Entorno sin almacenamiento
           }
         }
-        await this.logout();
+        await this.logout({ voluntario: false });
         return false;
       }
       // Si no hay internet, asumir que el token es válido (modo offline)
@@ -192,8 +192,15 @@ class AuthService {
   /**
    * Cierra sesión: revoca el token vigente en el servidor antes de borrar el almacenamiento local.
    * Si la llamada falla (sin red, timeout o 401), la salida local sigue igual sin bloquear al testigo.
+   * En salida voluntaria (por defecto), limpia los datos ya sincronizados (synced: 1) del testigo.
    */
-  async logout(): Promise<void> {
+  async logout(opciones?: { voluntario?: boolean }): Promise<void> {
+    const voluntario = opciones?.voluntario ?? true;
+    const sesionAntes =
+      idbModule.obtenerSesionActivaLocal?.() || {
+        campanaId: this.getCampanaId() || undefined,
+        testigoId: this.getTestigoData()?.testigo?.id || undefined,
+      };
     cancelarSincronizacion();
     const token = this.getToken();
     if (token) {
@@ -220,6 +227,9 @@ class AuthService {
     }
     clearLastSyncTime();
     clearLastSyncError();
+    if (voluntario) {
+      await idbModule.limpiarDatosSincronizadosTestigo?.(sesionAntes).catch(() => {});
+    }
     idbModule.clearEscrutinioCache?.().catch(() => {});
   }
 
