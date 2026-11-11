@@ -11,9 +11,36 @@ const MSG_PERMISOS = 'Tu sesión requiere confirmación o no tienes permisos par
 const MSG_NO_DISPONIBLE = 'La información solicitada no está disponible en este momento. Consulta con tu coordinador.';
 const MSG_DATOS = 'Los datos ingresados requieren revisión. Verifica la información e intenta de nuevo.';
 const MSG_FOTO_REQUERIDA = 'Se requiere la foto del acta E-14 como evidencia obligatoria, o justificar por qué no fue posible tomarla (mínimo 10 caracteres).';
+export const MSG_CUOTA_ALMACENAMIENTO =
+  'El almacenamiento del teléfono está lleno y no se pudo guardar la foto. Conéctate a internet para sincronizar los datos pendientes o libera espacio en el dispositivo.';
+
+export function esErrorCuotaAlmacenamiento(error: unknown): boolean {
+  if (!error) return false;
+  if (typeof error === 'object') {
+    const err = error as { name?: string; code?: number | string; message?: string };
+    const name = String(err.name || '');
+    if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
+    if (err.code === 22 || err.code === 1014 || err.code === 'QUOTA_EXCEEDED_ERR') return true;
+    const msg = String(err.message || '').toLowerCase();
+    return (
+      msg.includes('quotaexceedederror') ||
+      msg.includes('quota exceeded') ||
+      msg.includes('cuota de almacenamiento') ||
+      msg.includes('almacenamiento del teléfono está lleno')
+    );
+  }
+  const low = String(error).toLowerCase();
+  return (
+    low.includes('quotaexceedederror') ||
+    low.includes('quota exceeded') ||
+    low.includes('cuota de almacenamiento') ||
+    low.includes('almacenamiento del teléfono está lleno')
+  );
+}
 
 export function formatearErrorAmigable(error: unknown, fallback?: string): string {
   if (!error) return fallback || 'Ocurrió un inconveniente temporal. Intenta nuevamente.';
+  if (esErrorCuotaAlmacenamiento(error)) return MSG_CUOTA_ALMACENAMIENTO;
 
   if (typeof error === 'object' && error !== null) {
     const errObj = error as ErrorConDetalles;

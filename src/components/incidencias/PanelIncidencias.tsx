@@ -3,6 +3,7 @@ import { api } from '../../services/api';
 import { guardarIncidencia, getIncidenciasByMesa, TipoIncidencia } from '../../db/indexeddb';
 import { sincronizar, verificarConectividadReal, comprimirFotoIncidencia } from '../../services/syncService';
 import { IconoAlerta, IconoNovedad, IconoCamara, IconoDocumento, IconoCheck } from '../ui/Iconos';
+import { formatearErrorAmigable, esErrorCuotaAlmacenamiento } from '../../utils/formatoError';
 
 /** Incidencia ya sincronizada que llega desde el backend */
 interface IncidenciaRemota {
@@ -194,8 +195,12 @@ export function PanelIncidencias({
       setFotoBlob(null);
       setFotoPreview(null);
       setVistaActiva('lista');
-    } catch {
-      setError('Error al guardar la incidencia. Intenta nuevamente.');
+    } catch (err) {
+      setError(
+        esErrorCuotaAlmacenamiento(err)
+          ? formatearErrorAmigable(err)
+          : 'Error al guardar la incidencia. Intenta nuevamente.',
+      );
     } finally {
       setGuardando(false);
     }

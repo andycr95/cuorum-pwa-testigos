@@ -206,6 +206,9 @@ export async function sincronizarJornadas(filtro?: FiltroTenencia): Promise<numb
 }
 
 export function iniciarMonitoreoConexion() {
+  // Purgar registros sincronizados con más de 24 horas al arrancar
+  idbModule.purgarSincronizadosAntiguos?.().catch(() => {});
+
   // Intentar sync cuando se recupera la conexión — reset backoff
   window.addEventListener('online', () => {
     if (autoSyncPaused) return; // Guardado manual en progreso — no interferir
@@ -282,6 +285,10 @@ export async function confirmarSubidaFotoE14(fotoId: string, hash: string, captu
 }
 
 export async function subirFotoE14Directo(foto: CuorumDB['fotosE14']['value']): Promise<{ id: string; hash: string }> {
+  if (!foto.blob) {
+    throw new Error('La foto no contiene datos binarios para subir a S3');
+  }
+  const blobFoto = foto.blob;
   const sesionInicial = obtenerSesionSync();
 
   // Validación de tenencia antes de solicitar firma
@@ -297,8 +304,8 @@ export async function subirFotoE14Directo(foto: CuorumDB['fotosE14']['value']): 
   let firma: FirmaFotoItem | null = null;
   for (let intento = 0; intento < 2; intento++) {
     try {
-      firma = await pedirFirmaFotoE14(foto.mesaId, foto.deviceId, foto.blob.size, foto.testigoId);
-      await subirDirectoS3(firma.post, foto.blob);
+      firma = await pedirFirmaFotoE14(foto.mesaId, foto.deviceId, blobFoto.size, foto.testigoId);
+      await subirDirectoS3(firma.post, blobFoto);
       break;
     } catch (err: any) {
       if (err?.firmaExpirada && intento === 0) continue;
@@ -314,7 +321,7 @@ export async function subirFotoE14Directo(foto: CuorumDB['fotosE14']['value']): 
     throw new Error('La sesión cambió durante la subida de la foto a S3');
   }
 
-  const hash = await calcularSha256(foto.blob);
+  const hash = await calcularSha256(blobFoto);
   await confirmarSubidaFotoE14(firma.id, hash, foto.capturedAt);
   return { id: firma.id, hash };
 }
