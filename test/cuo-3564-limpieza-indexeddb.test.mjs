@@ -544,22 +544,35 @@ describe('CUO-3564: Limpieza de blobs tras sincronizar, borrado en logout volunt
 
     await idb.guardarJornada({
       id: 'jornada-vieja-sync',
-      mesaId: 'mesa-1',
-      testigoId: 'testigo-1',
+      mesaId: 'mesa-2',
+      testigoId: 'testigo-2',
       campanaId: 'campana-1',
       estado: 'FIRMADA',
       synced: 1,
       updatedAt: hace25Horas,
     });
+    await idb.guardarJornada({
+      id: 'jornada-vieja-con-pendiente',
+      mesaId: 'mesa-1',
+      testigoId: 'testigo-1',
+      campanaId: 'campana-1',
+      estado: 'ABIERTA',
+      synced: 1,
+      updatedAt: hace25Horas,
+    });
 
     const purgados = await idb.purgarSincronizadosAntiguos(idb.TTL_SINCRONIZADOS_MS, ahora);
-    assert.equal(purgados, 4, 'Debe purgar los 4 registros synced: 1 con más de 24 horas');
+    assert.equal(purgados, 4, 'Debe purgar los 4 registros synced: 1 elegibles con más de 24 horas');
 
     const db = await idb.getDB();
     assert.equal(await db.get('fotosE14', 'foto-vieja-sync'), undefined);
     assert.equal(await db.get('incidencias', 'inc-vieja-sync'), undefined);
     assert.equal(await db.get('e14OcrJobs', 'ocr-viejo-sync'), undefined);
     assert.equal(await db.get('jornada', 'jornada-vieja-sync'), undefined);
+    assert.ok(
+      await db.get('jornada', 'jornada-vieja-con-pendiente'),
+      'Conserva la jornada antigua si el testigo aún tiene registros pendientes (synced: 0)',
+    );
 
     assert.ok(await db.get('fotosE14', 'foto-reciente-sync'), 'Conserva sincronizados de menos de 24h');
     assert.ok(await db.get('fotosE14', 'foto-vieja-pendiente'), 'Nunca purga registros pendientes synced: 0');
