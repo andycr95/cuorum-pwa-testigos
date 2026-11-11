@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import { MSG_CUOTA_ALMACENAMIENTO, esErrorCuotaAlmacenamiento } from '../utils/formatoError';
+import { MSG_CUOTA_ALMACENAMIENTO, esErrorCuotaAlmacenamiento } from '../utils/formatoError.ts';
 
 export { MSG_CUOTA_ALMACENAMIENTO, esErrorCuotaAlmacenamiento };
 
