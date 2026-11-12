@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 const MAX_SIZE_BYTES = 200 * 1024;
 
@@ -20,6 +20,20 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [procesando, setProcesando] = useState(false);
+  const fotosRef = useRef<Foto[]>([]);
+  fotosRef.current = fotos;
+
+  useEffect(() => {
+    return () => {
+      for (const f of fotosRef.current) {
+        if (typeof URL.revokeObjectURL === 'function' && f.preview.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(f.preview);
+          } catch {}
+        }
+      }
+    };
+  }, []);
 
   const comprimirImagen = useCallback(async (imageBitmap: ImageBitmap): Promise<Blob> => {
     const maxWidth = 1200;
@@ -64,10 +78,20 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         if (!file.type.startsWith('image/')) continue;
-        const bmp = await createImageBitmap(file);
-        const blob = await comprimirImagen(bmp);
-        bmp.close();
-        const preview = URL.createObjectURL(blob);
+        let blob: Blob = file;
+        if (typeof createImageBitmap === 'function') {
+          const bmp = await createImageBitmap(file);
+          blob = await comprimirImagen(bmp);
+          bmp.close();
+        }
+        let preview = 'blob:practica';
+        try {
+          if (typeof URL.createObjectURL === 'function') {
+            preview = URL.createObjectURL(blob);
+          }
+        } catch {
+          preview = 'blob:practica';
+        }
         nuevasFotos.push({ orden: 0, blob, preview });
       }
       setFotos(prev => {
@@ -75,7 +99,9 @@ export function CapturaMultipleE14({ onFotosListas, disabled = false, submitLabe
         return merged.map((f, i) => ({ ...f, orden: i + 1 }));
       });
     } catch {
-      alert('Error al procesar las imagenes. Intenta nuevamente.');
+      if (typeof alert === 'function') {
+        alert('Error al procesar las imagenes. Intenta nuevamente.');
+      }
     } finally {
       setProcesando(false);
       if (cameraInputRef.current) cameraInputRef.current.value = '';

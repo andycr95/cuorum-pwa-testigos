@@ -18,11 +18,12 @@ interface UseOcrJobsE14Options {
   eleccionId: string;
   campanaId: string;
   deviceId: string;
+  modoPractica?: boolean;
 }
 
 const POLL_INTERVAL_MS = 3_000;
 
-export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, deviceId }: UseOcrJobsE14Options) {
+export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, deviceId, modoPractica = false }: UseOcrJobsE14Options) {
   const [jobs, setJobs] = useState<OcrJobEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -155,6 +156,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
   }, []);
 
   const cargarJobs = useCallback(async () => {
+    if (modoPractica) return [];
     await sincronizarConServidor();
     const all = await getOcrJobsByMesa(mesaId);
     setJobs(all);
@@ -165,7 +167,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
       startPolling();
     }
     return all;
-  }, [mesaId, sincronizarConServidor, startPolling]);
+  }, [mesaId, modoPractica, sincronizarConServidor, startPolling]);
 
   useEffect(() => {
     cargarJobs();
@@ -173,7 +175,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
 
   // ── Sync: subir jobs pendientes al backend ─────────────────────────────
   const syncJobs = useCallback(async () => {
-    if (syncingRef.current) return;
+    if (modoPractica || syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
     try {
@@ -311,23 +313,25 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
 
   // Al montar: revisar si hay jobs en proceso y lanzar polling si aplica
   useEffect(() => {
+    if (modoPractica) return;
     const init = async () => {
       const allJobs = await getOcrJobsByMesa(mesaId);
       const hasProcessing = allJobs.some(j => (j.estado === 'PROCESANDO' || j.estado === 'SUBIENDO') && j.serverJobId);
       if (hasProcessing) startPolling();
     };
     init();
-  }, [mesaId, startPolling]);
+  }, [mesaId, modoPractica, startPolling]);
 
   // Reconexión en línea
   useEffect(() => {
+    if (modoPractica) return;
     const handleOnline = () => {
       cargarJobs();
       syncJobs();
     };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
-  }, [syncJobs, cargarJobs]);
+  }, [modoPractica, syncJobs, cargarJobs]);
 
   return {
     jobs,

@@ -10,9 +10,10 @@ import { ControlTema } from '../ui/ControlTema';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
+  onPracticar?: () => void;
 }
 
-export function LoginPage({ onLoginSuccess }: LoginPageProps) {
+export function LoginPage({ onLoginSuccess, onPracticar }: LoginPageProps) {
   const [cedula, setCedula] = useState('');
   const [pin, setPin] = useState('');
   const [campanasElegibles, setCampanasElegibles] = useState<CampanaLoginOpcion[]>([]);
@@ -324,6 +325,18 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           )}
 
           {/* Footer Info */}
+          {onPracticar && (
+            <div className="mt-6 pt-5 border-t border-app-line">
+              <button
+                type="button"
+                data-testid="btn-practicar"
+                onClick={onPracticar}
+                className="w-full min-h-[48px] px-4 py-3 bg-app-elevated hover:bg-app-surface text-app-fg border border-app-line hover:border-editorial-red rounded-btn font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+              >
+                <span>Practicar llenado E-14</span>
+              </button>
+            </div>
+          )}
           <div className="mt-6 pt-5 border-t border-app-line">
             <div className="bg-app-elevated border border-app-line rounded-btn p-4">
               <p className="text-xs text-app-muted font-medium">

@@ -8,6 +8,8 @@ interface Props {
   eleccionActual: string;
   onSelectEleccion: (id: string) => void;
   refreshTrigger?: number;
+  modoPractica?: boolean;
+  reportadasPractica?: Set<string>;
 }
 
 export function ProgresoElecciones({
@@ -16,11 +18,14 @@ export function ProgresoElecciones({
   eleccionActual,
   onSelectEleccion,
   refreshTrigger,
+  modoPractica = false,
+  reportadasPractica,
 }: Props) {
   const [progreso, setProgreso] = useState<ProgresoData | null>(null);
   const [localReportadas, setLocalReportadas] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (modoPractica) return;
     let cancelled = false;
 
     const fetchProgreso = async () => {
@@ -48,10 +53,13 @@ export function ProgresoElecciones({
 
     fetchProgreso();
     return () => { cancelled = true; };
-  }, [mesaId, refreshTrigger]);
+  }, [mesaId, refreshTrigger, modoPractica]);
 
   // Determine reported status per election
   const getReportado = (eleccionId: string): boolean => {
+    if (modoPractica) {
+      return reportadasPractica?.has(eleccionId) ?? false;
+    }
     if (progreso) {
       const e = progreso.elecciones.find((el) => el.id === eleccionId);
       return e?.reportado ?? false;

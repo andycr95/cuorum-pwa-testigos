@@ -34,6 +34,7 @@ interface PanelIncidenciasProps {
   testigoId: string;
   deviceId: string;
   mesaNumero: number;
+  modoPractica?: boolean;
 }
 
 interface TipoConfig {
@@ -58,6 +59,7 @@ export function PanelIncidencias({
   testigoId,
   deviceId,
   mesaNumero,
+  modoPractica = false,
 }: PanelIncidenciasProps) {
   const [abierto, setAbierto] = useState(false);
   const [vistaActiva, setVistaActiva] = useState<'lista' | 'nueva'>('lista');
@@ -85,6 +87,7 @@ export function PanelIncidencias({
    *  2. IndexedDB synced=0 — pendientes locales aún no enviadas
    */
   const recargarIncidencias = useCallback(async () => {
+    if (modoPractica) return;
     setCargandoHistorial(true);
     try {
       // Fuente 1: registros pendientes locales
@@ -131,7 +134,7 @@ export function PanelIncidencias({
     } finally {
       setCargandoHistorial(false);
     }
-  }, [mesaId, testigoId]);
+  }, [mesaId, testigoId, modoPractica]);
 
   useEffect(() => {
     recargarIncidencias();
@@ -164,6 +167,31 @@ export function PanelIncidencias({
 
     setGuardando(true);
     setError(null);
+
+    if (modoPractica) {
+      const cfg = TIPOS.find((t) => t.tipo === tipoSeleccionado)!;
+      setIncidencias((prev) => [
+        {
+          id: `inc_practica_${Date.now()}`,
+          tipo: tipoSeleccionado,
+          descripcion: descripcion.trim(),
+          fotoBlob: fotoBlob ?? undefined,
+          capturedAt: new Date().toISOString(),
+          synced: 0,
+          origen: 'local',
+        },
+        ...prev,
+      ]);
+      mostrarToast(`Novedad registrada: ${cfg.label}`);
+      setTipoSeleccionado(null);
+      setDescripcion('');
+      if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+      setFotoBlob(null);
+      setFotoPreview(null);
+      setVistaActiva('lista');
+      setGuardando(false);
+      return;
+    }
 
     try {
       await guardarIncidencia({
