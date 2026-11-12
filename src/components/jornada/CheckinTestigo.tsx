@@ -8,9 +8,10 @@ interface Props {
   testigoId: string;
   campanaId: string;
   onCheckinComplete: (jornada: JornadaMesa) => void;
+  onPracticar?: () => void;
 }
 
-export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComplete }: Props) {
+export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComplete, onPracticar }: Props) {
   const [loading, setLoading] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'getting' | 'denied' | 'done'>('idle');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -200,6 +201,17 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
               )}
             </span>
           </button>
+
+          {onPracticar && (
+            <button
+              type="button"
+              data-testid="btn-practicar"
+              onClick={onPracticar}
+              className="w-full mt-3 min-h-[48px] py-3.5 px-4 rounded-2xl border-2 border-gray-200 bg-gray-50 hover:border-editorial-red text-gray-800 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center"
+            >
+              Practicar llenado E-14
+            </button>
+          )}
         </div>
       </div>
     </div>

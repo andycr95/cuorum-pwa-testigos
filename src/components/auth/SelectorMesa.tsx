@@ -6,9 +6,10 @@ export interface SelectorMesaProps {
   onSelect: (mesaId: string) => void;
   testigoNombre: string;
   onLogout?: () => void;
+  onPracticar?: () => void;
 }
 
-export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout }: SelectorMesaProps) {
+export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout, onPracticar }: SelectorMesaProps) {
   return (
     <div className="max-w-md mx-auto px-4 py-8 font-sans">
       <div className="mb-8">
@@ -71,6 +72,19 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout }: Selec
           </button>
         ))}
       </div>
+
+      {onPracticar && (
+        <div className="mt-6">
+          <button
+            type="button"
+            data-testid="btn-practicar"
+            onClick={onPracticar}
+            className="w-full min-h-[48px] px-5 py-3.5 text-xs font-bold text-app-fg hover:text-app-accent-fg uppercase tracking-wider rounded-card border border-app-line bg-app-surface hover:border-editorial-red transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-editorial-red/30"
+          >
+            <span>Practicar llenado E-14</span>
+          </button>
+        </div>
+      )}
 
       {onLogout && (
         <div className="mt-8 text-center">

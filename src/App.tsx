@@ -11,6 +11,7 @@ import { jornadaService, JornadaMesa } from './services/jornadaService';
 import { clearEscrutinioCache, guardarJornada, getJornadaByMesa } from './db/indexeddb';
 import { BarraEstadoEnvio } from './components/sync/BarraEstadoSync';
 import { ControlTema } from './components/ui/ControlTema';
+import { MESA_PRACTICA, ELECCIONES_PRACTICA } from './services/modoPractica';
 
 /**
  * PWA Testigos Electorales
@@ -26,6 +27,7 @@ export function App() {
   const [jornadaEstado, setJornadaEstado] = useState<JornadaMesa['estado'] | null>(null);
   const [jornadaLoading, setJornadaLoading] = useState(false);
   const [codigoVerificacion, setCodigoVerificacion] = useState<string | null>(null);
+  const [modoPractica, setModoPractica] = useState(false);
 
   // Verificar autenticación al cargar la app
   useEffect(() => {
@@ -120,7 +122,7 @@ export function App() {
 
   // Fetch jornada state when mesa is selected
   useEffect(() => {
-    if (!selectedMesaId || !isAuthenticated) return;
+    if (!selectedMesaId || !isAuthenticated || modoPractica) return;
     let cancelled = false;
 
     const fetchJornada = async () => {
@@ -155,7 +157,7 @@ export function App() {
 
     fetchJornada();
     return () => { cancelled = true; };
-  }, [selectedMesaId, isAuthenticated, testigoData?.testigo.id]);
+  }, [selectedMesaId, isAuthenticated, modoPractica, testigoData?.testigo.id]);
 
   // Handlers for jornada flow
   const handleCheckinComplete = async (jornada: JornadaMesa) => {
@@ -201,9 +203,53 @@ export function App() {
     );
   }
 
+  // Modo práctica (sin llamadas de red ni escritura en IndexedDB)
+  if (modoPractica) {
+    return (
+      <main className="min-h-screen bg-app-canvas text-app-fg font-sans" data-testid="vista-modo-practica">
+        <header className="sticky top-0 z-50 bg-app-surface border-b border-app-line px-4 py-3">
+          <div className="max-w-md mx-auto flex items-center justify-between gap-2 min-h-[48px]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white border border-app-line rounded-btn flex items-center justify-center">
+                <img src="/logo.svg" alt="Cuorum" className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-app-fg font-bold text-base leading-tight">Simulacro E-14</h1>
+                <p className="text-xs font-semibold text-app-muted">{MESA_PRACTICA.puesto.nombre}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              data-testid="btn-salir-practica"
+              onClick={() => setModoPractica(false)}
+              className="min-h-[48px] min-w-[48px] px-3 py-2 text-app-fg hover:bg-app-elevated text-xs font-bold uppercase tracking-wider rounded-btn border border-app-line transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+            >
+              Salir de práctica
+            </button>
+          </div>
+          <div className="max-w-md mx-auto mt-2.5 pt-2.5 border-t border-app-line flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-app-muted">Tema</span>
+            <ControlTema />
+          </div>
+        </header>
+        <FormularioMesaMultiple
+          mesaId={MESA_PRACTICA.id}
+          testigoId="testigo-practica"
+          mesaNumero={MESA_PRACTICA.numero}
+          totalSufragantes={MESA_PRACTICA.totalSufragantes}
+          puestoNombre={MESA_PRACTICA.puesto.nombre}
+          elecciones={ELECCIONES_PRACTICA}
+          deviceId="dispositivo-practica"
+          modoPractica={true}
+          onSalirPractica={() => setModoPractica(false)}
+        />
+      </main>
+    );
+  }
+
   // Mostrar login si no está autenticado
   if (!isAuthenticated || !testigoData) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} onPracticar={() => setModoPractica(true)} />;
   }
 
   // Testigo de escrutinio → dashboard de solo lectura
@@ -246,6 +292,7 @@ export function App() {
             onSelect={setSelectedMesaId}
             testigoNombre={`${testigoData.testigo.nombres} ${testigoData.testigo.apellidos}`}
             onLogout={handleLogout}
+            onPracticar={() => setModoPractica(true)}
           />
         </main>
       </div>
@@ -343,6 +390,7 @@ export function App() {
           testigoId={testigoData.testigo.id}
           campanaId={authService.getCampanaId() || ''}
           onCheckinComplete={handleCheckinComplete}
+          onPracticar={() => setModoPractica(true)}
         />
       </main>
     );

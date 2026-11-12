@@ -7,6 +7,8 @@ interface Props {
   mesaNumero: number;
   elecciones: Array<{ id: string; nombre: string }>;
   sinFotoMotivo?: string;
+  modoPractica?: boolean;
+  alertasPractica?: AlertaValidacion[];
   onCerrado: (codigoVerificacion: string) => void;
   onCancel: () => void;
 }
@@ -19,7 +21,7 @@ interface EleccionValidacion {
   loading: boolean;
 }
 
-export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, onCerrado, onCancel }: Props) {
+export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, modoPractica = false, alertasPractica, onCerrado, onCancel }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [validaciones, setValidaciones] = useState<EleccionValidacion[]>([]);
   const [progreso, setProgreso] = useState<ProgresoElecciones | null>(null);
@@ -32,6 +34,25 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
   // Step 1: Fetch progreso + run validations
   useEffect(() => {
     if (step !== 1) return;
+
+    if (modoPractica) {
+      const alertas = alertasPractica ?? [];
+      setProgreso({
+        jornada: { id: 'jornada-practica', mesaId, testigoId: 'testigo-practica', campanaId: 'campana-practica', estado: 'ABIERTA' },
+        elecciones: elecciones.map((e) => ({ ...e, tipoEleccion: 'PRACTICA', reportado: true, totalVotos: 0 })),
+        progreso: { reportadas: elecciones.length, total: elecciones.length, porcentaje: 100 },
+      });
+      setValidaciones(
+        elecciones.map((e) => ({
+          id: e.id,
+          nombre: e.nombre,
+          valido: alertas.length === 0,
+          alertas,
+          loading: false,
+        })),
+      );
+      return;
+    }
 
     // Fetch progreso to check which elections have results
     jornadaService.getProgreso(mesaId).then(setProgreso).catch(() => {});
@@ -64,11 +85,18 @@ export function WizardCierre({ mesaId, mesaNumero, elecciones, sinFotoMotivo, on
     };
 
     validate();
-  }, [step, mesaId, elecciones]);
+  }, [step, mesaId, elecciones, modoPractica, alertasPractica]);
 
   const handleCerrar = async () => {
     setLoading(true);
     setError(null);
+
+    if (modoPractica) {
+      setCodigoVerificacion('PRAC-0001');
+      setStep(4);
+      setLoading(false);
+      return;
+    }
 
     try {
       const jornada = await jornadaService.cerrar(mesaId, {

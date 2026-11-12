@@ -21,6 +21,7 @@ import { IconoAlerta, IconoCandado, IconoDocumento, IconoCheck } from '../ui/Ico
 import { EstadoVacio } from '../ui/EstadoVacio';
 import { formatearErrorAmigable, esErrorCuotaAlmacenamiento } from '../../utils/formatoError';
 import { determinarModoRevision } from '../../services/borradorVotosLogic';
+import { evaluarAritmeticaPractica, MESA_PRACTICA } from '../../services/modoPractica';
 
 /**
  * FormularioMesaMultiple — Captura de resultados electorales
@@ -78,6 +79,9 @@ interface FormularioMesaMultipleProps {
   totalSufragantes: number;
   elecciones: Eleccion[];
   deviceId: string;
+  modoPractica?: boolean;
+  puestoNombre?: string;
+  onSalirPractica?: () => void;
   onMesaCerrada?: (codigo: string) => void;
   onVolverSelector?: () => void;
 }
@@ -98,6 +102,9 @@ export function FormularioMesaMultiple({
   totalSufragantes,
   elecciones,
   deviceId,
+  modoPractica = false,
+  puestoNombre,
+  onSalirPractica,
   onMesaCerrada,
   onVolverSelector,
 }: FormularioMesaMultipleProps) {
@@ -150,12 +157,20 @@ export function FormularioMesaMultiple({
     eleccionId: eleccionActual,
     campanaId,
     deviceId,
+    modoPractica,
   });
 
   const [forzarConteoManual, setForzarConteoManual] = useState(false);
+  const [reportadasPractica, setReportadasPractica] = useState<Set<string>>(new Set());
 
   // Verificar si ya existen resultados para esta mesa + elección
   useEffect(() => {
+    if (modoPractica) {
+      setYaRegistrado(false);
+      setResultadosExistentes([]);
+      setCargandoResultados(false);
+      return;
+    }
     let cancelled = false;
     const verificar = async () => {
       setCargandoResultados(true);
@@ -203,7 +218,7 @@ export function FormularioMesaMultiple({
 
     verificar();
     return () => { cancelled = true; };
-  }, [mesaId, eleccionActual, testigoId]);
+  }, [mesaId, eleccionActual, testigoId, modoPractica]);
 
   // Si cambia la lista de elecciones y no hay elección actual válida, sincronizar
   useEffect(() => {
@@ -214,6 +229,7 @@ export function FormularioMesaMultiple({
 
   // Cargar fotos existentes en IndexedDB para esta mesa
   useEffect(() => {
+    if (modoPractica) return;
     let mounted = true;
     getFotosByMesa(mesaId, { campanaId, testigoId })
       .then((fotos) => {
@@ -223,7 +239,7 @@ export function FormularioMesaMultiple({
     return () => {
       mounted = false;
     };
-  }, [mesaId, campanaId, testigoId, guardado, refreshProgreso]);
+  }, [mesaId, campanaId, testigoId, guardado, refreshProgreso, modoPractica]);
 
   const limpiarFormulario = useCallback(() => {
     setVotosUninominal({});
@@ -379,6 +395,14 @@ export function FormularioMesaMultiple({
 
   const handleGuardar = async () => {
     if (!eleccion || borradorActivo) return;
+    if (modoPractica) {
+      setError(null);
+      const evalPractica = evaluarAritmeticaPractica(totalVotos, totalSufragantes);
+      setAlertasValidacion(evalPractica.alertas);
+      setGuardado(true);
+      setReportadasPractica((prev) => new Set(prev).add(eleccionActual));
+      return;
+    }
     // Alerta si el candidato propio tiene 0 votos
     if (miCandidatoId || miListaId) {
       let propioTieneZero = false;
@@ -584,6 +608,17 @@ export function FormularioMesaMultiple({
     if (!puedeCerrar) return;
     setCerrando(true);
     setError(null);
+    if (modoPractica) {
+      try {
+        const codigo = await generarCodigoActa(mesaId, eleccionActual, totalVotos);
+        setCodigoActa(codigo);
+        setActaCerrada(true);
+        if (onMesaCerrada) onMesaCerrada(codigo);
+      } finally {
+        setCerrando(false);
+      }
+      return;
+    }
     try {
       const jornada = await jornadaService.cerrar(mesaId, {
         observaciones: observaciones || undefined,
@@ -660,6 +695,33 @@ export function FormularioMesaMultiple({
 
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-32">
+      {modoPractica && (
+        <div
+          data-testid="franja-modo-practica"
+          role="status"
+          aria-live="polite"
+          className="mb-4 px-4 py-3 rounded-card border-2 bg-[#FFFBEB] text-[#B45309] border-[#FDE68A] dark:bg-[#451A03] dark:text-[#FCD34D] dark:border-[#78350F] flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2">
+            <IconoAlerta className="w-5 h-5 flex-shrink-0" />
+            <p className="text-xs sm:text-sm font-black uppercase tracking-wider">
+              PRÁCTICA — no se envía
+            </p>
+          </div>
+          {onSalirPractica ? (
+            <button
+              type="button"
+              onClick={onSalirPractica}
+              data-testid="btn-salir-practica-franja"
+              className="min-h-[44px] px-3 py-1.5 rounded-btn border border-[#B45309]/40 dark:border-[#FCD34D]/40 text-xs font-bold uppercase tracking-wider hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            >
+              Salir
+            </button>
+          ) : (
+            <span className="text-xs font-bold">Solo en memoria</span>
+          )}
+        </div>
+      )}
       <div className="bg-app-surface text-app-fg rounded-card overflow-hidden border border-app-line">
 
         {/* Header Card Info */}
@@ -674,6 +736,11 @@ export function FormularioMesaMultiple({
               <h2 className="text-4xl font-black text-app-fg leading-none tabular-nums">
                 #{mesaNumero}
               </h2>
+              {(puestoNombre || modoPractica) && (
+                <p data-testid="puesto-mesa-nombre" className="text-xs font-semibold text-app-muted mt-1.5">
+                  {puestoNombre || MESA_PRACTICA?.puesto?.nombre || 'Puesto de práctica'}
+                </p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-1.5">
@@ -714,6 +781,8 @@ export function FormularioMesaMultiple({
               limpiarFormulario();
             }}
             refreshTrigger={refreshProgreso}
+            modoPractica={modoPractica}
+            reportadasPractica={reportadasPractica}
           />
           {/* Selector de Elección */}
           <SelectorEleccion
@@ -748,6 +817,11 @@ export function FormularioMesaMultiple({
                   setError(null);
                   setGuardado(false);
                   setSyncStatus(null);
+                  if (modoPractica) {
+                    setFotosManual(fotos);
+                    setFotosMesaCount(fotos.length);
+                    return;
+                  }
                   setGuardandoFotos(true);
                   try {
                     const now = new Date().toISOString();
@@ -988,7 +1062,7 @@ export function FormularioMesaMultiple({
                   }}
                   size="large"
                   variant="candidate"
-                  disabled={guardado}
+                  disabled={guardado && !modoPractica}
                 />
               ))}
             </div>
@@ -1075,21 +1149,21 @@ export function FormularioMesaMultiple({
               value={votosBlanco}
               onChange={(v) => { setVotosBlanco(v); setGuardado(false); setSyncStatus(null); }}
               variant="special"
-              disabled={guardado}
+              disabled={guardado && !modoPractica}
             />
             <VoteInput
               label="Votos nulos"
               value={votosNulos}
               onChange={(v) => { setVotosNulos(v); setGuardado(false); setSyncStatus(null); }}
               variant="special"
-              disabled={guardado}
+              disabled={guardado && !modoPractica}
             />
             <VoteInput
               label="No marcados"
               value={votosNoMarcados}
               onChange={(v) => { setVotosNoMarcados(v); setGuardado(false); setSyncStatus(null); }}
               variant="special"
-              disabled={guardado}
+              disabled={guardado && !modoPractica}
             />
           </div>
 
@@ -1133,6 +1207,32 @@ export function FormularioMesaMultiple({
               </span>
             </button>
           )}
+
+          {modoPractica && guardado && (() => {
+            const evalPractica = evaluarAritmeticaPractica(totalVotos, totalSufragantes);
+            return (
+              <div
+                data-testid="resultado-aritmetica-practica"
+                role="status"
+                aria-live="polite"
+                className={`my-4 p-4 rounded-card border-2 ${
+                  evalPractica.cuadra
+                    ? 'bg-green-500/10 border-green-500/30 text-green-800 dark:text-green-300'
+                    : evalPractica.excede
+                    ? 'bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-300'
+                    : 'bg-amber-500/10 border-amber-500/40 text-amber-800 dark:text-amber-300'
+                }`}
+              >
+                <p className="text-sm font-black">
+                  {evalPractica.cuadra ? '✓ La suma cuadra' : 'La suma no cuadra'}
+                </p>
+                <p className="text-xs font-semibold mt-1">{evalPractica.resumen}</p>
+                <p className="text-xs mt-1.5">
+                  Simulacro en memoria: ningún dato ni foto se guardó en el teléfono ni se envió.
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Fin paso 2: Revisar votos o conteo manual */}
           </>);
@@ -1318,6 +1418,7 @@ export function FormularioMesaMultiple({
               testigoId={testigoId}
               deviceId={deviceId}
               mesaNumero={mesaNumero}
+              modoPractica={modoPractica}
             />
           </div>
 
@@ -1356,6 +1457,8 @@ export function FormularioMesaMultiple({
               mesaNumero={mesaNumero}
               elecciones={elecciones.map((e) => ({ id: e.id, nombre: e.nombre }))}
               sinFotoMotivo={sinFotoMotivo}
+              modoPractica={modoPractica}
+              alertasPractica={alertasValidacion}
               onCerrado={(codigo) => {
                 setShowWizardCierre(false);
                 setActaCerrada(true);
