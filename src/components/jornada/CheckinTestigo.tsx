@@ -207,7 +207,7 @@ export function CheckinTestigo({ mesaData, testigoId, campanaId, onCheckinComple
               type="button"
               data-testid="btn-practicar"
               onClick={onPracticar}
-              className="w-full mt-3 min-h-[48px] py-3.5 px-4 rounded-2xl border-2 border-gray-200 bg-gray-50 hover:border-editorial-red text-gray-800 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center"
+              className="w-full mt-3 min-h-[48px] py-3.5 px-4 rounded-card border border-app-line bg-app-elevated hover:bg-app-surface hover:border-editorial-red text-app-fg hover:text-app-accent-fg font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-editorial-red/30"
             >
               Practicar llenado E-14
             </button>

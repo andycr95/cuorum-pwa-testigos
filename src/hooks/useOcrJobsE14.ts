@@ -32,7 +32,7 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
 
   // ── Sincroniza desde el servidor la lista de jobs de la mesa ──────────
   const sincronizarConServidor = useCallback(async () => {
-    if (modoPractica || typeof navigator === 'undefined' || !navigator.onLine) return;
+    if (typeof navigator === 'undefined' || !navigator.onLine) return;
     try {
       const resp = await api.get<Array<{
         id: string;
@@ -85,11 +85,10 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
     } catch {
       // Sin conexión o fallo temporal
     }
-  }, [mesaId, testigoId, eleccionId, campanaId, deviceId, modoPractica]);
+  }, [mesaId, testigoId, eleccionId, campanaId, deviceId]);
 
   // ── Polling: verifica estado de jobs en PROCESANDO o SUBIENDO ─────────
   const pollProcessingJobs = useCallback(async () => {
-    if (modoPractica) return false;
     const all = await getOcrJobsByMesa(mesaId);
     const procesando = all.filter(j => (j.estado === 'PROCESANDO' || j.estado === 'SUBIENDO') && j.serverJobId);
 
@@ -224,7 +223,6 @@ export function useOcrJobsE14({ mesaId, testigoId, eleccionId, campanaId, device
 
   const guardar = useCallback(
     async (fotos: { orden: number; blob: Blob }[]) => {
-      if (modoPractica) return;
       setSaving(true);
       try {
         const job: Omit<OcrJobEntry, 'synced' | 'syncAttempts'> = {

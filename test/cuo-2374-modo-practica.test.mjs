@@ -53,6 +53,16 @@ dom.window.HTMLCanvasElement.prototype.getContext = () => ({
   getImageData: () => ({ data: new Uint8ClampedArray(4) }),
   putImageData() {},
 });
+dom.window.HTMLCanvasElement.prototype.toBlob = function (cb, type = 'image/jpeg') {
+  cb(new Blob(['compressed-image'], { type }));
+};
+globalThis.createImageBitmap = async () => ({ width: 200, height: 200, close() {} });
+if (!globalThis.URL.createObjectURL) {
+  globalThis.URL.createObjectURL = () => 'blob:practica-preview';
+}
+if (!globalThis.URL.revokeObjectURL) {
+  globalThis.URL.revokeObjectURL = () => {};
+}
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -295,16 +305,105 @@ describe('CUO-2374 · Modo práctica con E-14 ficticio que no se guarda ni se en
     assert.ok(resAritmetica, 'Debe mostrar el resultado de la validación aritmética al guardar');
     assert.match(resAritmetica.textContent, /La suma cuadra/);
 
-    // Paso 3: Cerrar y firmar acta en memoria
+    // Paso 3: Registrar novedad con foto en PanelIncidencias y cerrar acta por WizardCierre en memoria
     await click(document.getElementById('tab-cierre'));
-    const btnCerrarDirecto = [...document.querySelectorAll('button')].find((b) =>
-      b.textContent.includes('Cerrar y firmar acta'),
+
+    // 3a. Abrir PanelIncidencias, adjuntar foto y registrar novedad en memoria
+    const btnToggleIncidencias = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent.includes('Novedades / Incidencias'),
     );
-    assert.ok(btnCerrarDirecto, 'Debe permitir cerrar el acta con la foto en memoria');
-    assert.equal(btnCerrarDirecto.disabled, false);
-    await click(btnCerrarDirecto);
+    assert.ok(btnToggleIncidencias, 'Debe existir el encabezado de Novedades / Incidencias');
+    await click(btnToggleIncidencias);
+
+    const btnNuevaNovedad = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent.includes('Nueva novedad'),
+    );
+    assert.ok(btnNuevaNovedad, 'Debe existir la pestaña Nueva novedad');
+    await click(btnNuevaNovedad);
+
+    const btnTipoMateriales = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent.includes('Materiales faltantes'),
+    );
+    assert.ok(btnTipoMateriales, 'Debe existir el botón de tipo Materiales faltantes');
+    await click(btnTipoMateriales);
+
+    const textareaIncidencia = document.querySelector(
+      'textarea[placeholder*="Describe la materiales faltantes"]',
+    );
+    assert.ok(textareaIncidencia, 'Debe existir el campo de descripción de la novedad');
+    await fillInput(textareaIncidencia, 'Simulacro de novedad en mesa de práctica sin persistencia');
+
+    const inputFotoIncidencia = document.querySelector('#panel-cierre input[type="file"][accept="image/*"]');
+    assert.ok(inputFotoIncidencia, 'Debe existir el input de foto de evidencia en el panel de incidencias');
+    const fakeIncFoto = new dom.window.File(['foto-incidencia-practica'], 'incidencia.jpg', {
+      type: 'image/jpeg',
+    });
+    await act(async () => {
+      Object.defineProperty(inputFotoIncidencia, 'files', {
+        value: [fakeIncFoto],
+        configurable: true,
+      });
+      inputFotoIncidencia.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await flush();
+
+    const btnRegistrarNovedad = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent.includes('Registrar novedad'),
+    );
+    assert.ok(btnRegistrarNovedad, 'Debe existir el botón Registrar novedad');
+    assert.equal(btnRegistrarNovedad.disabled, false);
+    await click(btnRegistrarNovedad);
+
+    assert.equal(idbWrites.length, 0, 'Registrar novedad en práctica no debe escribir en IndexedDB');
+    assert.equal(apiCalls.length, 0, 'Registrar novedad en práctica no debe llamar a la API');
+    assert.equal(fetchCalls.length, 0, 'Registrar novedad en práctica no debe llamar a fetch');
+    assert.match(document.body.textContent, /1 reportada/, 'La novedad debe quedar en la lista en memoria');
+    assert.match(document.body.textContent, /Con foto de evidencia/, 'Debe indicar foto de evidencia en memoria');
+
+    // 3b. Abrir WizardCierre («Cerrar Acta de Mesa») y completar los 4 pasos en memoria
+    const btnAbrirWizard = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent.includes('Cerrar Acta de Mesa'),
+    );
+    assert.ok(btnAbrirWizard, 'Debe existir el botón Cerrar Acta de Mesa para abrir WizardCierre');
+    assert.equal(btnAbrirWizard.disabled, false);
+    await click(btnAbrirWizard);
+
+    assert.equal(apiCalls.length, 0, 'Abrir WizardCierre en práctica no debe llamar a la API');
+    assert.match(document.body.textContent, /Resumen de elecciones/);
+    const btnWizardPaso1 = [...document.querySelectorAll('button')].find(
+      (b) => b.textContent.trim() === 'Continuar',
+    );
+    assert.ok(btnWizardPaso1, 'Debe poder continuar del paso 1 al paso 2 del WizardCierre');
+    await click(btnWizardPaso1);
+
+    assert.match(document.body.textContent, /Observaciones finales/);
+    const textareaWizardObs = document.querySelector('textarea[placeholder*="observaciones"]');
+    await fillInput(textareaWizardObs, 'Observación de cierre en modo práctica');
+    const btnWizardPaso2 = [...document.querySelectorAll('button')].find(
+      (b) => b.textContent.trim() === 'Continuar',
+    );
+    await click(btnWizardPaso2);
+
+    assert.match(document.body.textContent, /Firma digital/);
+    const btnConfirmarCierre = [...document.querySelectorAll('button')].find((b) =>
+      b.textContent.includes('Confirmar cierre'),
+    );
+    assert.ok(btnConfirmarCierre, 'Debe existir el botón Confirmar cierre en el paso 3 del WizardCierre');
+    await click(btnConfirmarCierre);
+
+    assert.equal(apiCalls.length, 0, 'Confirmar cierre en WizardCierre en práctica no debe llamar a la API');
+    assert.equal(idbWrites.length, 0, 'Confirmar cierre en WizardCierre en práctica no debe escribir en IndexedDB');
+    assert.match(document.body.textContent, /Acta firmada exitosamente/);
+    assert.match(document.body.textContent, /PRAC-0001/);
+
+    const btnFinalizarWizard = [...document.querySelectorAll('button')].find(
+      (b) => b.textContent.trim() === 'Finalizar',
+    );
+    assert.ok(btnFinalizarWizard, 'Debe existir el botón Finalizar en el paso 4 del WizardCierre');
+    await click(btnFinalizarWizard);
 
     assert.match(document.body.textContent, /Acta cerrada y firmada/);
+    assert.match(document.body.textContent, /PRAC-0001/);
 
     // Verificar espías de red e IndexedDB: CERO llamadas
     assert.equal(fetchCalls.length, 0, 'Cero llamadas a fetch durante todo el modo práctica');
@@ -403,7 +502,7 @@ describe('CUO-2374 · Modo práctica con E-14 ficticio que no se guarda ni se en
     assert.match(avisoMenor.textContent, /La suma no cuadra/);
     assert.match(
       avisoMenor.textContent,
-      /La suma de votos individuales \(80\) no coincide con el total de votos de mesa \(100\)/,
+      /La suma de votos \(80\) no coincide con los sufragantes \(100\)/,
     );
 
     // Caso C: Ajustar para que cuadre exactamente (100 = 100)
@@ -446,6 +545,117 @@ describe('CUO-2374 · Modo práctica con E-14 ficticio que no se guarda ni se en
     assert.match(document.body.textContent, /Acta cerrada y firmada/);
     assert.equal(fetchCalls.length, 0);
     assert.equal(apiCalls.length, 0);
+    assert.equal(idbWrites.length, 0);
+  });
+
+  it('6. Con sesión iniciada (SelectorMesa y CheckinTestigo), entrar a práctica no contamina la mesa real y al salir vuelve a la vista previa sin cambios', async () => {
+    const expFuture = Math.floor(Date.now() / 1000) + 3600;
+    const payloadB64 = Buffer.from(JSON.stringify({ sub: 'testigo-real-1', exp: expFuture })).toString(
+      'base64url',
+    );
+    const fakeJwt = `eyJhbGciOiJIUzI1NiJ9.${payloadB64}.firma`;
+
+    const realTestigoData = {
+      token: fakeJwt,
+      deviceId: 'device-real-1',
+      tipoTestigo: 'ELECTORAL',
+      campanaId: 'campana-real-1',
+      testigo: {
+        id: 'testigo-real-1',
+        cedula: 'TEST-TES-001',
+        nombres: 'Valeria',
+        apellidos: 'Sintética',
+      },
+      mesa: {
+        id: 'mesa-real-10',
+        numero: 10,
+        totalSufragantes: 240,
+        puesto: { nombre: 'Colegio Real Sintético', direccion: 'Calle 10 # 20-30' },
+      },
+      mesas: [
+        {
+          id: 'mesa-real-10',
+          numero: 10,
+          totalSufragantes: 240,
+          puesto: { nombre: 'Colegio Real Sintético', direccion: 'Calle 10 # 20-30' },
+        },
+        {
+          id: 'mesa-real-11',
+          numero: 11,
+          totalSufragantes: 210,
+          puesto: { nombre: 'Colegio Real Sintético', direccion: 'Calle 10 # 20-30' },
+        },
+      ],
+      elecciones: [
+        {
+          id: 'eleccion-real-1',
+          nombre: 'Alcaldía Real',
+          tipoEleccion: 'ALCALDIA',
+          tipoCargo: 'UNINOMINAL',
+          votoPreferente: false,
+          candidatos: [{ id: 'cand-real-1', nombre: 'Candidata Real Uno', partido: 'Partido Real', numero: 1 }],
+        },
+      ],
+    };
+
+    localStorage.setItem('cuorum_testigo_token', fakeJwt);
+    localStorage.setItem('cuorum_testigo_data', JSON.stringify(realTestigoData));
+
+    await act(async () => {
+      root.render(React.createElement(App));
+    });
+    await flush();
+
+    // 1. Estamos en SelectorMesa con las 2 mesas reales
+    assert.match(document.body.textContent, /Colegio Real Sintético/);
+    assert.match(document.body.textContent, /#10/);
+    assert.match(document.body.textContent, /#11/);
+
+    const btnPracticarSelector = document.querySelector('[data-testid="btn-practicar"]');
+    assert.ok(btnPracticarSelector, 'SelectorMesa debe mostrar el botón Practicar llenado E-14');
+    apiCalls.length = 0;
+    fetchCalls.length = 0;
+    await click(btnPracticarSelector);
+
+    // Verifica que abrió la mesa de práctica y no las reales
+    assert.equal(document.querySelector('[data-testid="puesto-mesa-nombre"]').textContent, 'Puesto de práctica');
+    await click(document.getElementById('tab-contar'));
+    await fillInput(document.querySelector('[aria-label="Votos para Candidato de prueba 1"]'), 55);
+    await click(document.querySelector('[data-testid="btn-guardar-resultados"]'));
+    assert.equal(idbWrites.length, 0, 'Practicar con sesión activa no debe escribir en IndexedDB');
+    assert.equal(apiCalls.length, 0, 'Practicar con sesión activa no debe llamar a la API');
+
+    // Al salir de la práctica vuelve a SelectorMesa con las mesas reales intactas
+    await click(document.querySelector('[data-testid="btn-salir-practica"]'));
+    assert.match(document.body.textContent, /Colegio Real Sintético/);
+    assert.ok(!document.querySelector('[data-testid="franja-modo-practica"]'));
+
+    // 2. Seleccionar la mesa real #10 para ir a CheckinTestigo (estado PENDIENTE)
+    const btnMesa10 = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('#10'));
+    assert.ok(btnMesa10, 'Debe existir la tarjeta de la mesa real #10');
+    await click(btnMesa10);
+    await flush();
+
+    // Limpiar contadores de la consulta inicial de estado de jornada real
+    apiCalls.length = 0;
+    fetchCalls.length = 0;
+
+    assert.match(document.body.textContent, /Confirmar llegada/);
+    const btnPracticarCheckin = document.querySelector('[data-testid="btn-practicar"]');
+    assert.ok(btnPracticarCheckin, 'CheckinTestigo debe mostrar el botón Practicar llenado E-14');
+    assert.match(btnPracticarCheckin.className, /bg-app-(surface|elevated)/, 'Botón en CheckinTestigo debe usar tokens app-* para modo oscuro');
+
+    await click(btnPracticarCheckin);
+    assert.ok(document.querySelector('[data-testid="franja-modo-practica"]'));
+    assert.equal(document.querySelector('[data-testid="puesto-mesa-nombre"]').textContent, 'Puesto de práctica');
+    assert.equal(idbWrites.length, 0);
+    assert.equal(apiCalls.length, 0);
+
+    // Salir desde la franja regresa a CheckinTestigo en la mesa real #10
+    await click(document.querySelector('[data-testid="btn-salir-practica-franja"]'));
+    assert.match(document.body.textContent, /Confirmar llegada/);
+    assert.match(document.body.textContent, /Colegio Real Sintético/);
+    assert.match(document.body.textContent, /#10/);
     assert.equal(idbWrites.length, 0);
   });
 });

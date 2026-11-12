@@ -40,7 +40,7 @@ export function evaluarAritmeticaPractica(totalVotos: number, totalSufragantes: 
     return { cuadra: false, excede: true, diferencia, resumen: mensaje, alertas: [{ tipo: 'SUMA_NO_COINCIDE', severidad: 'error', mensaje }] };
   }
   if (totalVotos !== totalSufragantes) {
-    const mensaje = `La suma de votos individuales (${totalVotos}) no coincide con el total de votos de mesa (${totalSufragantes})`;
+    const mensaje = `La suma de votos (${totalVotos}) no coincide con los sufragantes (${totalSufragantes})`;
     return { cuadra: false, excede: false, diferencia, resumen: mensaje, alertas: [{ tipo: 'SUMA_NO_COINCIDE', severidad: 'warning', mensaje }] };
   }
   return {
