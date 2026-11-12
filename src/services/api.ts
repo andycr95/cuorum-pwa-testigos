@@ -71,6 +71,9 @@ api.interceptors.response.use(
             localStorage.removeItem(ELECCION_KEY);
             localStorage.removeItem(ELECCION_DATA_KEY);
             await idbModule.clearEscrutinioCache?.();
+            if (typeof caches !== 'undefined' && typeof caches.delete === 'function') {
+                await Promise.resolve(caches.delete('api-cache')).catch(() => {});
+            }
             if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('cuorum:unauthorized', { detail: { mensaje } }));
             }

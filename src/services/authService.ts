@@ -230,7 +230,10 @@ class AuthService {
     if (voluntario) {
       await idbModule.limpiarDatosSincronizadosTestigo?.(sesionAntes).catch(() => {});
     }
-    idbModule.clearEscrutinioCache?.().catch(() => {});
+    await idbModule.clearEscrutinioCache?.().catch(() => {});
+    if (typeof caches !== 'undefined' && typeof caches.delete === 'function') {
+      await Promise.resolve(caches.delete('api-cache')).catch(() => {});
+    }
   }
 
   /**
