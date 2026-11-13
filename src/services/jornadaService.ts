@@ -23,6 +23,7 @@ export interface JornadaMesa {
   cierreObservaciones?: string;
   firmadoAt?: string;
   codigoVerificacion?: string;
+  fotosE14Subidas?: number;
 }
 
 export interface ProgresoElecciones {
@@ -34,6 +35,7 @@ export interface ProgresoElecciones {
     reportado: boolean;
     totalVotos: number;
   }>;
+  fotosE14Subidas?: number;
   progreso: { reportadas: number; total: number; porcentaje: number };
 }
 

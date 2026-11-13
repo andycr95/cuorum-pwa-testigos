@@ -80,6 +80,7 @@ const { api } = await import('../src/services/api.ts');
 const { resetBackoffState } = await import('../src/services/syncService.ts');
 const formatoError = await import('../src/utils/formatoError.ts');
 const { App } = await import('../src/App.tsx');
+const { FormularioMesaMultiple } = await import('../src/components/formulario/FormularioMesaMultiple.tsx');
 
 const originalFetch = globalThis.fetch;
 const originalAdapter = api.defaults.adapter;
@@ -254,5 +255,223 @@ describe('CUO-3571: Ajustes de la limpieza de IndexedDB (seguimiento de CUO-3564
     );
     assert.equal(idb.esErrorCuotaAlmacenamiento, formatoError.esErrorCuotaAlmacenamiento);
     assert.equal(idb.MSG_CUOTA_ALMACENAMIENTO, formatoError.MSG_CUOTA_ALMACENAMIENTO);
+  });
+
+  it('4. CUO-3583: FotoE14 manual ya sincronizada en servidor (fotosE14Subidas > 0, sin job OCR y con fotosE14 local vacío tras logout/purga) habilita tieneFotos, guarda offline en IndexedDB sin bloquear y permite cerrar la mesa sin motivo', async () => {
+    localStorage.setItem('cuorum_testigo_token', 'token-sintetico-3583');
+    localStorage.setItem('cuorum_testigo_campana', 'campana-sintetica-3583');
+    localStorage.setItem(
+      'cuorum_testigo_data',
+      JSON.stringify({
+        testigo: {
+          id: 'testigo-sintetico-3583',
+          cedula: '0000003583',
+          nombres: 'Testigo',
+          apellidos: 'Sintético',
+          telefono: '3000000000',
+          email: null,
+        },
+        tipoTestigo: 'ELECTORAL',
+        mesa: { id: 'mesa-sintetica-3583', numero: 9, totalSufragantes: 200, puesto: null },
+        elecciones: [],
+        deviceId: 'device-sintetico-3583',
+        campana: { id: 'campana-sintetica-3583', nombre: 'Campaña Sintética', candidatoId: null, listaId: null },
+      }),
+    );
+
+    // Simular foto E-14 manual sincronizada y luego borrada en logout voluntario
+    await idb.guardarFotoE14({
+      id: 'foto-manual-3583',
+      mesaId: 'mesa-sintetica-3583',
+      testigoId: 'testigo-sintetico-3583',
+      campanaId: 'campana-sintetica-3583',
+      blob: new Blob(['foto-sintetica-3583'], { type: 'image/jpeg' }),
+      capturedAt: '2026-11-13T10:00:00.000Z',
+      deviceId: 'device-sintetico-3583',
+    });
+    await idb.marcarSincronizados([], ['foto-manual-3583']);
+    await idb.limpiarDatosSincronizadosTestigo({
+      campanaId: 'campana-sintetica-3583',
+      testigoId: 'testigo-sintetico-3583',
+    });
+
+    const fotosLocales = await idb.getFotosByMesa('mesa-sintetica-3583', {
+      campanaId: 'campana-sintetica-3583',
+      testigoId: 'testigo-sintetico-3583',
+    });
+    assert.equal(fotosLocales.length, 0, 'fotosE14 local debe estar vacío tras logout/purga');
+    const ocrLocales = await idb.getOcrJobsByMesa('mesa-sintetica-3583', {
+      campanaId: 'campana-sintetica-3583',
+      testigoId: 'testigo-sintetico-3583',
+    });
+    assert.equal(ocrLocales.length, 0, 'No debe haber jobs OCR locales');
+
+    let cierrePayload = null;
+    let consultoProgreso = false;
+
+    api.defaults.adapter = async (config) => {
+      if (config.url === '/testigos/actas/by-mesa/mesa-sintetica-3583') {
+        // Sin job de OCR en el servidor (la foto fue subida manualmente como FotoE14)
+        return {
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          data: [],
+        };
+      }
+      if (config.url === '/testigos/jornada/progreso') {
+        consultoProgreso = true;
+        return {
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          data: {
+            jornada: {
+              id: 'jornada-remota-3583',
+              mesaId: 'mesa-sintetica-3583',
+              testigoId: 'testigo-sintetico-3583',
+              campanaId: 'campana-sintetica-3583',
+              estado: 'ABIERTA',
+            },
+            elecciones: [],
+            fotosE14Subidas: 1,
+            progreso: { reportadas: 0, total: 1, porcentaje: 0 },
+          },
+        };
+      }
+      if (config.url === '/testigos/resultados/historial') {
+        return {
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          data: { data: [] },
+        };
+      }
+      if (config.url === '/testigos/jornada/cerrar') {
+        cierrePayload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+        return {
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          data: {
+            id: 'jornada-remota-3583',
+            mesaId: 'mesa-sintetica-3583',
+            estado: 'CERRADA',
+            codigoVerificacion: 'CAFE3583',
+          },
+        };
+      }
+      return { status: 200, statusText: 'OK', headers: {}, config, data: {} };
+    };
+
+    // Simular desconexión durante el guardado para verificar que handleGuardar no bloquea IndexedDB
+    globalThis.fetch = async () => {
+      throw new Error('offline');
+    };
+
+    const container = document.getElementById('root');
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(
+          React.createElement(FormularioMesaMultiple, {
+            mesaId: 'mesa-sintetica-3583',
+            testigoId: 'testigo-sintetico-3583',
+            mesaNumero: 9,
+            totalSufragantes: 200,
+            elecciones: [
+              {
+                id: 'elec-sintetica-3583',
+                nombre: 'Alcaldía Sintética',
+                tipoEleccion: 'ALCALDIA',
+                tipoCargo: 'UNINOMINAL',
+                votoPreferente: false,
+                candidatos: [
+                  {
+                    id: 'cand-sintetico-3583',
+                    nombre: 'Candidato Sintético Uno',
+                    partido: 'Partido Sintético',
+                    numero: 1,
+                  },
+                ],
+              },
+            ],
+            deviceId: 'device-sintetico-3583',
+          }),
+        );
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+
+      assert.equal(consultoProgreso, true, 'Debe consultar el progreso de la jornada con fotosE14Subidas');
+
+      // En Paso 1, como tieneFotos es true gracias a fotosE14Subidas: 1, no pide justificación
+      assert.equal(
+        (container.textContent || '').includes('Si no es posible tomar la foto, podrás justificarlo'),
+        false,
+        'No debe mostrar aviso de falta de foto cuando fotosE14Subidas > 0 en el servidor',
+      );
+
+      // Ir a Paso 2 (Revisar votos) y guardar resultados offline en IndexedDB
+      const tabContar = container.querySelector('#tab-contar');
+      assert.ok(tabContar, 'Debe existir la pestaña 2. Revisar votos');
+      await act(async () => {
+        tabContar.click();
+        await new Promise((r) => setTimeout(r, 20));
+      });
+
+      const btnGuardar = container.querySelector('[data-testid="btn-guardar-resultados"]');
+      assert.ok(btnGuardar, 'Debe existir el botón Guardar Resultados');
+      await act(async () => {
+        btnGuardar.click();
+        await new Promise((r) => setTimeout(r, 30));
+      });
+
+      const resultadosGuardados = await idb.getResultadosByMesa('mesa-sintetica-3583', {
+        testigoId: 'testigo-sintetico-3583',
+      });
+      assert.equal(resultadosGuardados.length, 1, 'Debe guardar el resultado en IndexedDB sin bloquear por red');
+
+      // Ir a Paso 3 (Cerrar)
+      const tabCierre = container.querySelector('#tab-cierre');
+      assert.ok(tabCierre, 'Debe existir la pestaña 3. Cerrar');
+      await act(async () => {
+        tabCierre.click();
+        await new Promise((r) => setTimeout(r, 20));
+      });
+
+      assert.equal(
+        (container.textContent || '').includes('Evidencia de foto obligatoria'),
+        false,
+        'No debe pedir justificación de falta de foto en el paso de cierre',
+      );
+
+      const btnFirmarActa = Array.from(container.querySelectorAll('button')).find((b) =>
+        (b.textContent || '').includes('Cerrar y firmar acta'),
+      );
+      assert.ok(btnFirmarActa, 'Debe existir el botón Cerrar y firmar acta');
+      assert.equal(btnFirmarActa.disabled, false, 'Cerrar y firmar acta debe estar habilitado sin motivo');
+
+      await act(async () => {
+        btnFirmarActa.click();
+        await new Promise((r) => setTimeout(r, 30));
+      });
+
+      assert.ok(cierrePayload, 'Debe invocar el cierre de jornada en el servidor');
+      assert.equal(cierrePayload.sinFotoMotivo, undefined, 'Cierra la mesa sin requerir sinFotoMotivo');
+      assert.match(container.textContent || '', /Acta cerrada y firmada/i);
+      assert.match(container.textContent || '', /CAFE3583/);
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+    }
   });
 });

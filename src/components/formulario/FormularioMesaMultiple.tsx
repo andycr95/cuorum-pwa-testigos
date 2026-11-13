@@ -120,6 +120,7 @@ export function FormularioMesaMultiple({
   const [fotosManual, setFotosManual] = useState<{ orden: number; blob: Blob }[]>([]);
   const [sinFotoMotivo, setSinFotoMotivo] = useState('');
   const [fotosMesaCount, setFotosMesaCount] = useState(0);
+  const [fotosRemotasCount, setFotosRemotasCount] = useState(0);
   const [guardandoFotos, setGuardandoFotos] = useState(false);
   const [guardado, setGuardado] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -241,6 +242,11 @@ export function FormularioMesaMultiple({
     };
   }, [mesaId, campanaId, testigoId, guardado, refreshProgreso, modoPractica]);
 
+  // Reiniciar el conteo remoto de FotoE14 al cambiar de mesa o de modo práctica
+  useEffect(() => {
+    setFotosRemotasCount(0);
+  }, [mesaId, modoPractica]);
+
   const limpiarFormulario = useCallback(() => {
     setVotosUninominal({});
     setVotosLista({});
@@ -281,7 +287,7 @@ export function FormularioMesaMultiple({
 
   const tieneFotos =
     fotosManual.length > 0 ||
-    fotosMesaCount > 0 ||
+    fotosMesaCount + fotosRemotasCount > 0 ||
     ocrJobs.jobs.some((j) => (j.fotos?.length ?? 0) > 0);
   const motivoSinFotoValido = sinFotoMotivo.trim().length >= 10;
   const puedeCerrar = tieneFotos || motivoSinFotoValido;
@@ -534,8 +540,8 @@ export function FormularioMesaMultiple({
         }
       }
 
-      // Fotos E-14 de evidencia: verificar si ya fueron guardadas en IDB en el paso 1
-      const fotosExistentes = (await getFotosByMesa(mesaId)).length > 0;
+      // Fotos E-14 de evidencia: verificar si ya fueron guardadas en IDB en el paso 1 o subidas al servidor
+      const fotosExistentes = (await getFotosByMesa(mesaId)).length + fotosRemotasCount > 0;
       let fotosData: Array<{
         id: string;
         mesaId: string;
@@ -783,6 +789,7 @@ export function FormularioMesaMultiple({
             refreshTrigger={refreshProgreso}
             modoPractica={modoPractica}
             reportadasPractica={reportadasPractica}
+            onFotosSubidasChange={setFotosRemotasCount}
           />
           {/* Selector de Elección */}
           <SelectorEleccion
@@ -799,7 +806,7 @@ export function FormularioMesaMultiple({
           <div className="flex rounded-card bg-app-elevated p-1 mb-5 border border-app-line" role="tablist" aria-label="Pasos de la jornada de conteo">
             <button type="button" role="tab" id="tab-foto" aria-controls="panel-foto" aria-selected={pasoActivo === 'foto'} onClick={() => setPasoActivo('foto')} className={`flex-1 py-2.5 px-2 rounded-btn font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'foto' ? 'bg-editorial-red text-white shadow-sm' : 'text-app-muted hover:text-app-fg hover:bg-app-surface'}`}>
               <span>1. Foto E-14</span>
-              {(fotosManual.length > 0 || fotosMesaCount > 0) && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length || fotosMesaCount}</span>}
+              {(fotosManual.length > 0 || fotosMesaCount > 0 || fotosRemotasCount > 0) && <span className="w-5 h-5 rounded-full bg-white/20 text-xs font-black flex items-center justify-center">{fotosManual.length || fotosMesaCount || fotosRemotasCount}</span>}
             </button>
             <button type="button" role="tab" id="tab-contar" aria-controls="panel-contar" aria-selected={pasoActivo === 'contar'} onClick={() => setPasoActivo('contar')} className={`flex-1 py-2.5 px-2 rounded-btn font-bold text-xs sm:text-sm transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${pasoActivo === 'contar' ? 'bg-editorial-red text-white shadow-sm' : 'text-app-muted hover:text-app-fg hover:bg-app-surface'}`}>
               <span>2. Revisar votos</span>
