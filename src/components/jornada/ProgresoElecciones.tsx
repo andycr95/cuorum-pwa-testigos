@@ -10,6 +10,7 @@ interface Props {
   refreshTrigger?: number;
   modoPractica?: boolean;
   reportadasPractica?: Set<string>;
+  onFotosSubidasChange?: (count: number) => void;
 }
 
 export function ProgresoElecciones({
@@ -20,6 +21,7 @@ export function ProgresoElecciones({
   refreshTrigger,
   modoPractica = false,
   reportadasPractica,
+  onFotosSubidasChange,
 }: Props) {
   const [progreso, setProgreso] = useState<ProgresoData | null>(null);
   const [localReportadas, setLocalReportadas] = useState<Set<string>>(new Set());
@@ -32,7 +34,16 @@ export function ProgresoElecciones({
       // Try server first
       try {
         const data = await jornadaService.getProgreso(mesaId);
-        if (!cancelled) setProgreso(data);
+        if (!cancelled) {
+          setProgreso(data);
+          const subidas =
+            typeof data?.fotosE14Subidas === 'number'
+              ? data.fotosE14Subidas
+              : typeof data?.jornada?.fotosE14Subidas === 'number'
+              ? data.jornada.fotosE14Subidas
+              : 0;
+          onFotosSubidasChange?.(Math.max(0, subidas));
+        }
         return;
       } catch {
         // Offline — calculate from IDB
