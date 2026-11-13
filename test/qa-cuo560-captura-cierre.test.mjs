@@ -53,11 +53,18 @@ describe('CUO-560: PWA: Captura directa a cola S3 y cierre validado con acuse re
       /getFotosByMesa\(mesaId[\s\S]*?setFotosMesaCount\(fotos\.length\)/,
       'Debe consultar getFotosByMesa al montar y actualizar fotosMesaCount',
     );
-    // Al guardar votos, comprueba si ya existen fotos para no duplicarlas
+    // Al guardar votos, comprueba si ya existen fotos (en IDB y/o remotas) para no duplicarlas
+    const patronFotosExistentes =
+      /const fotosExistentes = \(await getFotosByMesa\(mesaId\)\)\.length(?:\s*\+\s*fotosRemotasCount)?\s*>\s*0/;
     assert.match(
       formularioCode,
-      /const fotosExistentes = \(await getFotosByMesa\(mesaId\)\)\.length > 0/,
+      patronFotosExistentes,
       'handleGuardar debe comprobar si ya existen fotos guardadas en IDB',
+    );
+    assert.doesNotMatch(
+      formularioCode.replace('(await getFotosByMesa(mesaId)).length', '0'),
+      patronFotosExistentes,
+      'La expresión debe fallar si handleGuardar deja de consultar getFotosByMesa',
     );
   });
 
