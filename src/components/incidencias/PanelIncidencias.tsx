@@ -46,12 +46,12 @@ interface TipoConfig {
 const renderIconoTipo = (tipo: TipoIncidencia, className = 'w-5 h-5') => (tipo === 'INTIMIDACION' || tipo === 'VIOLENCIA') ? <IconoAlerta className={className} /> : (tipo === 'MATERIALES_FALTANTES' || tipo === 'IRREGULARIDAD_ACTA') ? <IconoDocumento className={className} /> : <IconoNovedad className={className} />;
 
 const TIPOS: TipoConfig[] = [
-  { tipo: 'MATERIALES_FALTANTES', label: 'Materiales faltantes', color: 'bg-yellow-100 border-yellow-400 text-yellow-800' },
-  { tipo: 'INTIMIDACION',         label: 'Intimidación',          color: 'bg-orange-100 border-orange-400 text-orange-800' },
-  { tipo: 'VIOLENCIA',            label: 'Violencia',             color: 'bg-red-100 border-red-500 text-red-800' },
-  { tipo: 'JURADO_AUSENTE',       label: 'Jurado ausente',        color: 'bg-blue-100 border-blue-400 text-blue-800' },
-  { tipo: 'IRREGULARIDAD_ACTA',   label: 'Irregularidad en acta', color: 'bg-purple-100 border-purple-400 text-purple-800' },
-  { tipo: 'OTRO',                 label: 'Otro',                  color: 'bg-gray-100 border-gray-400 text-gray-800' },
+  { tipo: 'MATERIALES_FALTANTES', label: 'Materiales faltantes', color: 'bg-yellow-500/15 border-yellow-500/40 text-yellow-800 dark:text-yellow-300' },
+  { tipo: 'INTIMIDACION',         label: 'Intimidación',          color: 'bg-orange-500/15 border-orange-500/40 text-orange-800 dark:text-orange-300' },
+  { tipo: 'VIOLENCIA',            label: 'Violencia',             color: 'bg-red-500/15 border-red-500/40 text-red-800 dark:text-red-300' },
+  { tipo: 'JURADO_AUSENTE',       label: 'Jurado ausente',        color: 'bg-blue-500/15 border-blue-500/40 text-blue-800 dark:text-blue-300' },
+  { tipo: 'IRREGULARIDAD_ACTA',   label: 'Irregularidad en acta', color: 'bg-editorial-red/15 border-editorial-red/40 text-app-accent-fg' },
+  { tipo: 'OTRO',                 label: 'Otro',                  color: 'bg-app-elevated border-app-line text-app-fg' },
 ];
 
 export function PanelIncidencias({
@@ -235,10 +235,10 @@ export function PanelIncidencias({
   };
 
   return (
-    <div className="rounded-2xl border-2 border-orange-300 overflow-hidden bg-orange-50/50 my-4">
+    <div className="rounded-card border border-orange-500/40 overflow-hidden bg-app-surface text-app-fg my-4">
       {/* Toast de confirmación — flota encima del panel */}
       {toast && (
-        <div className="mx-4 mt-3 px-4 py-3 bg-green-500 text-white rounded-2xl shadow-lg flex items-center gap-3 animate-pulse">
+        <div className="mx-4 mt-3 px-4 py-3 bg-green-700 text-white rounded-card flex items-center gap-3 animate-pulse">
           <IconoCheck className="w-5 h-5 text-white shrink-0" />
           <p className="text-sm font-bold flex-1">{toast}</p>
           <button
@@ -255,7 +255,7 @@ export function PanelIncidencias({
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 bg-orange-500 active:opacity-90 transition-opacity"
+        className="w-full flex items-center justify-between px-5 py-4 min-h-[48px] bg-orange-700 hover:bg-orange-800 active:opacity-90 transition-colors"
       >
         <div className="flex items-center gap-3">
           <IconoNovedad className="w-6 h-6 text-white shrink-0" />
@@ -263,7 +263,7 @@ export function PanelIncidencias({
             <p className="text-sm font-black text-white uppercase tracking-wide">
               Novedades / Incidencias
             </p>
-            <p className="text-[11px] text-orange-100 font-semibold">
+            <p className="text-xs text-white font-semibold">
               Mesa #{mesaNumero}
             </p>
           </div>
@@ -271,8 +271,8 @@ export function PanelIncidencias({
 
         <div className="flex items-center gap-3">
           {incidencias.length > 0 && (
-            <div className="px-2.5 py-1 bg-white rounded-full">
-              <span className="text-xs font-black text-orange-600">
+            <div className="px-2.5 py-1 bg-app-surface border border-app-line rounded-full">
+              <span className="text-xs font-black text-orange-800 dark:text-orange-300">
                 {incidencias.length} reportada{incidencias.length > 1 ? 's' : ''}
               </span>
             </div>
@@ -292,25 +292,25 @@ export function PanelIncidencias({
       {abierto && (
         <div className="p-5 space-y-4">
           {/* Sub-tabs: Lista / Nueva */}
-          <div className="flex gap-1 bg-orange-100 rounded-xl p-1">
+          <div className="flex gap-1 bg-app-elevated border border-app-line rounded-card p-1">
             <button
               type="button"
               onClick={() => setVistaActiva('lista')}
-              className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+              className={`flex-1 py-2 min-h-[44px] rounded-btn text-xs font-black uppercase tracking-wide transition-all ${
                 vistaActiva === 'lista'
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-orange-400 hover:text-orange-600'
+                  ? 'bg-app-surface text-orange-800 dark:text-orange-300 border border-app-line'
+                  : 'text-app-muted hover:text-app-fg'
               }`}
             >
-              📋 Historial ({incidencias.length})
+              Historial ({incidencias.length})
             </button>
             <button
               type="button"
               onClick={() => setVistaActiva('nueva')}
-              className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+              className={`flex-1 py-2 min-h-[44px] rounded-btn text-xs font-black uppercase tracking-wide transition-all ${
                 vistaActiva === 'nueva'
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-orange-400 hover:text-orange-600'
+                  ? 'bg-app-surface text-orange-800 dark:text-orange-300 border border-app-line'
+                  : 'text-app-muted hover:text-app-fg'
               }`}
             >
               ＋ Nueva novedad
@@ -322,17 +322,17 @@ export function PanelIncidencias({
             <div className="space-y-3">
               {cargandoHistorial ? (
                 <div className="py-8 text-center">
-                  <span className="inline-block w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mb-2" />
-                  <p className="text-xs text-gray-500 font-semibold">Cargando historial...</p>
+                  <span className="inline-block w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mb-2" />
+                  <p className="text-xs text-app-muted font-semibold">Cargando historial...</p>
                 </div>
               ) : incidencias.length === 0 ? (
                 <div className="py-8 text-center">
-                  <IconoDocumento className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-gray-500">Sin novedades registradas</p>
+                  <IconoDocumento className="w-8 h-8 text-orange-800 dark:text-orange-300 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-app-muted">Sin novedades registradas</p>
                   <button
                     type="button"
                     onClick={() => setVistaActiva('nueva')}
-                    className="mt-3 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-black uppercase tracking-wide active:scale-95 transition-all"
+                    className="mt-3 px-4 py-2.5 min-h-[44px] bg-orange-700 hover:bg-orange-800 text-white rounded-btn text-xs font-black uppercase tracking-wide active:scale-95 transition-all"
                   >
                     + Reportar primera novedad
                   </button>
@@ -350,24 +350,24 @@ export function PanelIncidencias({
                     return (
                       <div
                         key={inc.id}
-                        className={`flex items-start gap-3 px-3 py-3 rounded-xl border-2 ${cfg.color}`}
+                        className={`flex items-start gap-3 px-3 py-3 rounded-card border ${cfg.color}`}
                       >
                         {renderIconoTipo(inc.tipo, 'w-5 h-5 shrink-0 mt-0.5')}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-xs font-black uppercase tracking-wide">{cfg.label}</p>
                             <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <span className="text-[10px] font-semibold opacity-70">{fecha}</span>
+                              <span className="text-xs font-semibold opacity-80">{fecha}</span>
                               {inc.synced === 1 ? (
-                                <span className="text-green-600 font-black text-xs" title="Sincronizado con servidor">✓</span>
+                                <span className="text-green-800 dark:text-green-300 font-black text-xs" title="Sincronizado con servidor">✓</span>
                               ) : (
-                                <span className="text-orange-700 font-bold text-xs" title="Pendiente de sincronización">Pendiente</span>
+                                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-800 dark:text-amber-300 font-bold text-xs" title="Pendiente de sincronización">Pendiente</span>
                               )}
                             </div>
                           </div>
                           <p className="text-xs mt-0.5 leading-relaxed">{inc.descripcion}</p>
                           {tienefoto && (
-                            <p className="text-[10px] mt-1 font-semibold opacity-70">Con foto de evidencia</p>
+                            <p className="text-xs mt-1 font-semibold opacity-80">Con foto de evidencia</p>
                           )}
                         </div>
                       </div>
@@ -376,7 +376,7 @@ export function PanelIncidencias({
                   <button
                     type="button"
                     onClick={() => setVistaActiva('nueva')}
-                    className="w-full py-3 border-2 border-dashed border-orange-300 rounded-xl text-orange-600 text-xs font-black uppercase tracking-wide active:scale-95 transition-all hover:bg-orange-50"
+                    className="w-full py-3 min-h-[44px] border-2 border-dashed border-orange-500/40 rounded-card text-orange-800 dark:text-orange-300 text-xs font-black uppercase tracking-wide active:scale-95 transition-all hover:bg-orange-500/10"
                   >
                     + Reportar nueva novedad
                   </button>
@@ -390,7 +390,7 @@ export function PanelIncidencias({
             <div className="space-y-5">
               {/* Selector de tipo */}
               <div>
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3">
+                <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-3">
                   Tipo de novedad
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -399,10 +399,10 @@ export function PanelIncidencias({
                       key={t.tipo}
                       type="button"
                       onClick={() => setTipoSeleccionado(t.tipo)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all active:scale-95 ${
+                      className={`flex items-center gap-2 px-3 py-2.5 min-h-[44px] rounded-card border text-left transition-all active:scale-95 ${
                         tipoSeleccionado === t.tipo
-                          ? `${t.color} shadow-md scale-[1.02]`
-                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                          ? `${t.color} scale-[1.02]`
+                          : 'bg-app-elevated border-app-line text-app-fg hover:border-app-muted'
                       }`}
                     >
                       {renderIconoTipo(t.tipo, 'w-5 h-5 shrink-0')}
@@ -415,18 +415,15 @@ export function PanelIncidencias({
               {/* Descripción */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Descripción detallada <span className="text-red-500">*</span>
-                  </p>
-                  <span
-                    className={`text-xs font-bold ${
-                      descripcion.trim().length < 10 ? 'text-gray-400' : 'text-green-600'
-                    }`}
-                  >
+                  <label htmlFor="incidencia-descripcion" className="text-xs font-bold text-app-muted uppercase tracking-wider">
+                    Descripción detallada <span className="text-app-accent-fg">*</span>
+                  </label>
+                  <span className={`text-xs font-bold ${descripcion.trim().length < 10 ? 'text-app-muted' : 'text-green-800 dark:text-green-300'}`}>
                     {descripcion.trim().length}/500
                   </span>
                 </div>
                 <textarea
+                  id="incidencia-descripcion"
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value.slice(0, 500))}
                   placeholder={
@@ -436,10 +433,10 @@ export function PanelIncidencias({
                   }
                   disabled={!tipoSeleccionado}
                   rows={4}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-sm resize-none focus:border-orange-400 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400 bg-white"
+                  className="w-full px-4 py-3 border border-app-line rounded-card text-sm text-app-fg placeholder:text-app-muted resize-none focus:border-orange-500 focus:outline-none disabled:bg-app-canvas disabled:text-app-muted bg-app-elevated"
                 />
                 {descripcion.trim().length > 0 && descripcion.trim().length < 10 && (
-                  <p className="text-xs text-orange-600 mt-1 font-semibold">
+                  <p className="text-xs text-orange-800 dark:text-orange-300 mt-1 font-semibold">
                     Mínimo 10 caracteres para guardar
                   </p>
                 )}
@@ -447,7 +444,7 @@ export function PanelIncidencias({
 
               {/* Foto opcional */}
               <div>
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
+                <p className="text-xs font-bold text-app-muted uppercase tracking-wider mb-2">
                   Foto de evidencia (opcional)
                 </p>
 
@@ -456,17 +453,18 @@ export function PanelIncidencias({
                     <img
                       src={fotoPreview}
                       alt="Evidencia"
-                      className="w-full rounded-xl object-cover border-2 border-orange-300"
+                      className="w-full rounded-card object-cover border border-orange-500/40"
                       style={{ maxHeight: 200 }}
                     />
                     <button
                       type="button"
+                      aria-label="Eliminar foto de evidencia"
                       onClick={() => {
                         if (fotoPreview) URL.revokeObjectURL(fotoPreview);
                         setFotoBlob(null);
                         setFotoPreview(null);
                       }}
-                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 rounded-full text-white text-sm font-black flex items-center justify-center shadow-lg"
+                      className="absolute top-2 right-2 w-11 h-11 min-w-[44px] min-h-[44px] bg-red-600 hover:bg-red-700 rounded-full text-white text-sm font-black flex items-center justify-center"
                     >
                       ✕
                     </button>
@@ -475,9 +473,9 @@ export function PanelIncidencias({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-3 border-2 border-dashed border-orange-300 rounded-xl text-orange-600 text-sm font-bold flex items-center justify-center gap-2 hover:bg-orange-50 active:scale-95 transition-all"
+                    className="w-full py-3 min-h-[44px] border-2 border-dashed border-orange-500/40 rounded-card text-orange-800 dark:text-orange-300 text-sm font-bold flex items-center justify-center gap-2 hover:bg-orange-500/10 active:scale-95 transition-all"
                   >
-                    <IconoCamara className="w-5 h-5 text-orange-600 shrink-0" />
+                    <IconoCamara className="w-5 h-5 text-orange-800 dark:text-orange-300 shrink-0" />
                     Agregar foto de evidencia
                   </button>
                 )}
@@ -494,8 +492,8 @@ export function PanelIncidencias({
 
               {/* Error */}
               {error && (
-                <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-xs text-red-600 font-semibold">{error}</p>
+                <div role="alert" className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-card">
+                  <p className="text-xs text-red-800 dark:text-red-300 font-semibold">{error}</p>
                 </div>
               )}
 
@@ -504,10 +502,10 @@ export function PanelIncidencias({
                 type="button"
                 onClick={handleGuardar}
                 disabled={!puedeGuardar || guardando}
-                className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] shadow-lg ${
+                className={`w-full py-4 min-h-[48px] rounded-btn font-black text-sm uppercase tracking-wide transition-all active:scale-[0.97] ${
                   puedeGuardar
-                    ? 'bg-orange-500 text-white shadow-orange-200 hover:shadow-orange-300'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none'
+                    ? 'bg-orange-700 hover:bg-orange-800 text-white'
+                    : 'bg-app-elevated border border-app-line text-app-muted cursor-not-allowed'
                 }`}
               >
                 {guardando ? (
@@ -523,7 +521,7 @@ export function PanelIncidencias({
                 )}
               </button>
 
-              <p className="text-center text-[10px] text-gray-600 leading-relaxed">
+              <p className="text-center text-xs text-app-muted leading-relaxed">
                 Las novedades se guardan localmente y se sincronizan automáticamente con el servidor cuando hay conexión.
               </p>
             </div>
