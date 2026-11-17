@@ -19,6 +19,15 @@ export interface MesaData {
   } | null;
 }
 
+export type RolTestigo = 'TITULAR' | 'SUPLENTE' | 'COORDINADOR_PUESTO';
+
+/** Puesto que lee el coordinador de puesto (CUO-4047). */
+export interface PuestoCoordinador {
+  id: string;
+  nombre: string;
+  direccion: string;
+}
+
 export interface TestigoData {
   testigo: {
     id: string;
@@ -29,6 +38,9 @@ export interface TestigoData {
     email: string | null;
   };
   tipoTestigo: 'ELECTORAL' | 'ESCRUTINIO';
+  /** Sin valor: titular (sesiones anteriores a CUO-4047). El coordinador de puesto no tiene mesa. */
+  rol?: RolTestigo;
+  puesto?: PuestoCoordinador | null;
   mesa: MesaData; // Mesa actual (para compatibilidad)
   mesas?: MesaData[]; // Array de mesas (para el selector)
   elecciones: Array<{
@@ -62,6 +74,8 @@ export interface TestigoData {
 export interface LoginResponse {
   token: string;
   tipoTestigo: 'ELECTORAL' | 'ESCRUTINIO';
+  rol?: RolTestigo;
+  puesto?: PuestoCoordinador | null;
   testigo: TestigoData['testigo'];
   mesa: TestigoData['mesa'];
   elecciones: TestigoData['elecciones'];
@@ -153,6 +167,8 @@ class AuthService {
       localStorage.setItem(this.DATA_KEY, JSON.stringify({
         testigo: data.testigo,
         tipoTestigo: data.tipoTestigo || 'ELECTORAL',
+        rol: data.rol || 'TITULAR',
+        puesto: data.puesto ?? null,
         mesa: data.mesa,
         elecciones: data.elecciones,
         deviceId: data.deviceId,
