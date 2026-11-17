@@ -3,6 +3,7 @@ import { FormularioMesaMultiple } from './components/formulario/FormularioMesaMu
 import { LoginPage } from './components/auth/LoginPage';
 import { SelectorMesa } from './components/auth/SelectorMesa';
 import { EscrutinioDashboard } from './components/escrutinio/EscrutinioDashboard';
+import { PanelPuesto } from './components/puesto/PanelPuesto';
 import { CheckinTestigo } from './components/jornada/CheckinTestigo';
 import { AperturaMesa } from './components/jornada/AperturaMesa';
 import { authService, TestigoData } from './services/authService';
@@ -282,6 +283,11 @@ export function App() {
   // Testigo de escrutinio → dashboard de solo lectura
   if (testigoData.tipoTestigo === 'ESCRUTINIO') {
     return <EscrutinioDashboard testigoData={testigoData} onLogout={handleLogout} />;
+  }
+
+  // Coordinador de puesto → lectura de las mesas de su puesto, sin la app de la mesa (CUO-4047)
+  if (testigoData.rol === 'COORDINADOR_PUESTO') {
+    return <PanelPuesto testigoData={testigoData} onLogout={handleLogout} />;
   }
 
   // Obtener mesa seleccionada (flujo ELECTORAL)
