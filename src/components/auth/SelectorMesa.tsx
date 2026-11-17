@@ -17,9 +17,21 @@ export function SelectorMesa({ mesas, onSelect, testigoNombre, onLogout, onPract
           ¡Hola, {testigoNombre.split(' ')[0]}!
         </h1>
         <p className="text-app-muted text-sm mt-1 font-medium">
-          Selecciona la mesa que vas a reportar en este momento:
+          {mesas.length > 0
+            ? 'Selecciona la mesa que vas a reportar en este momento:'
+            : 'No tienes una mesa asignada en esta campaña.'}
         </p>
       </div>
+
+      {/* Sin mesa: por ejemplo, el titular cuya mesa pasó a su suplente (CUO-4045). */}
+      {mesas.length === 0 && (
+        <div className="bg-app-elevated border border-app-line rounded-card p-5" data-testid="sin-mesa-asignada">
+          <p className="text-sm text-app-fg font-medium leading-relaxed">
+            No puedes abrir una jornada ni enviar resultados. Si la campaña activó al testigo suplente de tu
+            mesa, ahora reporta él. Contacta al coordinador de tu campaña si crees que es un error.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-4">
         {mesas.map((mesa) => (

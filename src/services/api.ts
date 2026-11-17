@@ -1,7 +1,12 @@
 import axios from 'axios';
 import * as idbModule from '../db/indexeddb';
 import * as syncModule from './syncService';
-import { AUTH_NOTICE_KEY, MENSAJE_SESION_VENCIDA, extraerMensajeSesion401 } from './authErrors';
+import {
+    AUTH_NOTICE_KEY,
+    MENSAJE_SESION_VENCIDA,
+    extraerMensajeSesion401,
+    mensajeSuplenteSinActivar,
+} from './authErrors';
 
 export { AUTH_NOTICE_KEY, MENSAJE_SESION_VENCIDA, extraerMensajeSesion401 };
 
@@ -40,6 +45,9 @@ api.interceptors.request.use((config) => {
  * (PIN cambiado, testigo desactivado o movido de mesa, o token expirado):
  * - Ignora 401 en `/auth/testigos/login` (credenciales inválidas al entrar)
  *   y en `/auth/logout` (salida voluntaria cuando el token ya estaba vencido).
+ * - Trata igual el 403 `SUPLENTE_SIN_ACTIVAR` (CUO-4045): un token de suplente no abre
+ *   nada hasta que la campaña lo activa, y su mensaje es el aviso del login.
+ * - El titular cuyo suplente se activó recibe 401 (ya no está en la mesa del token).
  * - Guarda en `cuorum_testigo_auth_notice` el mensaje claro del servidor
  *   (por defecto «Sesión de testigo vencida. Inicia sesión de nuevo.») para
  *   mostrarlo en `LoginPage`.
@@ -51,12 +59,13 @@ api.interceptors.response.use(
     (res) => res,
     async (error) => {
         const url = error.config?.url || '';
+        const suplente = mensajeSuplenteSinActivar(error);
         if (
-            error.response?.status === 401 &&
+            (error.response?.status === 401 || suplente) &&
             !url.includes('/auth/testigos/login') &&
             !url.includes('/auth/logout')
         ) {
-            const mensaje = extraerMensajeSesion401(error);
+            const mensaje = suplente ?? extraerMensajeSesion401(error);
             try {
                 localStorage.setItem(AUTH_NOTICE_KEY, mensaje);
             } catch {

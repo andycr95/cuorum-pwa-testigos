@@ -85,7 +85,21 @@ export interface ElegirCampanaResponse {
   campanas: CampanaLoginOpcion[];
 }
 
-export type LoginResult = LoginResponse | ElegirCampanaResponse;
+/** Suplente que todavía no activa la campaña (CUO-4045): no recibe token ni ve la mesa. */
+export interface SuplenteSinActivarResponse {
+  codigo: 'SUPLENTE_SIN_ACTIVAR';
+  error: string;
+}
+
+export type LoginResult = LoginResponse | ElegirCampanaResponse | SuplenteSinActivarResponse;
+
+export function esSuplenteSinActivar(res: unknown): res is SuplenteSinActivarResponse {
+  return (
+    typeof res === 'object' &&
+    res !== null &&
+    (res as { codigo?: unknown }).codigo === CODIGO_SUPLENTE_SIN_ACTIVAR
+  );
+}
 
 export function esElegirCampana(res: unknown): res is ElegirCampanaResponse {
   return (
@@ -96,7 +110,13 @@ export function esElegirCampana(res: unknown): res is ElegirCampanaResponse {
   );
 }
 
-import { mapearErrorAuth, AUTH_NOTICE_KEY, extraerMensajeSesion401 } from './authErrors';
+import {
+  mapearErrorAuth,
+  AUTH_NOTICE_KEY,
+  extraerMensajeSesion401,
+  mensajeSuplenteSinActivar,
+  CODIGO_SUPLENTE_SIN_ACTIVAR,
+} from './authErrors';
 
 export { mapearErrorAuth, AUTH_NOTICE_KEY, extraerMensajeSesion401 };
 
@@ -113,7 +133,7 @@ class AuthService {
   async login(cedula: string, pin: string, campanaId?: string): Promise<LoginResult> {
     try {
       const payload = campanaId ? { cedula, pin, campanaId } : { cedula, pin };
-      const response = await api.post<LoginResult>(
+      const response = await api.post<LoginResponse | ElegirCampanaResponse>(
         `/auth/testigos/login`,
         payload,
       );
@@ -152,6 +172,10 @@ class AuthService {
           campanas: resp.data.campanas,
         };
       }
+      const suplente = mensajeSuplenteSinActivar(error);
+      if (suplente) {
+        return { codigo: CODIGO_SUPLENTE_SIN_ACTIVAR, error: suplente };
+      }
       const mensaje = mapearErrorAuth(error);
       throw new Error(mensaje);
     }
@@ -173,9 +197,10 @@ class AuthService {
         (error as { response?: { status?: number }; status?: number })?.response?.status ??
         (error as { status?: number })?.status;
       if (status === 401 || status === 403) {
-        if (status === 401) {
+        const aviso = status === 401 ? extraerMensajeSesion401(error) : mensajeSuplenteSinActivar(error);
+        if (aviso) {
           try {
-            localStorage.setItem(AUTH_NOTICE_KEY, extraerMensajeSesion401(error));
+            localStorage.setItem(AUTH_NOTICE_KEY, aviso);
           } catch {
             // Entorno sin almacenamiento
           }
