@@ -55,7 +55,7 @@ describe('CUO-1030 Paso 1 — Jornada (check-in, apertura, progreso, cierre) e i
   it('App.tsx migra las ramas de jornada a bg-app-canvas y elimina bg-gray-50 / bg-white en la vista de acta cerrada', () => {
     const appSrc = read('src/App.tsx')
     const mainsJornada = appSrc.match(/<main className="[^"]+"/g) ?? []
-    assert.equal(mainsJornada.length, 4, 'App.tsx debe tener 4 elementos <main> para las ramas de jornada')
+    assert.equal(mainsJornada.length, 5, 'App.tsx debe tener 5 elementos <main> para las ramas de jornada y puesto')
     for (const m of mainsJornada) {
       assert.match(m, /bg-app-canvas/, `Cada <main> de jornada debe usar bg-app-canvas: ${m}`)
       assert.doesNotMatch(m, /bg-gray-50/, `Ningún <main> de jornada debe usar bg-gray-50: ${m}`)
