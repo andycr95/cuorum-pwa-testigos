@@ -3,6 +3,7 @@ import {
   authService,
   CampanaLoginOpcion,
   esElegirCampana,
+  esSuplenteSinActivar,
   mapearErrorAuth,
 } from '../../services/authService';
 import { IconoAlerta } from '../ui/Iconos';
@@ -17,6 +18,8 @@ export function LoginPage({ onLoginSuccess, onPracticar }: LoginPageProps) {
   const [cedula, setCedula] = useState('');
   const [pin, setPin] = useState('');
   const [campanasElegibles, setCampanasElegibles] = useState<CampanaLoginOpcion[]>([]);
+  // Suplente sin activar (CUO-4045): espera a la campaña con la campaña elegida, si la eligió.
+  const [esperaActivacion, setEsperaActivacion] = useState<{ mensaje: string; campanaId?: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(() => authService.getAuthNotice() || '');
   const [cedulaError, setCedulaError] = useState('');
@@ -72,6 +75,10 @@ export function LoginPage({ onLoginSuccess, onPracticar }: LoginPageProps) {
         setCampanasElegibles(resultado.campanas);
         return;
       }
+      if (esSuplenteSinActivar(resultado)) {
+        setEsperaActivacion({ mensaje: resultado.error });
+        return;
+      }
       setPin('');
       onLoginSuccess();
     } catch (err) {
@@ -92,6 +99,10 @@ export function LoginPage({ onLoginSuccess, onPracticar }: LoginPageProps) {
         return;
       }
       setCampanasElegibles([]);
+      if (esSuplenteSinActivar(resultado)) {
+        setEsperaActivacion({ mensaje: resultado.error, campanaId });
+        return;
+      }
       setPin('');
       onLoginSuccess();
     } catch (err) {
@@ -104,6 +115,43 @@ export function LoginPage({ onLoginSuccess, onPracticar }: LoginPageProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Vuelve a intentar el login: si la campaña ya activó al suplente, entra a la mesa.
+  const handleComprobarActivacion = async () => {
+    if (!esperaActivacion) return;
+    setError('');
+    setLoading(true);
+
+    try {
+      const resultado = await authService.login(cedula.trim(), pin, esperaActivacion.campanaId);
+      if (esSuplenteSinActivar(resultado)) {
+        setEsperaActivacion({ ...esperaActivacion, mensaje: resultado.error });
+        return;
+      }
+      setEsperaActivacion(null);
+      if (esElegirCampana(resultado)) {
+        setCampanasElegibles(resultado.campanas);
+        return;
+      }
+      setPin('');
+      onLoginSuccess();
+    } catch (err) {
+      const mensaje = mapearErrorAuth(err);
+      setError(mensaje);
+      if (mensaje === 'Cédula o PIN incorrectos') {
+        setEsperaActivacion(null);
+        setPin('');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSalirEspera = () => {
+    setEsperaActivacion(null);
+    setPin('');
+    setError('');
   };
 
   return (
@@ -128,7 +176,55 @@ export function LoginPage({ onLoginSuccess, onPracticar }: LoginPageProps) {
 
         {/* Card de Login */}
         <div className="bg-app-surface rounded-card border border-app-line p-6 sm:p-8">
-          {campanasElegibles.length > 0 ? (
+          {esperaActivacion ? (
+            <div className="space-y-5" data-testid="espera-activacion-suplente">
+              <div>
+                <h2 className="text-xl font-bold text-app-fg mb-1.5">Esperas la activación</h2>
+                <p className="text-sm text-app-muted" data-testid="mensaje-espera-activacion">
+                  {esperaActivacion.mensaje}
+                </p>
+              </div>
+
+              <div className="bg-app-elevated border border-app-line rounded-btn p-4">
+                <p className="text-xs text-app-muted font-medium">
+                  Mientras el testigo titular esté en la mesa, no puedes abrir la jornada ni enviar resultados.
+                  Si el titular no llega, avisa al coordinador de tu campaña para que te active.
+                </p>
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="bg-err-50 dark:bg-[#450A0A] border border-red-200 dark:border-[#7F1D1D] rounded-btn p-4 flex items-start gap-3"
+                >
+                  <IconoAlerta className="w-5 h-5 text-err-700 dark:text-[#FCA5A5] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-err-700 dark:text-[#FCA5A5] font-medium">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="button"
+                data-testid="btn-comprobar-activacion"
+                disabled={loading}
+                onClick={handleComprobarActivacion}
+                className="w-full min-h-[48px] bg-editorial-red hover:bg-brand-700 text-white font-bold py-3.5 px-6 rounded-btn disabled:opacity-50 disabled:cursor-not-allowed transition-colors uppercase tracking-wider text-sm flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+                style={{ letterSpacing: '0.08em' }}
+              >
+                {loading ? 'Comprobando...' : 'Ya me activaron'}
+              </button>
+
+              <button
+                type="button"
+                data-testid="btn-salir-espera"
+                disabled={loading}
+                onClick={handleSalirEspera}
+                className="w-full min-h-[48px] px-4 py-3 bg-app-elevated hover:bg-app-surface text-app-fg border border-app-line rounded-btn font-semibold text-xs uppercase tracking-wider transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-editorial-red/40"
+              >
+                Salir
+              </button>
+            </div>
+          ) : campanasElegibles.length > 0 ? (
             <div className="space-y-5" data-testid="selector-campana-login">
               <div>
                 <h2 className="text-xl font-bold text-app-fg mb-1.5">Elige tu campaña</h2>

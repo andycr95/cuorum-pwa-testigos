@@ -9,6 +9,20 @@
 export const AUTH_NOTICE_KEY = 'cuorum_testigo_auth_notice';
 export const MENSAJE_SESION_VENCIDA = 'Sesión de testigo vencida. Inicia sesión de nuevo.';
 
+/** Código del 403 que recibe un testigo suplente mientras la campaña no lo activa (CUO-4045). */
+export const CODIGO_SUPLENTE_SIN_ACTIVAR = 'SUPLENTE_SIN_ACTIVAR';
+export const MENSAJE_SUPLENTE_SIN_ACTIVAR =
+  'Eres testigo suplente de esta mesa. Podrás reportar cuando la campaña te active.';
+
+/** Si la respuesta de error es la del suplente sin activar, devuelve su mensaje; si no, null. */
+export function mensajeSuplenteSinActivar(error: unknown): string | null {
+  const resp = (error as { response?: { status?: number; data?: unknown } })?.response;
+  if (resp?.status !== 403) return null;
+  const data = resp.data as { codigo?: unknown; error?: unknown } | null | undefined;
+  if (data?.codigo !== CODIGO_SUPLENTE_SIN_ACTIVAR) return null;
+  return typeof data.error === 'string' && data.error.trim() ? data.error.trim() : MENSAJE_SUPLENTE_SIN_ACTIVAR;
+}
+
 export function extraerMensajeSesion401(error: unknown): string {
   const data = (error as { response?: { data?: unknown } })?.response?.data;
   let raw = '';

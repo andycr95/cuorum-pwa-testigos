@@ -13,6 +13,9 @@ import { BarraEstadoEnvio } from './components/sync/BarraEstadoSync';
 import { ControlTema } from './components/ui/ControlTema';
 import { MESA_PRACTICA, ELECCIONES_PRACTICA } from './services/modoPractica';
 
+/** Cada cuánto se revisa que la sesión siga vigente con la app abierta y con red. */
+export const INTERVALO_REVISION_SESION_MS = 60_000;
+
 /**
  * PWA Testigos Electorales
  *
@@ -112,6 +115,30 @@ export function App() {
     window.addEventListener('cuorum:unauthorized', onUnauthorized);
     return () => window.removeEventListener('cuorum:unauthorized', onUnauthorized);
   }, []);
+
+  // Revisa la sesión mientras la app está abierta: si la campaña activó al suplente, el titular sale de la
+  // mesa sin esperar a su próxima acción (CUO-4045). Sin red no se revisa; el 401/403 lo resuelve el interceptor.
+  useEffect(() => {
+    if (!isAuthenticated || modoPractica) return;
+    let enCurso = false;
+    const revisar = async () => {
+      if (enCurso || document.visibilityState === 'hidden' || navigator.onLine === false) return;
+      enCurso = true;
+      try {
+        if (!(await authService.verifyToken())) window.dispatchEvent(new CustomEvent('cuorum:unauthorized'));
+      } finally {
+        enCurso = false;
+      }
+    };
+    const intervalo = window.setInterval(revisar, INTERVALO_REVISION_SESION_MS);
+    document.addEventListener('visibilitychange', revisar);
+    window.addEventListener('online', revisar);
+    return () => {
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', revisar);
+      window.removeEventListener('online', revisar);
+    };
+  }, [isAuthenticated, modoPractica]);
 
   // Volver al selector de mesa
   const handleBackToSelector = () => {
